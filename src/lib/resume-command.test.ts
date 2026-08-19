@@ -36,6 +36,12 @@ describe('buildResumeCommand', () => {
       `opencode --session ${OPENCODE_ID}`
     )
   })
+  it('wave-1 resume commands follow the herdr table', () => {
+    const id = 'fe845bc6-6932-4459-8fb6-cdd0e7c6cc84'
+    expect(buildResumeCommand('copilot', id)).toBe(`copilot --resume=${id}`)
+    expect(buildResumeCommand('qwen', id)).toBe(`qwen --resume ${id}`)
+    expect(buildResumeCommand('amp', id)).toBeUndefined()
+  })
   it('returns undefined for invalid ids, plain terminal, unknown agents', () => {
     expect(buildResumeCommand('claude-code', 'bogus; id')).toBeUndefined()
     expect(buildResumeCommand('terminal', CLAUDE_ID)).toBeUndefined()

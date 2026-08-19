@@ -15,6 +15,9 @@ describe('TEMPLATES catalog', () => {
       'claude-code',
       'codex',
       'opencode',
+      'copilot',
+      'qwen',
+      'amp',
       'terminal'
     ])
   })

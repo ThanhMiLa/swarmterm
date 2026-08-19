@@ -3,9 +3,12 @@
  * command each terminal runs once on first spawn (`null` means a plain shell).
  */
 
+import ampIcon from '@/assets/agents/amp.svg'
 import claudeIcon from '@/assets/agents/claude-code.svg'
 import codexIcon from '@/assets/agents/codex.svg'
+import copilotIcon from '@/assets/agents/copilot.svg'
 import opencodeIcon from '@/assets/agents/opencode.svg'
+import qwenIcon from '@/assets/agents/qwen.svg'
 
 /** Session ids come from on-disk stores owned by other programs and end up
  *  typed into a live shell line — each pattern is an allow-list of the exact
@@ -77,6 +80,36 @@ export const TEMPLATES: WorkspaceTemplate[] = [
     icon: opencodeIcon,
     resume: { idPattern: OPENCODE_RE, buildCommand: (base, id) => `${base} --session ${id}` },
     sessionScanner: 'opencode-cli'
+  },
+  {
+    id: 'copilot',
+    name: 'GitHub Copilot',
+    description: "GitHub's Copilot CLI.",
+    command: 'copilot',
+    executable: 'copilot',
+    icon: copilotIcon,
+    // Resume flag from herdr's table (--resume=<id>, equals form); ids are
+    // UUIDs. No store scanner yet, so the composer list never offers these —
+    // the rule is dormant until a scanner lands.
+    resume: { idPattern: UUID_RE, buildCommand: (base, id) => `${base} --resume=${id}` }
+  },
+  {
+    id: 'qwen',
+    name: 'Qwen Code',
+    description: "Alibaba's Qwen Code CLI.",
+    command: 'qwen',
+    executable: 'qwen',
+    icon: qwenIcon,
+    resume: { idPattern: UUID_RE, buildCommand: (base, id) => `${base} --resume ${id}` }
+  },
+  {
+    id: 'amp',
+    name: 'Amp',
+    description: "Sourcegraph's Amp coding agent.",
+    command: 'amp',
+    executable: 'amp',
+    icon: ampIcon
+    // No resume: the CLI has no resume-by-id flag (herdr has none either).
   },
   {
     id: 'terminal',
