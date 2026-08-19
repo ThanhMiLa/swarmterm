@@ -66,6 +66,18 @@ describe('agentCommand', () => {
   })
 })
 
+describe('resume catalog', () => {
+  it('gives the three launch agents a resume rule and scanner tag', () => {
+    for (const id of ['claude-code', 'codex', 'opencode']) {
+      const t = templateById(id)
+      expect(t.resume).toBeDefined()
+      expect(t.sessionScanner).toBeDefined()
+    }
+    expect(templateById('terminal').resume).toBeUndefined()
+    expect(templateById('terminal').sessionScanner).toBeUndefined()
+  })
+})
+
 describe('isTemplateAvailable', () => {
   const claude = templateById('claude-code')
   const terminal = templateById('terminal')

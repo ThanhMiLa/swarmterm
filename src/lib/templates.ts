@@ -7,6 +7,26 @@ import claudeIcon from '@/assets/agents/claude-code.svg'
 import codexIcon from '@/assets/agents/codex.svg'
 import opencodeIcon from '@/assets/agents/opencode.svg'
 
+/** Session ids come from on-disk stores owned by other programs and end up
+ *  typed into a live shell line — each pattern is an allow-list of the exact
+ *  shape that CLI emits, not a sanity check. */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+// OpenCode: "ses_" + 12 hex + 14 base62 today; ranged so a minor format bump
+// doesn't silently kill the feature, while still shell-safe ([A-Za-z0-9] only).
+const OPENCODE_RE = /^ses_[A-Za-z0-9]{10,40}$/
+
+/** Which backend store scanner (src-tauri/src/sessions/) feeds the composer's
+ *  "Resume sessions" list for this agent. The Rust side mirrors these tags. */
+export type SessionScannerKind = 'claude-jsonl' | 'codex-rollout' | 'opencode-cli' | 'qwen-chats'
+
+export interface TemplateResume {
+  /** Exact session-id shape this CLI emits. */
+  idPattern: RegExp
+  /** One-line resume command, built on the template's base command so flag
+   *  changes (e.g. the claude permissions flag) carry over automatically. */
+  buildCommand: (base: string, sessionId: string) => string
+}
+
 export interface WorkspaceTemplate {
   id: string
   name: string
@@ -17,6 +37,11 @@ export interface WorkspaceTemplate {
   executable?: string
   /** Brand logo URL for the agent, or `undefined` for the plain terminal. */
   icon?: string
+  /** Resume support (L2): absent ⇒ the CLI cannot resume a session by id. */
+  resume?: TemplateResume
+  /** Store scanner feeding "Resume sessions"; absent ⇒ the agent has no
+   *  scanner yet and never appears in that list (fail-open by construction). */
+  sessionScanner?: SessionScannerKind
 }
 
 export const TEMPLATES: WorkspaceTemplate[] = [
@@ -26,7 +51,11 @@ export const TEMPLATES: WorkspaceTemplate[] = [
     description: "Anthropic's coding agent.",
     command: 'claude --dangerously-skip-permissions',
     executable: 'claude',
-    icon: claudeIcon
+    icon: claudeIcon,
+    // Permission mode is never restored on resume — the flag must ride again,
+    // which building on `base` guarantees.
+    resume: { idPattern: UUID_RE, buildCommand: (base, id) => `${base} --resume ${id}` },
+    sessionScanner: 'claude-jsonl'
   },
   {
     id: 'codex',
@@ -34,7 +63,10 @@ export const TEMPLATES: WorkspaceTemplate[] = [
     description: "OpenAI's Codex CLI.",
     command: 'codex',
     executable: 'codex',
-    icon: codexIcon
+    icon: codexIcon,
+    // `codex resume <id>` is a subcommand, not a flag.
+    resume: { idPattern: UUID_RE, buildCommand: (base, id) => `${base} resume ${id}` },
+    sessionScanner: 'codex-rollout'
   },
   {
     id: 'opencode',
@@ -42,7 +74,9 @@ export const TEMPLATES: WorkspaceTemplate[] = [
     description: 'Open-source terminal coding agent.',
     command: 'opencode',
     executable: 'opencode',
-    icon: opencodeIcon
+    icon: opencodeIcon,
+    resume: { idPattern: OPENCODE_RE, buildCommand: (base, id) => `${base} --session ${id}` },
+    sessionScanner: 'opencode-cli'
   },
   {
     id: 'terminal',
