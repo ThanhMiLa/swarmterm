@@ -33,6 +33,9 @@ pub async fn start(app: AppHandle) -> Result<Arc<str>, String> {
     // Codex reads MCP servers from config.toml at session start and cannot
     // expand env vars in `url`, so the concrete URL is (re)written every boot.
     config::register_codex(&app, &url);
+    // Qwen expands env vars in settings.json, so its placeholder entry is
+    // written once (Claude-style); it just rides along at the same call site.
+    config::register_qwen(&app);
 
     let router = server::axum_router(app.clone());
     tokio::spawn(async move {
