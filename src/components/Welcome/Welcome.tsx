@@ -486,7 +486,9 @@ export function Welcome(): ReactElement {
                 used {totalAssigned} / {terminalCount}
               </span>
             </div>
-            <div className="space-y-1.5">
+            {/* The roster outgrew the dialog: cap the list and scroll —
+                max-h-64 ≈ 9 stepper rows at the common window size. */}
+            <div className="max-h-64 space-y-1.5 overflow-y-auto pr-1">
               {CODING_TEMPLATES.map((t) => {
                 const available = isTemplateAvailable(t, availability)
                 const count = counts[t.id] ?? 0
