@@ -5,6 +5,7 @@
  */
 import { isValidSessionId } from '@/lib/resume-command'
 import {
+  TEMPLATES,
   isTemplateAvailable,
   templateById,
   type AgentAvailabilityMap
@@ -28,8 +29,13 @@ export function sessionKey(e: AgentSessionEntry): string {
 export type SessionFilter = 'all' | string
 
 /** Tab order is fixed and always fully rendered; zero-count tabs disable
- *  in the UI rather than disappear, so the set of agents is legible. */
-export const SESSION_FILTER_TABS = ['all', 'claude-code', 'codex', 'opencode'] as const
+ *  in the UI rather than disappear, so the set of agents is legible. Derived
+ *  from the catalog: an agent gets a tab exactly when a backend store scanner
+ *  exists for it (sessionScanner tag). */
+export const SESSION_FILTER_TABS: readonly string[] = [
+  'all',
+  ...TEMPLATES.filter((t) => t.sessionScanner !== undefined).map((t) => t.id)
+]
 
 /** Session rows shown before the expander opens. */
 export const VISIBLE_SESSION_ROWS = 6

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  SESSION_FILTER_TABS,
   filterSessions,
   mergeSessions,
   searchSessions,
@@ -8,6 +9,21 @@ import {
   sessionTimeLabel,
   type AgentSessionEntry
 } from '@/lib/agent-sessions'
+import { TEMPLATES } from '@/lib/templates'
+
+describe('SESSION_FILTER_TABS', () => {
+  it('derives filter tabs from the catalog scanner tags', () => {
+    expect(SESSION_FILTER_TABS).toEqual([
+      'all',
+      ...TEMPLATES.filter((t) => t.sessionScanner !== undefined).map((t) => t.id)
+    ])
+  })
+  it('covers the three launch agents', () => {
+    expect(SESSION_FILTER_TABS).toContain('claude-code')
+    expect(SESSION_FILTER_TABS).toContain('codex')
+    expect(SESSION_FILTER_TABS).toContain('opencode')
+  })
+})
 
 const entry = (over: Partial<AgentSessionEntry>): AgentSessionEntry => ({
   agentId: 'claude-code',
