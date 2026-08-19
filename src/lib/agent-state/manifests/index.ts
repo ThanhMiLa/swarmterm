@@ -1,7 +1,10 @@
 import { ampManifest } from '@/lib/agent-state/manifests/amp'
+import { antigravityManifest } from '@/lib/agent-state/manifests/antigravity'
 import { claudeCodeManifest } from '@/lib/agent-state/manifests/claude-code'
 import { codexManifest } from '@/lib/agent-state/manifests/codex'
 import { copilotManifest } from '@/lib/agent-state/manifests/copilot'
+import { cursorManifest } from '@/lib/agent-state/manifests/cursor'
+import { geminiManifest } from '@/lib/agent-state/manifests/gemini'
 import { opencodeManifest } from '@/lib/agent-state/manifests/opencode'
 import { qwenManifest } from '@/lib/agent-state/manifests/qwen'
 import type { Manifest } from '@/lib/agent-state/types'
@@ -13,7 +16,12 @@ const MANIFESTS: Record<string, Manifest> = {
   opencode: opencodeManifest,
   copilot: copilotManifest,
   qwen: qwenManifest,
-  amp: ampManifest
+  amp: ampManifest,
+  gemini: geminiManifest,
+  cursor: cursorManifest,
+  antigravity: antigravityManifest
+  // omp: deliberately absent — herdr is hooks-only for it (no screen rules
+  // to port); the pane keeps the legacy ActivityDot. See the design spec.
 }
 
 /** undefined for plain 'terminal' panes and unknown ids — no detection. */

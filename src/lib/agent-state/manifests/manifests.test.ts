@@ -4,7 +4,10 @@ import { claudeCodeManifest } from '@/lib/agent-state/manifests/claude-code'
 import { codexManifest } from '@/lib/agent-state/manifests/codex'
 import { opencodeManifest } from '@/lib/agent-state/manifests/opencode'
 import { ampManifest } from '@/lib/agent-state/manifests/amp'
+import { antigravityManifest } from '@/lib/agent-state/manifests/antigravity'
 import { copilotManifest } from '@/lib/agent-state/manifests/copilot'
+import { cursorManifest } from '@/lib/agent-state/manifests/cursor'
+import { geminiManifest } from '@/lib/agent-state/manifests/gemini'
 import { qwenManifest } from '@/lib/agent-state/manifests/qwen'
 import { manifestForAgent } from '@/lib/agent-state/manifests'
 
@@ -21,6 +24,60 @@ describe('manifestForAgent', () => {
     expect(manifestForAgent('opencode')?.id).toBe('opencode')
     expect(manifestForAgent('terminal')).toBeUndefined()
     expect(manifestForAgent(undefined)).toBeUndefined()
+  })
+  it('omp has no manifest by design (herdr is hooks-only for it)', () => {
+    // The pane keeps the legacy ActivityDot and omp stays out of
+    // Settings → Notifications, whose rows derive from manifest presence.
+    expect(manifestForAgent('omp')).toBeUndefined()
+  })
+})
+
+describe('gemini manifest', () => {
+  it('apply/allow confirmation boxes are blocked', () => {
+    expect(evaluateManifest(geminiManifest, input('│ Apply this change?')).state).toBe('blocked')
+    expect(evaluateManifest(geminiManifest, input('│ Allow execution of: ls')).state).toBe('blocked')
+    const proceed = 'Do you want to proceed?\n❯ Yes, allow once'
+    expect(evaluateManifest(geminiManifest, input(proceed)).state).toBe('blocked')
+  })
+  it('esc-to-cancel means working', () => {
+    expect(evaluateManifest(geminiManifest, input('Generating… esc to cancel')).state).toBe('working')
+  })
+  it('a quiet screen falls back to idle', () => {
+    expect(evaluateManifest(geminiManifest, input('$ ok')).state).toBe('idle')
+  })
+})
+
+describe('cursor manifest', () => {
+  it('the write-file approval is blocked', () => {
+    const screen = 'Write to this file? proceed (y)\nreject & propose changes'
+    expect(evaluateManifest(cursorManifest, input(screen)).state).toBe('blocked')
+  })
+  it('command approval prompts are blocked', () => {
+    const screen = 'Run this command?\nWaiting for approval\nrun (once) (y)'
+    expect(evaluateManifest(cursorManifest, input(screen)).state).toBe('blocked')
+    expect(evaluateManifest(cursorManifest, input('accept (y) (enter)')).state).toBe('blocked')
+  })
+  it('stop hint / background tasks / spinner mean working', () => {
+    expect(evaluateManifest(cursorManifest, input('ctrl+c to stop')).state).toBe('working')
+    expect(evaluateManifest(cursorManifest, input('2 background tasks')).state).toBe('working')
+    expect(evaluateManifest(cursorManifest, input('⬢ Generating response')).state).toBe('working')
+  })
+  it('a quiet screen falls back to idle', () => {
+    expect(evaluateManifest(cursorManifest, input('$ ok')).state).toBe('idle')
+  })
+})
+
+describe('antigravity manifest', () => {
+  it('the permission prompt is blocked', () => {
+    const screen = 'Requesting permission for: run ls\nDo you want to proceed?'
+    expect(evaluateManifest(antigravityManifest, input(screen)).state).toBe('blocked')
+  })
+  it('spinner and background-task lines mean working', () => {
+    expect(evaluateManifest(antigravityManifest, input('⣾ Analyzing repository')).state).toBe('working')
+    expect(evaluateManifest(antigravityManifest, input('· 3 tasks running')).state).toBe('working')
+  })
+  it('a quiet screen falls back to idle', () => {
+    expect(evaluateManifest(antigravityManifest, input('$ ok')).state).toBe('idle')
   })
 })
 
