@@ -4,6 +4,7 @@ import { claudeCodeManifest } from '@/lib/agent-state/manifests/claude-code'
 import { codexManifest } from '@/lib/agent-state/manifests/codex'
 import { opencodeManifest } from '@/lib/agent-state/manifests/opencode'
 import { copilotManifest } from '@/lib/agent-state/manifests/copilot'
+import { qwenManifest } from '@/lib/agent-state/manifests/qwen'
 import { manifestForAgent } from '@/lib/agent-state/manifests'
 
 const input = (screen: string, oscTitle = '', oscProgress = ''): Parameters<typeof evaluateManifest>[1] => ({
@@ -121,6 +122,43 @@ describe('copilot manifest', () => {
   })
   it('a quiet screen falls back to idle', () => {
     expect(evaluateManifest(copilotManifest, input('$ done')).state).toBe('idle')
+  })
+})
+
+describe('qwen manifest', () => {
+  it('✳-prefixed OSC title means blocked, ◐ means working', () => {
+    expect(evaluateManifest(qwenManifest, input('x', '✳ Waiting for approval')).state).toBe('blocked')
+    expect(evaluateManifest(qwenManifest, input('x', '◐ Generating…')).state).toBe('working')
+  })
+  it('waiting-for-confirmation footer is blocked (any locale needle)', () => {
+    const screen = '⠏ esbuild src/main.ts...\nWaiting for user confirmation...'
+    expect(evaluateManifest(qwenManifest, input(screen)).state).toBe('blocked')
+  })
+  it('a tool confirmation dialog is blocked', () => {
+    const screen = 'Apply this change?\n● Yes, allow once'
+    expect(evaluateManifest(qwenManifest, input(screen)).state).toBe('blocked')
+  })
+  it('a numbered question dialog is blocked', () => {
+    // Both line_regex needles must hit (AND): the numbered option AND the
+    // ↑/↓ … Enter … help footer the dialog always renders beneath it.
+    const screen = '❯ 1. Yes, proceed\n↑/↓ : navigate · Enter : select'
+    expect(evaluateManifest(qwenManifest, input(screen)).state).toBe('blocked')
+  })
+  it('the folder trust dialog is blocked', () => {
+    const screen = "Do you trust this folder?\nTrust folder (enter)\nDon't trust (esc)"
+    expect(evaluateManifest(qwenManifest, input(screen)).state).toBe('blocked')
+  })
+  it('the timed esc-to-cancel status line means working (wide and narrow)', () => {
+    expect(evaluateManifest(qwenManifest, input('⠹ Thinking (12s · esc to cancel)')).state).toBe('working')
+    expect(evaluateManifest(qwenManifest, input('(2m 5s · esc to cancel)')).state).toBe('working')
+  })
+  it('OSC 9;4 tool progress means working', () => {
+    expect(evaluateManifest(qwenManifest, input('x', '', '4;3;50')).state).toBe('working')
+  })
+  it('the composer placeholder is proven idle', () => {
+    const v = evaluateManifest(qwenManifest, input('> Type your message or @path/to/file'))
+    expect(v.state).toBe('idle')
+    expect(v.visibleIdle).toBe(true)
   })
 })
 
