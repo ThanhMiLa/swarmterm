@@ -12,12 +12,19 @@ import { memberColor } from '@/lib/war-room-identity'
 import { cn } from '@/lib/utils'
 import { ActivityDot } from '@/components/ActivityDot'
 import { StateDot } from '@/components/StateDot'
+import { templateById } from '@/lib/templates'
 import { Avatar, jumpToTerminal } from './Avatar'
 
 const MANUAL_HINT =
-  'No agent CLI detected in this pane. To connect one manually, point its MCP ' +
-  'config at $SWARMTERM_MCP_URL with header "Authorization: Bearer $SWARMTERM_SESSION" ' +
+  'To connect this pane manually, point its MCP config at $SWARMTERM_MCP_URL ' +
+  'with header "Authorization: Bearer $SWARMTERM_SESSION" ' +
   "(both are set in this terminal's environment)."
+
+/** The manual-enrollment hint shows for plain shells AND for agents Swarmterm
+ *  does not auto-enroll (only claude/codex/qwen get their MCP config written). */
+function needsManualHint(agentId: string | null): boolean {
+  return agentId === null || templateById(agentId).mcpAutoEnrolled !== true
+}
 
 function MemberRow({ member }: { member: WarRoomMember }): ReactElement {
   const active = useTerminalActivityStore((s) => s.active[member.terminalId] ?? false)
@@ -71,7 +78,7 @@ function MemberRow({ member }: { member: WarRoomMember }): ReactElement {
           title={
             'Waiting for the agent inside this pane to make its first war_room call. ' +
             'Until then peers cannot message it.' +
-            (member.agentId === null ? ` ${MANUAL_HINT}` : '')
+            (needsManualHint(member.agentId) ? ` ${MANUAL_HINT}` : '')
           }
         >
           pending

@@ -138,6 +138,21 @@ impl SwarmtermMcpServer {
         }
         validate_agent_id(args.agent.as_deref())
             .map_err(|m| rmcp::ErrorData::invalid_params(m, None))?;
+        // Catalog membership is not availability: spawning an uninstalled CLI
+        // would provision an orphan worktree, return success, and type
+        // command-not-found into the new pane. Probe before creating anything.
+        if let Some(a) = args.agent.as_deref() {
+            if let Some((_, exe)) = crate::agents::AGENTS.iter().find(|(id, _)| *id == a) {
+                if crate::agents::find_agent_binary(exe).is_none() {
+                    return Err(rmcp::ErrorData::invalid_params(
+                        format!(
+                            "agent \"{a}\" is not installed on this machine (executable \"{exe}\" not found)"
+                        ),
+                        None,
+                    ));
+                }
+            }
+        }
 
         let branch = args.branch.clone();
         let created = tauri::async_runtime::spawn_blocking(move || {

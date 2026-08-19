@@ -86,10 +86,14 @@ fn claude_projects_root() -> Option<std::path::PathBuf> {
     Some(base.join("projects"))
 }
 
-/// `$QWEN_HOME` else `<home>/.qwen`, then `projects/`.
+/// `$QWEN_HOME` else `<home>/.qwen`, then `projects/`. Blank env treated as
+/// unset — the same rule as `mcp::config::resolve_qwen_settings_path`, so
+/// the two qwen features never read different roots from one variable.
 fn qwen_projects_root() -> Option<std::path::PathBuf> {
     let base = std::env::var("QWEN_HOME")
         .ok()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
         .map(std::path::PathBuf::from)
         .or_else(|| home_dir().map(|h| h.join(".qwen")))?;
     Some(base.join("projects"))

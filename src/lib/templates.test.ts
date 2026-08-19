@@ -85,6 +85,18 @@ describe('resume catalog', () => {
   })
 })
 
+describe('MCP auto-enrollment flags', () => {
+  it('marks exactly the CLIs Swarmterm writes config for', () => {
+    const enrolled = TEMPLATES.filter((t) => t.mcpAutoEnrolled === true).map((t) => t.id)
+    expect(enrolled).toEqual(['claude-code', 'codex', 'qwen'])
+  })
+  it('gives gemini-heritage CLIs the stay-interactive prompt flag', () => {
+    expect(templateById('qwen').spawnPromptFlag).toBe('-i')
+    expect(templateById('gemini').spawnPromptFlag).toBe('-i')
+    expect(templateById('claude-code').spawnPromptFlag).toBeUndefined()
+  })
+})
+
 describe('isTemplateAvailable', () => {
   const claude = templateById('claude-code')
   const terminal = templateById('terminal')

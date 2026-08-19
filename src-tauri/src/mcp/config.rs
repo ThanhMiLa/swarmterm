@@ -29,9 +29,11 @@ pub fn swarmterm_qwen_entry() -> Value {
 
 /// Produce new contents for a JSON config with a `mcpServers` object:
 /// * If `existing` is `None` or blank, return a file with only Swarmterm.
-/// * If `existing` parses as JSON with a `mcpServers` object, deep-merge the
-///   `swarmterm` key (preserving any other server entries and any user edits
-///   to keys the user added under `swarmterm`).
+/// * If `existing` parses as JSON with a `mcpServers` object, merge the
+///   `swarmterm` entry KEY BY KEY — Swarmterm-owned keys are overwritten so
+///   the current shape always wins, but keys the user added under `swarmterm`
+///   (qwen's `trust`/`timeout`, say) survive. Other server entries are
+///   untouched.
 /// * If `existing` is malformed JSON, return `Err` — the caller logs it and
 ///   leaves the file untouched.
 fn merge_mcp_servers_json(existing: Option<&str>, entry: Value) -> Result<String, String> {
@@ -50,22 +52,88 @@ fn merge_mcp_servers_json(existing: Option<&str>, entry: Value) -> Result<String
     if !servers.is_object() {
         return Err("mcpServers is not an object".into());
     }
-    servers
-        .as_object_mut()
-        .unwrap()
-        .insert("swarmterm".to_string(), entry);
+    let servers = servers.as_object_mut().unwrap();
+    match servers.get_mut("swarmterm") {
+        // Existing object entry: overwrite only the keys we own.
+        Some(Value::Object(slot)) => {
+            for (k, v) in entry.as_object().expect("entry is an object") {
+                slot.insert(k.clone(), v.clone());
+            }
+        }
+        // Absent, or a non-object left by something else: replace wholesale.
+        _ => {
+            servers.insert("swarmterm".to_string(), entry);
+        }
+    }
     serde_json::to_string_pretty(&root).map_err(|e| e.to_string())
 }
 
-/// Claude Code variant of `merge_mcp_servers_json` (`.claude.json`).
-pub fn merge_mcp_config(existing: Option<&str>) -> Result<String, String> {
-    merge_mcp_servers_json(existing, swarmterm_entry())
+/// Whether `config` (a parsed root object) already carries every key of
+/// `entry` under `mcpServers.swarmterm` with our exact values. User-added
+/// extra keys are fine — the merge preserves them, so they must not force a
+/// rewrite on every boot.
+fn entry_is_current(config: &Value, entry: &Value) -> bool {
+    match config.get("mcpServers").and_then(|m| m.get("swarmterm")) {
+        Some(cur) => entry
+            .as_object()
+            .expect("entry is an object")
+            .iter()
+            .all(|(k, v)| cur.get(k) == Some(v)),
+        None => false,
+    }
 }
 
-/// Qwen Code variant of `merge_mcp_servers_json` (`settings.json` — the
-/// `mcpServers` key stays top-level in qwen's v2 settings layout).
-pub fn merge_qwen_settings(existing: Option<&str>) -> Result<String, String> {
-    merge_mcp_servers_json(existing, swarmterm_qwen_entry())
+/// Strip `//` line and `/* */` block comments outside strings — the same
+/// tolerance qwen's settings loader applies (strip-json-comments). Used for
+/// READING only: rewriting a commented file would serialize the comments
+/// away, so such a file is never rewritten (see the writer below).
+fn strip_json_comments(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    let mut chars = s.chars().peekable();
+    let mut in_string = false;
+    let mut escaped = false;
+    while let Some(c) = chars.next() {
+        if in_string {
+            out.push(c);
+            if escaped {
+                escaped = false;
+            } else if c == '\\' {
+                escaped = true;
+            } else if c == '"' {
+                in_string = false;
+            }
+            continue;
+        }
+        match c {
+            '"' => {
+                in_string = true;
+                out.push(c);
+            }
+            '/' => match chars.peek() {
+                Some('/') => {
+                    while let Some(&n) = chars.peek() {
+                        if n == '\n' {
+                            break;
+                        }
+                        chars.next();
+                    }
+                }
+                Some('*') => {
+                    chars.next();
+                    let mut prev = '\0';
+                    for n in chars.by_ref() {
+                        if prev == '*' && n == '/' {
+                            break;
+                        }
+                        prev = n;
+                    }
+                }
+                _ => out.push(c),
+            },
+            _ => out.push(c),
+        }
+    }
+    out
 }
 
 /// Merge-write a `swarmterm` MCP entry into a JSON config at `path` (read →
@@ -74,23 +142,45 @@ pub fn merge_qwen_settings(existing: Option<&str>) -> Result<String, String> {
 /// `~/.claude.json` and qwen's `settings.json`, which hold far more than MCP
 /// config. A missing file is created; a malformed existing file returns `Err`
 /// and is left untouched.
-fn write_mcp_servers_json_to_file(path: &Path, entry: Value) -> Result<(), String> {
+fn write_mcp_servers_json_to_file(
+    path: &Path,
+    entry: Value,
+    tolerate_comments: bool,
+) -> Result<(), String> {
     let existing = match fs::read_to_string(path) {
         Ok(s) => Some(s),
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => None,
         Err(e) => return Err(format!("read: {e}")),
     };
-    // Skip rewriting when the user's config already carries our exact entry.
-    // Serde re-serialization would otherwise reorder keys (serde_json's default
-    // BTreeMap) and reformat the file on every boot — a needless, noisy churn of
-    // the user's PRIMARY config for that CLI, and it would also widen the
-    // (already tiny) read-merge-rename race against a concurrently running CLI.
-    // So we only ever write on the first run (or if the entry drifts).
+    // Skip rewriting when the user's config already carries our entry (our
+    // keys with our values; user-added extras allowed). Serde
+    // re-serialization would otherwise reorder keys (serde_json's default
+    // BTreeMap) and reformat the file on every boot — a needless, noisy churn
+    // of the user's PRIMARY config for that CLI, and it would also widen the
+    // (already tiny) read-merge-rename race against a concurrently running
+    // CLI. So we only ever write on the first run (or if the entry drifts).
     if let Some(s) = existing.as_deref() {
-        if let Ok(v) = serde_json::from_str::<Value>(s) {
-            if v.get("mcpServers").and_then(|m| m.get("swarmterm")) == Some(&entry) {
+        let strict = serde_json::from_str::<Value>(s).ok();
+        // Qwen parses settings via strip-json-comments; recognise an entry
+        // inside a commented file so we don't log a bogus error every boot.
+        let lenient = if strict.is_none() && tolerate_comments {
+            serde_json::from_str::<Value>(&strip_json_comments(s)).ok()
+        } else {
+            None
+        };
+        if let Some(v) = strict.as_ref().or(lenient.as_ref()) {
+            if entry_is_current(v, &entry) {
                 return Ok(());
             }
+        }
+        // A commented file that still needs the entry is left untouched:
+        // serde would strip the user's comments on rewrite.
+        if strict.is_none() && lenient.is_some() {
+            return Err(
+                "file contains comments (the CLI tolerates them; rewriting would strip them) — \
+                 add the swarmterm entry manually"
+                    .into(),
+            );
         }
     }
     let merged = merge_mcp_servers_json(existing.as_deref(), entry)?;
@@ -98,9 +188,6 @@ fn write_mcp_servers_json_to_file(path: &Path, entry: Value) -> Result<(), Strin
     // with_extension replaces the trailing `json` segment, preserving the
     // leading dot-name.
     let tmp = path.with_extension("json.tmp");
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent).map_err(|e| format!("mkdir: {e}"))?;
-    }
     fs::write(&tmp, merged).map_err(|e| format!("write tmp: {e}"))?;
     fs::rename(&tmp, path).map_err(|e| {
         // Best-effort tmp cleanup on rename failure so we don't leave litter.
@@ -110,14 +197,21 @@ fn write_mcp_servers_json_to_file(path: &Path, entry: Value) -> Result<(), Strin
     Ok(())
 }
 
-/// Claude Code variant (`~/.claude.json`).
+/// Claude Code variant (`~/.claude.json`). The parent dir is home — never
+/// created here (a missing/typo'd CLAUDE_CONFIG_DIR must fail, not be
+/// fabricated).
 pub fn write_mcp_config_to_file(path: &Path) -> Result<(), String> {
-    write_mcp_servers_json_to_file(path, swarmterm_entry())
+    write_mcp_servers_json_to_file(path, swarmterm_entry(), false)
 }
 
-/// Qwen Code variant (`settings.json` under `$QWEN_HOME` or `~/.qwen`).
+/// Qwen Code variant (`settings.json` under `$QWEN_HOME` or `~/.qwen`). An
+/// installed-but-never-run qwen has no `~/.qwen` yet, so the parent dir is
+/// created — the caller has already probed that the CLI exists.
 pub fn write_qwen_settings_to_file(path: &Path) -> Result<(), String> {
-    write_mcp_servers_json_to_file(path, swarmterm_qwen_entry())
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|e| format!("mkdir: {e}"))?;
+    }
+    write_mcp_servers_json_to_file(path, swarmterm_qwen_entry(), true)
 }
 
 /// Register Swarmterm's MCP server once in Claude Code's user-scope config
@@ -171,6 +265,11 @@ pub fn resolve_qwen_settings_path(home: &Path, qwen_home: Option<&str>) -> PathB
 /// entry is placeholder-only (qwen expands env vars in settings), so this is
 /// idempotent and needs no bound URL. Log-only, like `register_user_scope`.
 pub fn register_qwen(app: &AppHandle) {
+    // Never plant ~/.qwen on machines that don't have the CLI — enrollment is
+    // only meaningful (and its dir-creation only justified) when qwen exists.
+    if crate::agents::find_agent_binary("qwen").is_none() {
+        return;
+    }
     let home = match app.path().home_dir() {
         Ok(h) => h,
         Err(e) => {
@@ -288,9 +387,73 @@ mod tests {
         serde_json::from_str(s).unwrap()
     }
 
+    fn merge_claude(existing: Option<&str>) -> Result<String, String> {
+        merge_mcp_servers_json(existing, swarmterm_entry())
+    }
+
+    fn merge_qwen(existing: Option<&str>) -> Result<String, String> {
+        merge_mcp_servers_json(existing, swarmterm_qwen_entry())
+    }
+
+    #[test]
+    fn merge_preserves_user_added_keys_under_swarmterm() {
+        // qwen users add e.g. "trust": true under our entry to silence
+        // per-tool confirmations — a boot must never clobber that.
+        let existing = r#"{"mcpServers":{"swarmterm":{"httpUrl":"stale","trust":true}}}"#;
+        let out = merge_qwen(Some(existing)).unwrap();
+        let v = parse(&out);
+        assert_eq!(v["mcpServers"]["swarmterm"]["trust"], true);
+        assert_eq!(
+            v["mcpServers"]["swarmterm"]["httpUrl"],
+            "${SWARMTERM_MCP_URL}"
+        );
+    }
+
+    #[test]
+    fn write_skips_when_current_even_with_user_extras() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("settings.json");
+        let content = r#"{"mcpServers":{"swarmterm":{"httpUrl":"${SWARMTERM_MCP_URL}","headers":{"Authorization":"Bearer ${SWARMTERM_SESSION}"},"trust":true}}}"#;
+        std::fs::write(&path, content).unwrap();
+        write_qwen_settings_to_file(&path).unwrap();
+        // Byte-identical: our keys were current, so the user extras never
+        // forced a reformat.
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), content);
+    }
+
+    #[test]
+    fn qwen_commented_file_with_current_entry_is_recognized() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("settings.json");
+        let content = "// my settings\n{\"mcpServers\":{\"swarmterm\":{\"httpUrl\":\"${SWARMTERM_MCP_URL}\",\"headers\":{\"Authorization\":\"Bearer ${SWARMTERM_SESSION}\"}}}}";
+        std::fs::write(&path, content).unwrap();
+        write_qwen_settings_to_file(&path).unwrap();
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), content);
+    }
+
+    #[test]
+    fn qwen_commented_file_without_entry_errs_and_is_untouched() {
+        // Rewriting would strip the user's comments — refuse instead.
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("settings.json");
+        let content = "{\n  // trusted folders\n  \"ui\": {}\n}";
+        std::fs::write(&path, content).unwrap();
+        assert!(write_qwen_settings_to_file(&path).is_err());
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), content);
+    }
+
+    #[test]
+    fn strip_json_comments_leaves_strings_alone() {
+        let s = r#"{"a":"http://x/*not a comment*/","b":1}// tail"#;
+        let stripped = strip_json_comments(s);
+        let v: Value = serde_json::from_str(&stripped).unwrap();
+        assert_eq!(v["a"], "http://x/*not a comment*/");
+        assert_eq!(v["b"], 1);
+    }
+
     #[test]
     fn creates_from_nothing() {
-        let out = merge_mcp_config(None).unwrap();
+        let out = merge_claude(None).unwrap();
         let v = parse(&out);
         assert_eq!(v["mcpServers"]["swarmterm"]["type"], "http");
         assert_eq!(v["mcpServers"]["swarmterm"]["url"], "${SWARMTERM_MCP_URL}");
@@ -298,14 +461,14 @@ mod tests {
 
     #[test]
     fn creates_from_empty_string() {
-        let out = merge_mcp_config(Some("   ")).unwrap();
+        let out = merge_claude(Some("   ")).unwrap();
         assert_eq!(parse(&out)["mcpServers"]["swarmterm"]["type"], "http");
     }
 
     #[test]
     fn preserves_other_servers() {
         let existing = r#"{"mcpServers": {"other": {"type": "stdio", "command": "x"}}}"#;
-        let out = merge_mcp_config(Some(existing)).unwrap();
+        let out = merge_claude(Some(existing)).unwrap();
         let v = parse(&out);
         assert_eq!(v["mcpServers"]["other"]["command"], "x");
         assert_eq!(v["mcpServers"]["swarmterm"]["type"], "http");
@@ -316,14 +479,14 @@ mod tests {
         // If the user (or an old Swarmterm build) already had a swarmterm entry
         // with stale headers, overwrite it so the current shape wins.
         let existing = r#"{"mcpServers": {"swarmterm": {"type": "stdio"}}}"#;
-        let out = merge_mcp_config(Some(existing)).unwrap();
+        let out = merge_claude(Some(existing)).unwrap();
         assert_eq!(parse(&out)["mcpServers"]["swarmterm"]["type"], "http");
     }
 
     #[test]
     fn preserves_unrelated_top_level_keys() {
         let existing = r#"{"projects": {"foo": 1}, "mcpServers": {}}"#;
-        let out = merge_mcp_config(Some(existing)).unwrap();
+        let out = merge_claude(Some(existing)).unwrap();
         let v = parse(&out);
         assert_eq!(v["projects"]["foo"], 1);
         assert_eq!(v["mcpServers"]["swarmterm"]["type"], "http");
@@ -331,17 +494,17 @@ mod tests {
 
     #[test]
     fn errors_on_malformed_json() {
-        assert!(merge_mcp_config(Some("{not json")).is_err());
+        assert!(merge_claude(Some("{not json")).is_err());
     }
 
     #[test]
     fn errors_when_root_not_object() {
-        assert!(merge_mcp_config(Some("[1,2,3]")).is_err());
+        assert!(merge_claude(Some("[1,2,3]")).is_err());
     }
 
     #[test]
     fn errors_when_mcp_servers_not_object() {
-        assert!(merge_mcp_config(Some(r#"{"mcpServers":"nope"}"#)).is_err());
+        assert!(merge_claude(Some(r#"{"mcpServers":"nope"}"#)).is_err());
     }
 
     #[test]
@@ -431,7 +594,7 @@ mod tests {
 
     #[test]
     fn qwen_creates_from_nothing_with_http_url_placeholder() {
-        let out = merge_qwen_settings(None).unwrap();
+        let out = merge_qwen(None).unwrap();
         let v = parse(&out);
         assert_eq!(
             v["mcpServers"]["swarmterm"]["httpUrl"],
@@ -447,7 +610,7 @@ mod tests {
     fn qwen_preserves_settings_sections_and_other_servers() {
         let existing =
             r#"{"ui":{"autoModeAcknowledged":true},"mcpServers":{"other":{"command":"x"}}}"#;
-        let out = merge_qwen_settings(Some(existing)).unwrap();
+        let out = merge_qwen(Some(existing)).unwrap();
         let v = parse(&out);
         assert_eq!(v["ui"]["autoModeAcknowledged"], true);
         assert_eq!(v["mcpServers"]["other"]["command"], "x");
@@ -459,7 +622,7 @@ mod tests {
 
     #[test]
     fn qwen_errors_on_malformed_json() {
-        assert!(merge_qwen_settings(Some("{not json")).is_err());
+        assert!(merge_qwen(Some("{not json")).is_err());
     }
 
     #[test]

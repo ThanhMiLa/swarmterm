@@ -49,4 +49,9 @@ describe('buildAgentSpawnCommand', () => {
     expect(buildAgentSpawnCommand('codex', '', 'posix')).toBe('codex')
     expect(buildAgentSpawnCommand('codex', undefined, 'posix')).toBe('codex')
   })
+  it('inserts the stay-interactive flag when the template carries one', () => {
+    expect(buildAgentSpawnCommand('qwen', 'Fix login', 'posix', '-i')).toBe("qwen -i 'Fix login'")
+    // Empty prompt: no flag either — the bare CLI starts interactive anyway.
+    expect(buildAgentSpawnCommand('qwen', '', 'posix', '-i')).toBe('qwen')
+  })
 })

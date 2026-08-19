@@ -191,6 +191,24 @@ mod tests {
     }
 
     #[test]
+    fn agents_catalog_mirrors_templates_ts() {
+        // Cross-language guard: every id and executable here must appear in
+        // src/lib/templates.ts — a template added on one side only would ship
+        // a composer entry with no probe (or a probe with no template).
+        let templates = include_str!("../../src/lib/templates.ts");
+        for (id, exe) in AGENTS {
+            assert!(
+                templates.contains(&format!("id: '{id}'")),
+                "template id '{id}' missing from templates.ts"
+            );
+            assert!(
+                templates.contains(&format!("executable: '{exe}'")),
+                "executable '{exe}' missing from templates.ts"
+            );
+        }
+    }
+
+    #[test]
     fn list_agents_covers_all_ai_agents_in_template_order() {
         let ids: Vec<String> = list_agents().into_iter().map(|a| a.id).collect();
         // Availability depends on the host machine; only the catalog is asserted.

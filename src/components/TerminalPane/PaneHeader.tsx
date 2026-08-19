@@ -125,7 +125,12 @@ export function PaneHeader(props: PaneHeaderProps): React.ReactElement {
               <AgentIcon template={agent} className="h-3.5 w-3.5" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
+          {/* 11 roster rows can outgrow a short window — cap to Radix's
+              measured available height and scroll the rest. */}
+          <DropdownMenuContent
+            align="start"
+            className="max-h-[var(--radix-dropdown-menu-content-available-height)] overflow-y-auto"
+          >
             {TEMPLATES.map((t) => {
               const available = isTemplateAvailable(t, availability)
               return (

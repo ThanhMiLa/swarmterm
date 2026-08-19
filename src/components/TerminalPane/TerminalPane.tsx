@@ -20,7 +20,7 @@ import {
 import { ClearWorktreeDialog, type DialogTarget } from '@/components/Workspace/ClearWorktreeDialog'
 import { getChangedFiles, branchUnmergedCount } from '@/tauri/git'
 import { classifyWorktree, clearWorktreeMenuLabel } from '@/lib/worktree-cleanup'
-import { agentCommand, DEFAULT_TEMPLATE_ID } from '@/lib/templates'
+import { agentCommand, DEFAULT_TEMPLATE_ID, templateById } from '@/lib/templates'
 import { buildAgentSpawnCommand, shellFlavor } from '@/lib/agent-spawn-command'
 import { buildResumeCommand } from '@/lib/resume-command'
 import { isWindowsPlatform } from '@/lib/platform'
@@ -127,7 +127,8 @@ export function TerminalPane({
       ? buildAgentSpawnCommand(
           baseCommand,
           leaf.initialPrompt,
-          shellFlavor(resolvedShellId, isWindowsPlatform())
+          shellFlavor(resolvedShellId, isWindowsPlatform()),
+          templateById(resolvedAgentId).spawnPromptFlag
         )
       : baseCommand)
   // Published to the DOM so the app-level file-drop listener can quote paths

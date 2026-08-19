@@ -10,6 +10,7 @@ import { cursorManifest } from '@/lib/agent-state/manifests/cursor'
 import { geminiManifest } from '@/lib/agent-state/manifests/gemini'
 import { qwenManifest } from '@/lib/agent-state/manifests/qwen'
 import { manifestForAgent } from '@/lib/agent-state/manifests'
+import { TEMPLATES } from '@/lib/templates'
 
 const input = (screen: string, oscTitle = '', oscProgress = ''): Parameters<typeof evaluateManifest>[1] => ({
   screen,
@@ -24,6 +25,13 @@ describe('manifestForAgent', () => {
     expect(manifestForAgent('opencode')?.id).toBe('opencode')
     expect(manifestForAgent('terminal')).toBeUndefined()
     expect(manifestForAgent(undefined)).toBeUndefined()
+  })
+  it('every agent template has a detection manifest (omp excepted by design)', () => {
+    // Cross-catalog guard: a template added without its manifest silently
+    // costs the state dot, the notification row and the chime.
+    for (const t of TEMPLATES.filter((t) => t.command !== null && t.id !== 'omp')) {
+      expect(manifestForAgent(t.id), t.id).toBeDefined()
+    }
   })
   it('omp has no manifest by design (herdr is hooks-only for it)', () => {
     // The pane keeps the legacy ActivityDot and omp stays out of

@@ -45,11 +45,15 @@ export function quoteForShell(text: string, flavor: ShellFlavor): string {
 export function buildAgentSpawnCommand(
   baseCommand: string,
   prompt: string | undefined,
-  flavor: ShellFlavor
+  flavor: ShellFlavor,
+  promptFlag?: string
 ): string {
   // The pty writes initialCommand as a single line + CR; embedded newlines
   // would submit the command early, so collapse them to spaces.
   const singleLine = (prompt ?? '').replace(/\s*[\r\n]+\s*/g, ' ').trim()
   if (singleLine === '') return baseCommand
-  return `${baseCommand} ${quoteForShell(singleLine, flavor)}`
+  // Gemini-heritage CLIs run a positional prompt one-shot and exit; their
+  // template carries the stay-interactive flag (templates.ts spawnPromptFlag).
+  const flag = promptFlag !== undefined ? `${promptFlag} ` : ''
+  return `${baseCommand} ${flag}${quoteForShell(singleLine, flavor)}`
 }

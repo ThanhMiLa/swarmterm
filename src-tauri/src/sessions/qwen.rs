@@ -13,9 +13,10 @@ use serde_json::Value;
 use std::path::Path;
 
 /// Qwen's project-dir encoding (`sanitizeCwd` in the CLI): every
-/// non-alphanumeric char → `-`, with the whole cwd lowercased FIRST on
-/// Windows. `windows` is a parameter rather than `cfg!` so both branches are
-/// unit-testable on any host.
+/// non-alphanumeric UTF-16 code unit → `-` (the JS regex has no `u` flag, so
+/// a non-BMP char like an emoji becomes TWO dashes), with the whole cwd
+/// lowercased FIRST on Windows. `windows` is a parameter rather than `cfg!`
+/// so both branches are unit-testable on any host.
 pub fn encode_project_dir(folder: &str, windows: bool) -> String {
     let normalized = if windows {
         folder.to_lowercase()
@@ -23,8 +24,11 @@ pub fn encode_project_dir(folder: &str, windows: bool) -> String {
         folder.to_string()
     };
     normalized
-        .chars()
-        .map(|c| if c.is_ascii_alphanumeric() { c } else { '-' })
+        .encode_utf16()
+        .map(|u| match u {
+            0x30..=0x39 | 0x41..=0x5A | 0x61..=0x7A => u as u8 as char,
+            _ => '-',
+        })
         .collect()
 }
 
@@ -116,6 +120,13 @@ mod tests {
             "-Volumes-Wo-ware-x"
         );
         assert_eq!(encode_project_dir("C:\\Users\\Me", true), "c--users-me");
+    }
+
+    #[test]
+    fn encode_matches_qwen_per_utf16_unit() {
+        // qwen replaces per UTF-16 code unit (JS regex without /u): an emoji
+        // is a surrogate PAIR → two dashes, not one.
+        assert_eq!(encode_project_dir("/repo/🚀app", false), "-repo---app");
     }
 
     #[test]

@@ -52,6 +52,14 @@ export interface WorkspaceTemplate {
   /** Store scanner feeding "Resume sessions"; absent ⇒ the agent has no
    *  scanner yet and never appears in that list (fail-open by construction). */
   sessionScanner?: SessionScannerKind
+  /** Flag that makes the CLI run a startup prompt and STAY interactive
+   *  (worktree.spawn briefs). Absent ⇒ the prompt is passed positionally —
+   *  verified fine for claude/codex, but gemini-heritage CLIs treat a
+   *  positional prompt as one-shot and exit. */
+  spawnPromptFlag?: string
+  /** Swarmterm writes this CLI's MCP config automatically at boot (L3).
+   *  Everything else gets the manual hint in the War Room members list. */
+  mcpAutoEnrolled?: boolean
 }
 
 export const TEMPLATES: WorkspaceTemplate[] = [
@@ -65,7 +73,8 @@ export const TEMPLATES: WorkspaceTemplate[] = [
     // Permission mode is never restored on resume — the flag must ride again,
     // which building on `base` guarantees.
     resume: { idPattern: UUID_RE, buildCommand: (base, id) => `${base} --resume ${id}` },
-    sessionScanner: 'claude-jsonl'
+    sessionScanner: 'claude-jsonl',
+    mcpAutoEnrolled: true
   },
   {
     id: 'codex',
@@ -76,7 +85,8 @@ export const TEMPLATES: WorkspaceTemplate[] = [
     icon: codexIcon,
     // `codex resume <id>` is a subcommand, not a flag.
     resume: { idPattern: UUID_RE, buildCommand: (base, id) => `${base} resume ${id}` },
-    sessionScanner: 'codex-rollout'
+    sessionScanner: 'codex-rollout',
+    mcpAutoEnrolled: true
   },
   {
     id: 'opencode',
@@ -108,7 +118,11 @@ export const TEMPLATES: WorkspaceTemplate[] = [
     executable: 'qwen',
     icon: qwenIcon,
     resume: { idPattern: UUID_RE, buildCommand: (base, id) => `${base} --resume ${id}` },
-    sessionScanner: 'qwen-chats'
+    sessionScanner: 'qwen-chats',
+    // -i / --prompt-interactive: run the brief, stay interactive (a
+    // positional prompt would run one-shot and exit).
+    spawnPromptFlag: '-i',
+    mcpAutoEnrolled: true
   },
   {
     id: 'amp',
@@ -125,8 +139,9 @@ export const TEMPLATES: WorkspaceTemplate[] = [
     description: "Google's Gemini CLI.",
     command: 'gemini',
     executable: 'gemini',
-    icon: geminiIcon
+    icon: geminiIcon,
     // No resume: gemini has no resume-by-id flag (herdr has none either).
+    spawnPromptFlag: '-i'
   },
   {
     id: 'cursor',
