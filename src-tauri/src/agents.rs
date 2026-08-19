@@ -29,6 +29,12 @@ pub const AGENTS: &[(&str, &str)] = &[
     ("copilot", "copilot"),
     ("qwen", "qwen"),
     ("amp", "amp"),
+    ("gemini", "gemini"),
+    // Windows ships a cursor-agent.cmd shim; the PATHEXT expansion in
+    // `candidates` resolves it from this bare name.
+    ("cursor", "cursor-agent"),
+    ("antigravity", "agy"),
+    ("omp", "omp"),
 ];
 
 /// Probe every known agent CLI. Fresh scan on every call (no cache) — see
@@ -190,7 +196,18 @@ mod tests {
         // Availability depends on the host machine; only the catalog is asserted.
         assert_eq!(
             ids,
-            vec!["claude-code", "codex", "opencode", "copilot", "qwen", "amp"]
+            vec![
+                "claude-code",
+                "codex",
+                "opencode",
+                "copilot",
+                "qwen",
+                "amp",
+                "gemini",
+                "cursor",
+                "antigravity",
+                "omp"
+            ]
         );
     }
 }

@@ -4,9 +4,13 @@
  */
 
 import ampIcon from '@/assets/agents/amp.svg'
+import antigravityIcon from '@/assets/agents/antigravity.svg'
 import claudeIcon from '@/assets/agents/claude-code.svg'
 import codexIcon from '@/assets/agents/codex.svg'
 import copilotIcon from '@/assets/agents/copilot.svg'
+import cursorIcon from '@/assets/agents/cursor.svg'
+import geminiIcon from '@/assets/agents/gemini.svg'
+import ompIcon from '@/assets/agents/omp.svg'
 import opencodeIcon from '@/assets/agents/opencode.svg'
 import qwenIcon from '@/assets/agents/qwen.svg'
 
@@ -17,6 +21,9 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 // OpenCode: "ses_" + 12 hex + 14 base62 today; ranged so a minor format bump
 // doesn't silently kill the feature, while still shell-safe ([A-Za-z0-9] only).
 const OPENCODE_RE = /^ses_[A-Za-z0-9]{10,40}$/
+// OMP ids are unverified (no store scanner yet); conservative shell-safe
+// allow-list, leading char alphanumeric so the value can never read as a flag.
+const OMP_ID_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{5,63}$/
 
 /** Which backend store scanner (src-tauri/src/sessions/) feeds the composer's
  *  "Resume sessions" list for this agent. The Rust side mirrors these tags. */
@@ -111,6 +118,44 @@ export const TEMPLATES: WorkspaceTemplate[] = [
     executable: 'amp',
     icon: ampIcon
     // No resume: the CLI has no resume-by-id flag (herdr has none either).
+  },
+  {
+    id: 'gemini',
+    name: 'Gemini CLI',
+    description: "Google's Gemini CLI.",
+    command: 'gemini',
+    executable: 'gemini',
+    icon: geminiIcon
+    // No resume: gemini has no resume-by-id flag (herdr has none either).
+  },
+  {
+    id: 'cursor',
+    name: 'Cursor Agent',
+    description: "Cursor's CLI agent.",
+    // The bare name also resolves cursor-agent.cmd on Windows via PATHEXT,
+    // both in the probe (agents.rs candidates) and in the spawned shell line.
+    command: 'cursor-agent',
+    executable: 'cursor-agent',
+    icon: cursorIcon,
+    resume: { idPattern: UUID_RE, buildCommand: (base, id) => `${base} --resume ${id}` }
+  },
+  {
+    id: 'antigravity',
+    name: 'Antigravity',
+    description: "Google's Antigravity agent CLI.",
+    command: 'agy',
+    executable: 'agy',
+    icon: antigravityIcon,
+    resume: { idPattern: UUID_RE, buildCommand: (base, id) => `${base} --conversation ${id}` }
+  },
+  {
+    id: 'omp',
+    name: 'OMP (Oh My Pi)',
+    description: 'Community fork of the Pi coding agent.',
+    command: 'omp',
+    executable: 'omp',
+    icon: ompIcon,
+    resume: { idPattern: OMP_ID_RE, buildCommand: (base, id) => `${base} --resume=${id}` }
   },
   {
     id: 'terminal',

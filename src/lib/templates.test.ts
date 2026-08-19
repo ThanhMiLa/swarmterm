@@ -18,6 +18,10 @@ describe('TEMPLATES catalog', () => {
       'copilot',
       'qwen',
       'amp',
+      'gemini',
+      'cursor',
+      'antigravity',
+      'omp',
       'terminal'
     ])
   })
