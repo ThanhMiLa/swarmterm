@@ -3,6 +3,7 @@ import { evaluateManifest } from '@/lib/agent-state/engine'
 import { claudeCodeManifest } from '@/lib/agent-state/manifests/claude-code'
 import { codexManifest } from '@/lib/agent-state/manifests/codex'
 import { opencodeManifest } from '@/lib/agent-state/manifests/opencode'
+import { ampManifest } from '@/lib/agent-state/manifests/amp'
 import { copilotManifest } from '@/lib/agent-state/manifests/copilot'
 import { qwenManifest } from '@/lib/agent-state/manifests/qwen'
 import { manifestForAgent } from '@/lib/agent-state/manifests'
@@ -157,6 +158,28 @@ describe('qwen manifest', () => {
   })
   it('the composer placeholder is proven idle', () => {
     const v = evaluateManifest(qwenManifest, input('> Type your message or @path/to/file'))
+    expect(v.state).toBe('idle')
+    expect(v.visibleIdle).toBe(true)
+  })
+})
+
+describe('amp manifest', () => {
+  it('the plugin-confirmation OSC title is blocked', () => {
+    expect(evaluateManifest(ampManifest, input('x', 'Plugin confirmation needed')).state).toBe('blocked')
+  })
+  it('a braille-spinner OSC title means working and beats the idle title', () => {
+    expect(evaluateManifest(ampManifest, input('x', '⣟ compiling - amp - repo')).state).toBe('working')
+  })
+  it('the approval footer is blocked (plain and nested approve forms)', () => {
+    expect(evaluateManifest(ampManifest, input('Waiting for approval')).state).toBe('blocked')
+    const nested = 'Approve this tool call?\nAllow all for this session'
+    expect(evaluateManifest(ampManifest, input(nested)).state).toBe('blocked')
+  })
+  it('the ╰ status footer means working', () => {
+    expect(evaluateManifest(ampManifest, input('output\n╰ gpt-5 thinking ─────')).state).toBe('working')
+  })
+  it('a " - amp - " title with no spinner is proven idle', () => {
+    const v = evaluateManifest(ampManifest, input('x', 'repo - amp - ready'))
     expect(v.state).toBe('idle')
     expect(v.visibleIdle).toBe(true)
   })

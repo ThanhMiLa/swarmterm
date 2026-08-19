@@ -1,3 +1,4 @@
+import { ampManifest } from '@/lib/agent-state/manifests/amp'
 import { claudeCodeManifest } from '@/lib/agent-state/manifests/claude-code'
 import { codexManifest } from '@/lib/agent-state/manifests/codex'
 import { copilotManifest } from '@/lib/agent-state/manifests/copilot'
@@ -11,7 +12,8 @@ const MANIFESTS: Record<string, Manifest> = {
   codex: codexManifest,
   opencode: opencodeManifest,
   copilot: copilotManifest,
-  qwen: qwenManifest
+  qwen: qwenManifest,
+  amp: ampManifest
 }
 
 /** undefined for plain 'terminal' panes and unknown ids — no detection. */
