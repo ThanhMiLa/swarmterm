@@ -100,7 +100,8 @@ export const TEMPLATES: WorkspaceTemplate[] = [
     command: 'qwen',
     executable: 'qwen',
     icon: qwenIcon,
-    resume: { idPattern: UUID_RE, buildCommand: (base, id) => `${base} --resume ${id}` }
+    resume: { idPattern: UUID_RE, buildCommand: (base, id) => `${base} --resume ${id}` },
+    sessionScanner: 'qwen-chats'
   },
   {
     id: 'amp',

@@ -5,7 +5,7 @@
 //! best-effort per line — an unreadable line is skipped, an unreadable file
 //! contributes nothing.
 
-use super::{clean_title, mtime_ms, read_head, SessionEntry};
+use super::{clean_title, is_uuid, mtime_ms, read_head, SessionEntry};
 use serde_json::Value;
 use std::path::Path;
 
@@ -16,14 +16,6 @@ pub fn encode_project_dir(folder: &str) -> String {
         .chars()
         .map(|c| if c.is_ascii_alphanumeric() { c } else { '-' })
         .collect()
-}
-
-fn is_uuid(s: &str) -> bool {
-    s.len() == 36
-        && s.chars().enumerate().all(|(i, c)| match i {
-            8 | 13 | 18 | 23 => c == '-',
-            _ => c.is_ascii_hexdigit(),
-        })
 }
 
 /// First non-sidechain user message in the head of the file, cleaned for

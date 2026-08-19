@@ -7,6 +7,7 @@
 pub mod claude;
 pub mod codex;
 pub mod opencode;
+pub mod qwen;
 
 use serde::Serialize;
 use std::io::Read;
@@ -67,12 +68,30 @@ pub(crate) fn clean_title(raw: &str) -> Option<String> {
     Some(collapsed.chars().take(80).collect())
 }
 
+/// Strict hyphenated-UUID shape — the session file stem for claude and qwen.
+pub(crate) fn is_uuid(s: &str) -> bool {
+    s.len() == 36
+        && s.chars().enumerate().all(|(i, c)| match i {
+            8 | 13 | 18 | 23 => c == '-',
+            _ => c.is_ascii_hexdigit(),
+        })
+}
+
 /// `$CLAUDE_CONFIG_DIR` else `<home>/.claude`, then `projects/`.
 fn claude_projects_root() -> Option<std::path::PathBuf> {
     let base = std::env::var("CLAUDE_CONFIG_DIR")
         .ok()
         .map(std::path::PathBuf::from)
         .or_else(|| home_dir().map(|h| h.join(".claude")))?;
+    Some(base.join("projects"))
+}
+
+/// `$QWEN_HOME` else `<home>/.qwen`, then `projects/`.
+fn qwen_projects_root() -> Option<std::path::PathBuf> {
+    let base = std::env::var("QWEN_HOME")
+        .ok()
+        .map(std::path::PathBuf::from)
+        .or_else(|| home_dir().map(|h| h.join(".qwen")))?;
     Some(base.join("projects"))
 }
 
@@ -106,6 +125,9 @@ pub async fn list_all(folder: String) -> Vec<SessionEntry> {
         }
         if let Some(root) = codex_sessions_root() {
             out.extend(codex::scan(&root, &scan_folder));
+        }
+        if let Some(root) = qwen_projects_root() {
+            out.extend(qwen::scan(&root, &scan_folder));
         }
         out
     });

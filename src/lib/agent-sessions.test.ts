@@ -18,10 +18,11 @@ describe('SESSION_FILTER_TABS', () => {
       ...TEMPLATES.filter((t) => t.sessionScanner !== undefined).map((t) => t.id)
     ])
   })
-  it('covers the three launch agents', () => {
+  it('covers every agent with a store scanner', () => {
     expect(SESSION_FILTER_TABS).toContain('claude-code')
     expect(SESSION_FILTER_TABS).toContain('codex')
     expect(SESSION_FILTER_TABS).toContain('opencode')
+    expect(SESSION_FILTER_TABS).toContain('qwen')
   })
 })
 
@@ -154,9 +155,15 @@ describe('sessionTabCounts', () => {
       entry({}),
       entry({ agentId: 'codex', sessionId: '018f3b2a-7c1d-4e0a-9b2f-1a2b3c4d5e6f' })
     ])
-    expect(counts).toEqual({ all: 2, 'claude-code': 1, codex: 1, opencode: 0 })
+    expect(counts).toEqual({ all: 2, 'claude-code': 1, codex: 1, opencode: 0, qwen: 0 })
   })
   it('empty input yields all zeros', () => {
-    expect(sessionTabCounts([])).toEqual({ all: 0, 'claude-code': 0, codex: 0, opencode: 0 })
+    expect(sessionTabCounts([])).toEqual({
+      all: 0,
+      'claude-code': 0,
+      codex: 0,
+      opencode: 0,
+      qwen: 0
+    })
   })
 })
