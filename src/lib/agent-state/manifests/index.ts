@@ -1,5 +1,6 @@
 import { claudeCodeManifest } from '@/lib/agent-state/manifests/claude-code'
 import { codexManifest } from '@/lib/agent-state/manifests/codex'
+import { copilotManifest } from '@/lib/agent-state/manifests/copilot'
 import { opencodeManifest } from '@/lib/agent-state/manifests/opencode'
 import type { Manifest } from '@/lib/agent-state/types'
 
@@ -7,7 +8,8 @@ import type { Manifest } from '@/lib/agent-state/types'
 const MANIFESTS: Record<string, Manifest> = {
   'claude-code': claudeCodeManifest,
   codex: codexManifest,
-  opencode: opencodeManifest
+  opencode: opencodeManifest,
+  copilot: copilotManifest
 }
 
 /** undefined for plain 'terminal' panes and unknown ids — no detection. */

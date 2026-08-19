@@ -3,6 +3,7 @@ import { evaluateManifest } from '@/lib/agent-state/engine'
 import { claudeCodeManifest } from '@/lib/agent-state/manifests/claude-code'
 import { codexManifest } from '@/lib/agent-state/manifests/codex'
 import { opencodeManifest } from '@/lib/agent-state/manifests/opencode'
+import { copilotManifest } from '@/lib/agent-state/manifests/copilot'
 import { manifestForAgent } from '@/lib/agent-state/manifests'
 
 const input = (screen: string, oscTitle = '', oscProgress = ''): Parameters<typeof evaluateManifest>[1] => ({
@@ -101,6 +102,25 @@ describe('codex manifest', () => {
   it('the transcript viewer freezes state', () => {
     const screen = ['history', '› ', '↑/↓ to scroll · pgup/pgdn to page · home/end to jump · q to quit · esc to edit prev'].join('\n')
     expect(evaluateManifest(codexManifest, input(screen)).skip).toBe(true)
+  })
+})
+
+describe('copilot manifest', () => {
+  it('a selection dialog (esc-cancel + enter-select) is blocked', () => {
+    const v = evaluateManifest(copilotManifest, input('Pick a model\nesc to cancel · enter to select'))
+    expect(v.state).toBe('blocked')
+    expect(v.visibleBlocker).toBe(true)
+  })
+  it('an esc-cancel hint alone means working', () => {
+    const v = evaluateManifest(copilotManifest, input('Thinking… esc to cancel'))
+    expect(v.state).toBe('working')
+    expect(v.visibleWorking).toBe(true)
+  })
+  it('the blocker outranks the working hint on the same screen', () => {
+    expect(evaluateManifest(copilotManifest, input('esc to cancel\nenter to confirm')).state).toBe('blocked')
+  })
+  it('a quiet screen falls back to idle', () => {
+    expect(evaluateManifest(copilotManifest, input('$ done')).state).toBe('idle')
   })
 })
 
