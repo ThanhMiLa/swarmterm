@@ -23,17 +23,20 @@ pub struct WorktreeRemovedEvent {
     pub path: String,
 }
 
-/// Ids must stay in sync with TEMPLATES in src/lib/templates.ts. "terminal"
-/// is deliberately absent: worktree.spawn exists to start an agent on a task.
-const AGENT_IDS: [&str; 3] = ["claude-code", "codex", "opencode"];
-
+/// Valid ids come from `agents.rs::AGENTS` (which mirrors TEMPLATES in
+/// src/lib/templates.ts). "terminal" is deliberately absent from that catalog:
+/// worktree.spawn exists to start an agent on a task.
 pub fn validate_agent_id(agent: Option<&str>) -> Result<(), String> {
     match agent {
         None => Ok(()),
-        Some(a) if AGENT_IDS.contains(&a) => Ok(()),
+        Some(a) if crate::agents::AGENTS.iter().any(|(id, _)| *id == a) => Ok(()),
         Some(a) => Err(format!(
             "unknown agent \"{a}\" — pass one of: {} (or omit to reuse the calling pane's agent)",
-            AGENT_IDS.join(", ")
+            crate::agents::AGENTS
+                .iter()
+                .map(|(id, _)| *id)
+                .collect::<Vec<_>>()
+                .join(", ")
         )),
     }
 }
@@ -58,11 +61,11 @@ mod tests {
     }
 
     #[test]
-    fn agent_id_allow_list() {
+    fn agent_id_allow_list_tracks_agents_catalog() {
         assert!(validate_agent_id(None).is_ok());
-        assert!(validate_agent_id(Some("claude-code")).is_ok());
-        assert!(validate_agent_id(Some("codex")).is_ok());
-        assert!(validate_agent_id(Some("opencode")).is_ok());
+        for (id, _) in crate::agents::AGENTS {
+            assert!(validate_agent_id(Some(id)).is_ok());
+        }
         assert!(validate_agent_id(Some("terminal")).is_err());
         assert!(validate_agent_id(Some("nope")).is_err());
     }
@@ -83,8 +86,8 @@ pub struct WorktreeSpawnArgs {
     pub branch: String,
     /// The task brief the spawned agent starts working on immediately.
     pub prompt: String,
-    /// Agent template id: "claude-code", "codex" or "opencode". Omit to reuse
-    /// the calling pane's agent.
+    /// Agent template id as shown in the workspace composer (e.g.
+    /// "claude-code"). Omit to reuse the calling pane's agent.
     pub agent: Option<String>,
 }
 

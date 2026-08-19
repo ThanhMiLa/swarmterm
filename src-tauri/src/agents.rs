@@ -20,7 +20,9 @@ pub struct AgentEntry {
 
 /// (template id, executable base name) for each agent CLI we probe. Keep in
 /// template order — `src/lib/templates.ts` is the source of truth for ids.
-const AGENTS: &[(&str, &str)] = &[
+/// Public because it is the backend's one agent catalog: the worktree tool's
+/// allow-list derives from it.
+pub const AGENTS: &[(&str, &str)] = &[
     ("claude-code", "claude"),
     ("codex", "codex"),
     ("opencode", "opencode"),
