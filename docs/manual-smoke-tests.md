@@ -193,7 +193,8 @@ A longer scripted War Room scenario lives in [`war-room-demo.md`](war-room-demo.
 
 - [ ] Pick a folder with prior Claude Code activity → "Resume sessions"
       (below Recent) lists them newest first, with agent icon, relative
-      time, and All/Claude Code/Codex/OpenCode tabs (0-count tabs disabled).
+      time, and All/Claude Code/Codex/OpenCode/Qwen Code tabs (0-count tabs
+      disabled).
 - [ ] More than 6 sessions → "Show all (N)" opens the two-column sessions
       dialog (agent rail + search); ticks made there survive Done/Esc and
       tab switches.
@@ -210,6 +211,28 @@ A longer scripted War Room scenario lives in [`war-room-demo.md`](war-room-demo.
       the resume pane spawns at the session's original folder.
 - [ ] Switch agent on a resume pane via the header dropdown → pane respawns
       fresh (no --resume in the typed command).
+
+## Agent roster (per agent, requires that CLI installed)
+
+Run this block once per newly supported agent — GitHub Copilot, Qwen Code,
+Amp, Gemini CLI, Cursor Agent, Antigravity, OMP — on a machine that has it:
+
+- [ ] Composer shows the agent with its icon; stepper assigns panes; the
+      agent list scrolls past ~9 rows without clipping the dialog.
+- [ ] Uninstalled CLI → the row is greyed out ("Not installed").
+- [ ] Spawn a pane → the CLI starts; state dot turns yellow while it works,
+      red on a permission prompt, green when finished in background (OMP:
+      plain activity dot only — expected).
+- [ ] Per-pane agent switcher lists the agent and respawns onto it.
+- [ ] War Room: drag the pane into a room → probe lands in inbox; execute
+      pastes + runs the prompt (Copilot: verify the pasted Enter is not
+      swallowed after focus loss — herdr reports it needs a focus-gained
+      event first; if it reproduces, file it).
+- [ ] Qwen only: "Resume sessions" lists prior qwen sessions for the folder
+      and Create runs `qwen --resume <id>`.
+- [ ] Qwen only (MCP): a qwen pane sees the `swarmterm` MCP server
+      (`/mcp` or `qwen mcp list`) and can call `browser.open_preview`.
+- [ ] Worktree toggle ON → `worktree.spawn` accepts the agent's template id.
 
 ## Signed release (macOS)
 

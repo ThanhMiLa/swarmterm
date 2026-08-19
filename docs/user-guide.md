@@ -6,7 +6,7 @@ settings, keyboard shortcuts, troubleshooting and current limits.
 
 ## Create a workspace
 
-Swarmterm opens on the **composer**: pick a folder (the working directory for every pane), choose how many terminals, and use the steppers to assign **Claude Code**, **Codex** or **OpenCode** — the rest stay plain shells. Turn on **Isolate features in git worktrees** for parallel work, then press `⌘/Ctrl + Enter`.
+Swarmterm opens on the **composer**: pick a folder (the working directory for every pane), choose how many terminals, and use the steppers to assign AI agents — **Claude Code**, **Codex**, **OpenCode**, **GitHub Copilot**, **Qwen Code**, **Amp**, **Gemini CLI**, **Cursor Agent**, **Antigravity** or **OMP (Oh My Pi)** — the rest stay plain shells. Agents whose CLI isn't installed show up greyed out. Turn on **Isolate features in git worktrees** for parallel work, then press `⌘/Ctrl + Enter`.
 
 Agent detection re-runs every time the composer opens, so installing a CLI needs no restart. Swarmterm keeps **no workspace state between launches** — every start is a clean slate (Settings do persist).
 
@@ -19,27 +19,27 @@ Agent detection re-runs every time the composer opens, so installing a CLI needs
 
 ## Running several agents at once
 
-- **Activity dots** light up while a pane produces output, so you can see who is working — for Claude Code, Codex and OpenCode panes this becomes the richer [agent state dot](#agent-state-dots) instead.
+- **Activity dots** light up while a pane produces output, so you can see who is working — for agent panes this becomes the richer [agent state dot](#agent-state-dots) instead (every agent except OMP, which keeps the plain dot).
 - **Broadcast input** — `⌘/Ctrl + Shift + B`, then `Alt + Click` panes into the group and type once; every pane receives the same keystrokes ("now run the tests" × 5). `Esc` leaves.
 - A badge counts War Room messages queued for a pane that is busy.
 
 ## Agent state dots
 
-A Claude Code, Codex or OpenCode pane shows a coloured dot instead of the plain activity dot: **red** — the agent is blocked and needs your input (a permission prompt, a question); **yellow** — it's working; **green** — it finished while you were looking elsewhere, and clears the moment you focus that pane; **no dot** — idle, nothing to report. Right after a pane spawns (and again if the agent process exits) state is briefly unknown, so it falls back to the plain output-activity dot until detection catches up. Plain Terminal panes always use that plain dot — they never get colours.
+An agent pane shows a coloured dot instead of the plain activity dot: **red** — the agent is blocked and needs your input (a permission prompt, a question); **yellow** — it's working; **green** — it finished while you were looking elsewhere, and clears the moment you focus that pane; **no dot** — idle, nothing to report. Right after a pane spawns (and again if the agent process exits) state is briefly unknown, so it falls back to the plain output-activity dot until detection catches up. Plain Terminal panes always use that plain dot — they never get colours. One known limit: **OMP** panes also keep the plain dot — its screen exposes no reliable state signals, so Swarmterm doesn't guess.
 
 A workspace tab in the navbar rolls this up across all its panes and shows the highest-priority dot — blocked beats done, done beats working, working beats plain activity — but only while that tab is **inactive**; the tab you're looking at never needs a dot. War Room member rows show the same coloured dot, or a muted grey dot labelled "Connected, idle" when a member has nothing to report.
 
 ## Notifications
 
-A background Claude Code, Codex or OpenCode pane chimes when it blocks (needs your input) or finishes — a short WebAudio tone, so you don't have to keep watching the dots. The chime fires about a second after the state change, and Swarmterm re-checks at that moment: a blocked flash that resolves itself, or a pane you've since switched to, never sounds.
+A background agent pane chimes when it blocks (needs your input) or finishes — a short WebAudio tone, so you don't have to keep watching the dots. The chime fires about a second after the state change, and Swarmterm re-checks at that moment: a blocked flash that resolves itself, or a pane you've since switched to, never sounds.
 
 A system notification (banner) only appears while the Swarmterm window is **unfocused** — it's sent silent, since the chime is already the audible part; focus the window and you get the chime alone. macOS asks for notification permission the first time a banner would show, and declining it still leaves the chime working.
 
-Turn channels on or off in **Settings → Notifications**: **Sound** and **System notifications** apply everywhere, and a **per-agent** toggle below silences one CLI (Claude Code, Codex, OpenCode) without touching the others — all three default to on. Plain Terminal panes never notify; there's no agent state to notify about.
+Turn channels on or off in **Settings → Notifications**: **Sound** and **System notifications** apply everywhere, and a **per-agent** toggle below silences one CLI without touching the others — every agent with a state dot gets a row, and all default to on. Plain Terminal panes never notify; there's no agent state to notify about.
 
 ## Resume past agent sessions
 
-Picking a working folder also lists that folder's recent Claude Code, Codex and OpenCode sessions, read from each CLI's own history (never modified). Tick any of them — each reopens as an extra pane, right where the conversation left off. Tabs filter by agent, and "Show all" opens a searchable dialog over the full list.
+Picking a working folder also lists that folder's recent Claude Code, Codex, OpenCode and Qwen Code sessions, read from each CLI's own history (never modified). Tick any of them — each reopens as an extra pane, right where the conversation left off. Tabs filter by agent, and "Show all" opens a searchable dialog over the full list.
 
 ## Worktree isolation
 
@@ -131,7 +131,7 @@ dropped, never retried loudly, and never blocks the app.
 
 ## What your agents can do
 
-Every pane is automatically connected to the app over MCP for exactly as long as it lives — nothing to configure. Agents that speak MCP (Claude Code, Codex, and others) can drive Swarmterm themselves: **open a web preview** beside their own pane, **spawn / list / remove worktrees** to hand tasks to fresh parallel agents (removal refuses uncommitted changes), and use the **War Room** — list peers, message them in probe or execute mode, read their inbox and reply.
+Every pane is automatically connected to the app over MCP for exactly as long as it lives — nothing to configure for Claude Code, Codex and Qwen Code, which Swarmterm enrolls automatically; other MCP-capable CLIs can be pointed at the per-pane URL by hand (the War Room panel shows the hint). Enrolled agents can drive Swarmterm themselves: **open a web preview** beside their own pane, **spawn / list / remove worktrees** to hand tasks to fresh parallel agents (removal refuses uncommitted changes), and use the **War Room** — list peers, message them in probe or execute mode, read their inbox and reply.
 
 War Room abilities only work for panes you dragged into a room, worktree abilities only in workspaces with isolation enabled — and removing a pane from a room revokes its access instantly.
 

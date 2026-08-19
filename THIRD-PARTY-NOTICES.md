@@ -5,7 +5,11 @@
 The agent-state detection rule data and engine semantics under
 `src/lib/agent-state/` are ported (with modifications) from
 [herdr](https://github.com/herdr-sh/herdr) — engine
-`src/detect/manifest.rs`, rule manifests `src/detect/manifests/{claude,codex,opencode}.toml`.
+`src/detect/manifest.rs`, rule manifests
+`src/detect/manifests/{claude,codex,opencode,github-copilot,qwen,amp,gemini,cursor,antigravity}.toml`.
+The per-CLI resume flags and binary names in `src/lib/templates.ts` follow
+herdr's `src/agent_resume.rs` and `src/detect/mod.rs` tables (facts, not
+copied code).
 
 herdr is licensed under the Apache License, Version 2.0
 (http://www.apache.org/licenses/LICENSE-2.0); the full license text is
