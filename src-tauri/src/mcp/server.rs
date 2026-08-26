@@ -78,7 +78,8 @@ impl SwarmtermMcpServer {
             app,
             tool_router: Self::tool_router_browser()
                 + Self::tool_router_worktree()
-                + Self::tool_router_warroom(),
+                + Self::tool_router_warroom()
+                + Self::tool_router_peers(),
         }
     }
 
@@ -165,7 +166,10 @@ impl ServerHandler for SwarmtermMcpServer {
                  war_room.* tools connect the agents in those panes: list_peers shows who is \
                  present, send carries a message (mode \"probe\") or hands a peer a prompt to \
                  run (mode \"execute\"), read_inbox fetches what peers sent you — read it and \
-                 reply promptly when nudged.",
+                 reply promptly when nudged. After handing a peer a prompt with mode \"execute\", \
+                 call war_room.wait_peer (afterChange true) to block until it needs input or \
+                 finishes instead of polling; war_room.read_peer shows the last lines of a \
+                 peer's screen.",
             )
     }
 
