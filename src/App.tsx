@@ -25,7 +25,8 @@ import {
   focusTerminal,
   getTerminalAgentId,
   getTerminalCwd,
-  isAnyTerminalFocused
+  isAnyTerminalFocused,
+  refitAttachedTerminals
 } from '@/lib/terminal-registry'
 import {
   describeFocusedElement,
@@ -407,6 +408,24 @@ export default function App(): ReactElement {
     window.addEventListener('focus', deferReturnFocusToTerminal)
     return () => window.removeEventListener('focus', deferReturnFocusToTerminal)
   }, [deferReturnFocusToTerminal])
+
+  // While the window is occluded (alt-tab away on Windows, tray round-trip) a
+  // ResizeObserver tick can fit a pane against a near-zero layout and collapse
+  // it to the FitAddon's 2×1 minimum; the container's real size never changes
+  // afterwards, so nothing re-fires the observer and the pane stays wrapped at
+  // 2 columns. Re-measure every attached pane whenever the user comes back.
+  useEffect(() => {
+    const refit = (): void => {
+      if (document.visibilityState === 'hidden') return
+      refitAttachedTerminals()
+    }
+    window.addEventListener('focus', refit)
+    document.addEventListener('visibilitychange', refit)
+    return () => {
+      window.removeEventListener('focus', refit)
+      document.removeEventListener('visibilitychange', refit)
+    }
+  }, [])
 
   // A done badge means "finished while you weren't looking" — so it clears
   // the moment the pane is actually being looked at: focus changes within

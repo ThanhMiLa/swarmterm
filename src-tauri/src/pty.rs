@@ -248,6 +248,41 @@ pub fn login_args(shell: &str) -> Vec<String> {
     }
 }
 
+/// The `LANG` value to inject when the parent environment carries no locale at
+/// all — the normal state of a GUI app launched from Finder or a desktop shell,
+/// which hands us a stub environment with no `LANG`/`LC_*`. Programs in the
+/// pane then run under the POSIX "C" locale, and plenty of them degrade to
+/// ASCII-only output there (TUIs substitute placeholder glyphs for non-ASCII,
+/// `ls` mangles filenames, sort orders change) even though xterm.js decodes
+/// UTF-8 unconditionally. Every mainstream emulator (Terminal.app, iTerm2,
+/// kitty, WezTerm) papers over this by exporting a UTF-8 locale itself — same
+/// class of GUI-launch parity fix as the login-shell PATH story in
+/// `login_args`. A user who exports any locale, even a non-UTF-8 one, made a
+/// choice; only the "nothing at all" case is filled in. Empty strings count as
+/// unset because they select the POSIX locale exactly like absence does.
+#[cfg(not(windows))]
+pub fn utf8_lang_fallback(
+    lang: Option<&str>,
+    lc_all: Option<&str>,
+    lc_ctype: Option<&str>,
+) -> Option<&'static str> {
+    let missing = |v: Option<&str>| v.is_none_or(str::is_empty);
+    if missing(lang) && missing(lc_all) && missing(lc_ctype) {
+        // en_US.UTF-8 ships on every macOS; C.UTF-8 is the one UTF-8 locale
+        // modern glibc/musl guarantee without locale generation.
+        #[cfg(target_os = "macos")]
+        {
+            Some("en_US.UTF-8")
+        }
+        #[cfg(not(target_os = "macos"))]
+        {
+            Some("C.UTF-8")
+        }
+    } else {
+        None
+    }
+}
+
 /// Drain the largest valid-UTF-8 prefix from `buf`, leaving any incomplete
 /// trailing multibyte sequence behind for the next read. Bytes that cannot begin
 /// or continue a valid sequence are genuinely invalid, so they are flushed
@@ -328,6 +363,16 @@ pub fn spawn_terminal(
     }
     cmd.env("COLORTERM", "truecolor");
     cmd.env("TERM", "xterm-256color");
+    // GUI launches arrive with no locale vars; fill in a UTF-8 LANG so CLIs
+    // don't degrade to ASCII-only output (see utf8_lang_fallback for the why).
+    #[cfg(not(windows))]
+    if let Some(lang) = utf8_lang_fallback(
+        std::env::var("LANG").ok().as_deref(),
+        std::env::var("LC_ALL").ok().as_deref(),
+        std::env::var("LC_CTYPE").ok().as_deref(),
+    ) {
+        cmd.env("LANG", lang);
+    }
     // Ask the shell to report its working directory on every prompt (OSC 7), so
     // relative path links stay resolvable after a `cd`. bash is the only shell we
     // have to arrange this for via the environment: macOS zsh already emits OSC 7
@@ -583,5 +628,30 @@ mod tests {
         let out = take_valid_utf8(&mut buf).unwrap();
         assert!(!out.is_empty());
         assert!(buf.is_empty()); // flushed immediately, not stalled
+    }
+
+    #[cfg(not(windows))]
+    #[test]
+    fn utf8_lang_fallback_fills_a_bare_gui_environment() {
+        // Finder/desktop launch: no locale vars at all → inject a UTF-8 LANG.
+        let lang = utf8_lang_fallback(None, None, None).unwrap();
+        assert!(lang.contains("UTF-8"));
+    }
+
+    #[cfg(not(windows))]
+    #[test]
+    fn utf8_lang_fallback_treats_empty_values_as_unset() {
+        // An empty LANG selects the POSIX locale exactly like an absent one.
+        assert!(utf8_lang_fallback(Some(""), Some(""), None).is_some());
+    }
+
+    #[cfg(not(windows))]
+    #[test]
+    fn utf8_lang_fallback_respects_any_explicit_locale() {
+        // A user who exports a locale — even a non-UTF-8 one — keeps it.
+        assert!(utf8_lang_fallback(Some("en_US.UTF-8"), None, None).is_none());
+        assert!(utf8_lang_fallback(Some("C"), None, None).is_none());
+        assert!(utf8_lang_fallback(None, Some("C"), None).is_none());
+        assert!(utf8_lang_fallback(None, None, Some("vi_VN.UTF-8")).is_none());
     }
 }

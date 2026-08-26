@@ -178,11 +178,19 @@ const NO_STATUS: TerminalStatus = { kind: 'connecting' }
  * (~16 per page), or the GPU context is later lost, we dispose the addon and
  * xterm falls back to the DOM renderer — slower, but always functional.
  */
-function loadWebglRenderer(term: Terminal): void {
+function loadWebglRenderer(id: string, entry: Entry): void {
   try {
     const addon = new WebglAddon()
-    addon.onContextLoss(() => addon.dispose())
-    term.loadAddon(addon)
+    addon.onContextLoss(() => {
+      addon.dispose()
+      // The DOM renderer that takes over measures cells with its own metrics,
+      // and a fit that raced the context loss (alt-tab/occlusion on Windows can
+      // drop the GPU context mid-layout) may have collapsed cols/rows against
+      // garbage dimensions. Re-measure once the swap has settled so the pane —
+      // and the pty — match the renderer that's actually drawing now.
+      setTimeout(() => refitEntry(id, entry), 0)
+    })
+    entry.term.loadAddon(addon)
   } catch {
     // WebGL2 unavailable — stay on the DOM renderer.
   }
@@ -197,6 +205,35 @@ function safeFit(entry: Entry): boolean {
     return true
   } catch {
     return false
+  }
+}
+
+/** Re-fit one terminal and push the new size to its pty only when it changed. */
+function refitEntry(id: string, entry: Entry): void {
+  // Never fit against a hidden/occluded layout: the dims measured there are
+  // garbage (FitAddon's 2×1 floor) and would be pushed to the pty, making a
+  // running TUI redraw at 2 columns. The focus/visibility refit in App.tsx
+  // re-measures the moment the window is visible again.
+  if (document.visibilityState === 'hidden') return
+  const { cols, rows } = entry.term
+  if (safeFit(entry) && (entry.term.cols !== cols || entry.term.rows !== rows)) {
+    resizeTerminal(id, entry.term.cols, entry.term.rows)
+  }
+}
+
+/**
+ * Re-fit every attached terminal. Wired to window focus / visibility regain in
+ * App.tsx: a fit that lands while the window is occluded (Windows alt-tab, tray
+ * round-trip) can measure a near-zero layout and collapse the pane to the
+ * FitAddon's 2×1 minimum — and since the container's real size never changes
+ * afterwards, the ResizeObserver stays silent and the pane wraps at 2 columns
+ * forever. Re-measuring on "the user came back" makes any such bogus fit
+ * transient instead of permanent. Cheap: fit() is a no-op when dims match, and
+ * hidden hosts are skipped by the zero-size guard in safeFit.
+ */
+export function refitAttachedTerminals(): void {
+  for (const [id, entry] of entries) {
+    if (entry.opened && entry.observer !== undefined) refitEntry(id, entry)
   }
 }
 
@@ -796,14 +833,19 @@ export function attachTerminal(id: string, container: HTMLElement, config: Attac
 
   if (!entry.opened) {
     entry.term.open(entry.host)
-    loadWebglRenderer(entry.term)
+    loadWebglRenderer(id, entry)
     entry.opened = true
   }
-  safeFit(entry)
+  // The pty must end up at whatever size the pane (re)attached at. The fit
+  // just above already moved xterm, so the observer's initial delivery goes
+  // through refitEntry with NO cols/rows delta and would skip the push —
+  // and session.start() is a no-op for an already-running pty (remount via
+  // split collapse). Push unconditionally here instead.
+  if (safeFit(entry)) resizeTerminal(id, entry.term.cols, entry.term.rows)
 
   entry.observer?.disconnect()
   entry.observer = new ResizeObserver(() => {
-    if (safeFit(entry)) resizeTerminal(id, entry.term.cols, entry.term.rows)
+    refitEntry(id, entry)
   })
   entry.observer.observe(container)
 
@@ -1137,7 +1179,7 @@ export function applyTerminalText(pref: TerminalTextPref): void {
     entry.term.options.fontSize = pref.fontSize
     entry.term.options.lineHeight = pref.lineHeight
     entry.host.style.fontFeatureSettings = ligatureFeatureSettings(pref.ligatures)
-    if (safeFit(entry)) resizeTerminal(id, entry.term.cols, entry.term.rows)
+    refitEntry(id, entry)
   }
 }
 
