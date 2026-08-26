@@ -93,6 +93,38 @@ pub fn kill_terminal(app: AppHandle, state: State<'_, AppState>, id: String) {
     // exists to show. Drop it here and in `read_loop`, mirroring the two
     // places the terminal leaves `AppState.terminals`.
     state.mcp_clients.lock().unwrap().forget(&id);
+    // Same for the agent-state mirror + screen tail: a respawn must start
+    // from `unknown`, and a `wait_peer` sleeper on this id must wake now to
+    // see the peer gone rather than run out its timeout.
+    state.peer_states.lock().unwrap().forget(&id);
+    state.peer_wake.notify_waiters();
+}
+
+/// Renderer → Rust mirror of a pane's agent display state (`working` /
+/// `blocked` / `idle` / `done` / `unknown`), fed by `lib/agent-state-mirror`.
+/// Rust cannot derive this itself (the heuristics run over xterm's buffer in
+/// the renderer), and the M2 `war_room.wait_peer` / `read_peer` verbs must
+/// answer without a renderer round-trip — see `mcp::peer_state`.
+#[tauri::command]
+pub fn report_agent_state(state: State<'_, AppState>, id: String, display: String) {
+    // Only live terminals may be written. A report can race a kill (the
+    // store's diff fires after `kill_terminal` already ran `forget`), and
+    // accepting it would resurrect a row for a dead pty that nothing will
+    // ever clean up again. The two locks are taken SEQUENTIALLY — check
+    // `terminals`, drop it, then lock `peer_states` — never nested, per the
+    // own-lock rule on `AppState`.
+    let live = state.terminals.lock().unwrap().contains_key(&id);
+    if !live {
+        return;
+    }
+    let changed = state
+        .peer_states
+        .lock()
+        .unwrap()
+        .set_state(&id, &display, crate::warroom::now_ms());
+    if changed {
+        state.peer_wake.notify_waiters();
+    }
 }
 
 #[tauri::command]

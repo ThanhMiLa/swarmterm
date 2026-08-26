@@ -103,6 +103,7 @@ pub fn run() {
             commands::war_room_rename,
             commands::war_room_delete,
             commands::war_room_moderator_send,
+            commands::report_agent_state,
             commands::list_available_shells,
             commands::list_available_agents,
             commands::list_agent_sessions,

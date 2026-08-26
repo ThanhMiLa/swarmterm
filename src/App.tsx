@@ -60,6 +60,8 @@ import { useShellAvailabilityStore } from '@/store/shell-availability-store'
 import { useTerminalTitleStore } from '@/store/terminal-title-store'
 import { useNotificationPrefStore } from '@/store/notification-pref-store'
 import { startNotificationWatch } from '@/lib/notification-watch'
+import { startAgentStateMirror } from '@/lib/agent-state-mirror'
+import { reportAgentState } from '@/tauri/agent-state'
 import { playChime } from '@/lib/notification-sound'
 import { sendSystemNotification } from '@/tauri/notification'
 import { useTerminalSearchStore } from '@/store/terminal-search-store'
@@ -607,6 +609,23 @@ export default function App(): ReactElement {
       sendSystemNotification: (opts) => void sendSystemNotification(opts),
       setTimer: (fn, ms) => window.setTimeout(fn, ms),
       clearTimer: (h) => window.clearTimeout(h as number)
+    })
+  }, [])
+
+  // Mirror renderer agent state into Rust: the MCP War Room peer verbs
+  // (`war_room.wait_peer` / `read_peer`) live server-side and Rust has no state
+  // engine of its own, so every display-state change is reported down. Same
+  // outside-the-render-path subscription as above. Fire-and-forget: a failed
+  // IPC (browser dev without Tauri, report racing a kill) must never throw
+  // into the store listener and take the other subscribers down with it.
+  useEffect(() => {
+    return startAgentStateMirror({
+      subscribe: (listener) =>
+        useAgentStateStore.subscribe((cur, prev) => listener(cur.byId, prev.byId)),
+      getStates: () => useAgentStateStore.getState().byId,
+      report: (id, display) => {
+        void reportAgentState(id, display).catch(() => {})
+      }
     })
   }, [])
 

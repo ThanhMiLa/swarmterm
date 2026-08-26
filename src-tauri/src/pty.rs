@@ -186,6 +186,17 @@ pub struct AppState {
     /// nested with `terminals` or `war_rooms`, because the `/mcp` middleware
     /// touches it on every inbound request and must not contend with pty I/O.
     pub mcp_clients: Mutex<crate::mcp::clients::McpClients>,
+    /// Mirror of the renderer's per-pane agent display state plus a raw
+    /// screen tail (`mcp::peer_state`). Its own lock, never nested with
+    /// `terminals` / `war_rooms` / `mcp_clients`: `read_loop` touches it on
+    /// every pty chunk and `report_agent_state` on every renderer state
+    /// change, so it must never wait behind pty spawn/kill or MCP traffic.
+    pub peer_states: Mutex<crate::mcp::peer_state::PeerStates>,
+    /// Woken (`notify_waiters`) on every `peer_states` mutation so T3.2's
+    /// `war_room.wait_peer` can sleep event-driven instead of polling. A bare
+    /// `Notify` carries no payload on purpose: waiters re-read the snapshot
+    /// after each wake, which makes a lost intermediate change harmless.
+    pub peer_wake: tokio::sync::Notify,
 }
 
 impl Default for AppState {
@@ -196,6 +207,8 @@ impl Default for AppState {
             mcp_url: OnceLock::new(),
             war_rooms: Mutex::new(crate::warroom::WarRooms::default()),
             mcp_clients: Mutex::new(crate::mcp::clients::McpClients::default()),
+            peer_states: Mutex::new(crate::mcp::peer_state::PeerStates::default()),
+            peer_wake: tokio::sync::Notify::new(),
         }
     }
 }
@@ -490,6 +503,10 @@ fn read_loop(
 ) {
     let mut pending: Vec<u8> = Vec::new();
     let mut chunk = vec![0u8; READ_BUF_BYTES];
+    // Resolved once: `try_state` walks Tauri's type map, and this loop runs
+    // per pty chunk. `None` only during teardown, when there is nobody left
+    // to read the tail anyway.
+    let peer_state = app.try_state::<AppState>();
     loop {
         match reader.read(&mut chunk) {
             Ok(0) => break,
@@ -498,6 +515,18 @@ fn read_loop(
             Ok(n) => {
                 pending.extend_from_slice(&chunk[..n]);
                 if let Some(text) = take_valid_utf8(&mut pending) {
+                    // Tee the chunk into the Rust-side screen tail BEFORE the
+                    // renderer sees it, so a `read_peer` racing this chunk
+                    // never reads less than xterm shows. Lock scope is the
+                    // one statement — never held across the channel send.
+                    if let Some(state) = &peer_state {
+                        state
+                            .peer_states
+                            .lock()
+                            .unwrap()
+                            .push_output(&id, &text, crate::warroom::now_ms());
+                        state.peer_wake.notify_waiters();
+                    }
                     let _ = on_data.send(PtyOut::Data(text));
                 }
             }
@@ -514,6 +543,10 @@ fn read_loop(
     if let Some(state) = app.try_state::<AppState>() {
         state.terminals.lock().unwrap().remove(&id);
         state.mcp_clients.lock().unwrap().forget(&id);
+        // Drop the state mirror + screen tail and wake any `wait_peer` sleeper
+        // so it can report "peer left" instead of sitting out its timeout.
+        state.peer_states.lock().unwrap().forget(&id);
+        state.peer_wake.notify_waiters();
         let left = state
             .war_rooms
             .lock()
