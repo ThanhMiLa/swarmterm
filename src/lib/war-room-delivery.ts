@@ -5,7 +5,8 @@
  * fire while the War Room panel — or the whole right panel — is unmounted.
  */
 import { deliverPromptToTerminal, submitTerminalPrompt } from '@/lib/terminal-registry'
-import { NUDGE_IDLE_MS, shouldDeferDelivery } from '@/lib/war-room-nudge'
+import { NUDGE_IDLE_MS, deliveryHoldReason, type HoldReason } from '@/lib/war-room-nudge'
+import { useAgentStateStore } from '@/store/agent-state-store'
 import { selectFocusedTerminalId, useAppStore } from '@/store/app-store'
 import { useTerminalActivityStore } from '@/store/terminal-activity-store'
 import { useTerminalTypingStore } from '@/store/terminal-typing-store'
@@ -22,10 +23,12 @@ import { useWarRoomStore } from '@/store/war-room-store'
 export const SUBMIT_DELAY_MS = 300
 
 /**
- * How often a held queue re-asks "is the user still typing?". The recency arm
- * of `shouldDeferDelivery` expires on a clock, not on a store write, so a
- * timer is the only thing that can release it. The typing subscription below
- * just makes an Enter release it sooner than this interval.
+ * How often a held queue re-asks "is it safe to type here yet?". The recency
+ * arm of `deliveryHoldReason` expires on a clock, not on a store write, so a
+ * timer is the only thing that can release it. The typing and agent-state
+ * subscriptions below just make an Enter (or an engine flip to idle) release
+ * it sooner than this interval — and the timer is belt-and-braces for the
+ * agent reasons too, should a store write ever be missed.
  */
 export const HOLD_RECHECK_MS = 750
 
@@ -46,14 +49,16 @@ export function startWarRoomDelivery(): () => void {
     }
   }
 
-  /** True when typing into this pane right now would land mid-sentence. */
-  function isUserTyping(terminalId: string): boolean {
+  /** Why typing into this pane right now would be wrong — or null if it's safe.
+   *  Raw engine state, never displayState: the seen-bit is a UI concern. */
+  function holdReason(terminalId: string): HoldReason | null {
     const typing = useTerminalTypingStore.getState()
-    return shouldDeferDelivery(
+    return deliveryHoldReason(
       {
         focused: selectFocusedTerminalId(useAppStore.getState()) === terminalId,
         lastKeyAt: typing.lastKeyAt[terminalId],
-        dirty: typing.dirty[terminalId] ?? false
+        dirty: typing.dirty[terminalId] ?? false,
+        agentState: useAgentStateStore.getState().byId[terminalId]?.state
       },
       Date.now()
     )
@@ -82,15 +87,18 @@ export function startWarRoomDelivery(): () => void {
     // hold even against event reordering.
     if (!useWarRoomStore.getState().isMember(terminalId)) return
     // Output-idle is not enough: the user may be mid-line in this very pane,
-    // and typing a nudge into it would corrupt what they are writing. Hold
-    // the queue (never drop it) and re-arm. There is no maximum hold on
-    // purpose — see `shouldDeferDelivery`.
-    if (isUserTyping(terminalId)) {
-      useWarRoomStore.getState().setHeld(terminalId, true)
+    // and typing a nudge into it would corrupt what they are writing — or the
+    // agent may be sitting on a permission prompt, which is output-idle too,
+    // and the flush's Enter would approve it. Hold the queue (never drop it)
+    // and re-arm. There is no maximum hold on purpose — see
+    // `shouldDeferDelivery`.
+    const reason = holdReason(terminalId)
+    if (reason !== null) {
+      useWarRoomStore.getState().setHeld(terminalId, reason)
       schedule(terminalId, HOLD_RECHECK_MS)
       return
     }
-    useWarRoomStore.getState().setHeld(terminalId, false)
+    useWarRoomStore.getState().setHeld(terminalId, null)
     const payloads = useWarRoomStore.getState().takeFlush(terminalId)
     // Multiple payloads in one flush must not interleave their body and
     // Enter writes — deliver payload 0, submit it, only THEN deliver
@@ -142,7 +150,23 @@ export function startWarRoomDelivery(): () => void {
     // never short-circuit it into delivering early.
     const { held } = useWarRoomStore.getState()
     for (const terminalId of Object.keys(held)) {
-      if (!isUserTyping(terminalId)) {
+      if (holdReason(terminalId) === null) {
+        cancel(terminalId)
+        schedule(terminalId, 0)
+      }
+    }
+  })
+
+  // Third wake-up source: the engine flipping blocked/working → idle. Same
+  // held-only rule as the typing subscription — a queue still inside its idle
+  // countdown keeps waiting. `schedule(id, 0)` still passes the activity gate,
+  // and the detector's own working→idle debounce (pending-idle.ts) means
+  // "idle" here is already a settled verdict, not a blink between two chunks.
+  const unsubAgentState = useAgentStateStore.subscribe((state, prev) => {
+    if (state.byId === prev.byId) return
+    const { held } = useWarRoomStore.getState()
+    for (const terminalId of Object.keys(held)) {
+      if (holdReason(terminalId) === null) {
         cancel(terminalId)
         schedule(terminalId, 0)
       }
@@ -153,6 +177,7 @@ export function startWarRoomDelivery(): () => void {
     unsubQueues()
     unsubActivity()
     unsubTyping()
+    unsubAgentState()
     for (const t of timers.values()) clearTimeout(t)
     timers.clear()
     for (const t of pending) clearTimeout(t)

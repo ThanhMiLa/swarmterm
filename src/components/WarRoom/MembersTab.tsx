@@ -9,6 +9,7 @@ import { displayState, paneDot } from '@/lib/agent-state/rollup'
 import { warRoomLeave } from '@/tauri/warroom'
 import { MEMBER_DRAG_PREFIX } from '@/lib/war-room-drop'
 import { memberColor } from '@/lib/war-room-identity'
+import { holdReasonCopy } from '@/lib/war-room-nudge'
 import { cn } from '@/lib/utils'
 import { ActivityDot } from '@/components/ActivityDot'
 import { StateDot } from '@/components/StateDot'
@@ -26,12 +27,15 @@ function needsManualHint(agentId: string | null): boolean {
   return agentId === null || templateById(agentId).mcpAutoEnrolled !== true
 }
 
+const HELD_BADGE_CLASS = 'shrink-0 rounded bg-[#f97316]/15 px-1 py-0.5 text-[10px] text-[#f97316]'
+
 function MemberRow({ member }: { member: WarRoomMember }): ReactElement {
   const active = useTerminalActivityStore((s) => s.active[member.terminalId] ?? false)
   const agentState = useAgentStateStore((s) => s.byId[member.terminalId])
   const dot = paneDot(displayState(agentState), active)
+  const reason = useWarRoomStore((s) => s.held[member.terminalId])
   const heldCount = useWarRoomStore((s) =>
-    s.held[member.terminalId] === true ? (s.queues[member.terminalId]?.length ?? 0) : 0
+    reason !== undefined ? (s.queues[member.terminalId]?.length ?? 0) : 0
   )
   const { setNodeRef, listeners, attributes, isDragging } = useDraggable({
     id: `${MEMBER_DRAG_PREFIX}${member.terminalId}`
@@ -84,19 +88,28 @@ function MemberRow({ member }: { member: WarRoomMember }): ReactElement {
           pending
         </span>
       )}
-      {heldCount > 0 && (
-        <button
-          data-no-dnd
-          onClick={(e) => {
-            e.stopPropagation() // the row click would jump to the pane instead
-            useTerminalTypingStore.getState().clearTyping(member.terminalId)
-          }}
-          title="Held — you're typing in this pane. Click to deliver now."
-          className="shrink-0 rounded bg-[#f97316]/15 px-1 py-0.5 text-[10px] text-[#f97316]"
-        >
-          ⏸ {heldCount}
-        </button>
-      )}
+      {reason !== undefined &&
+        heldCount > 0 &&
+        // Only the typing hold is user-releasable; an agent hold (working /
+        // on a prompt) shows the same badge but no click, since clearing the
+        // typing signal can't release it (see HeldDeliveryPill).
+        (holdReasonCopy(reason).releasable ? (
+          <button
+            data-no-dnd
+            onClick={(e) => {
+              e.stopPropagation() // the row click would jump to the pane instead
+              useTerminalTypingStore.getState().clearTyping(member.terminalId)
+            }}
+            title={holdReasonCopy(reason).title}
+            className={HELD_BADGE_CLASS}
+          >
+            ⏸ {heldCount}
+          </button>
+        ) : (
+          <span title={holdReasonCopy(reason).title} className={HELD_BADGE_CLASS}>
+            ⏸ {heldCount}
+          </span>
+        ))}
       <button
         data-no-dnd
         onClick={(e) => {

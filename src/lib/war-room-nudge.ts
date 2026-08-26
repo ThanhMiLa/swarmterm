@@ -8,6 +8,8 @@
  * cross-agent chatter can't bloat an agent's context window.
  */
 
+import type { AgentEngineState } from '@/lib/agent-state/types'
+
 /** Idle must hold this long before typing into a pane. Deliberately above the
  *  activity tracker's 1100ms so a brief pause mid-turn never reads as "done". */
 export const NUDGE_IDLE_MS = 3000
@@ -75,18 +77,60 @@ export interface TypingSnapshot {
   dirty: boolean
 }
 
+/** Why a queued delivery is being withheld from a pane. Order of precedence
+ *  is blocked → working → typing: the agent reasons come first because a
+ *  flush is body writes PLUS an Enter, and on a permission prompt that Enter
+ *  is an approval — the user clearing their own typing must not release it. */
+export type HoldReason = 'agent-blocked' | 'agent-working' | 'typing'
+
+export interface DeliverySnapshot extends TypingSnapshot {
+  /** Raw engine state for this pane; undefined when the engine has no entry
+   *  (plain shell, no manifest, or cleared on kill). Never `displayState` —
+   *  the seen-bit behind `done` is a UI concern, not a safety signal. */
+  agentState?: AgentEngineState
+}
+
 /**
- * Should a queued delivery be held rather than typed into this pane right now?
+ * Why typing into this pane right now would be wrong — or null if it's safe.
  * There is no maximum hold on purpose — force-delivering after N seconds would
  * reintroduce exactly the corruption this guards against, just more rarely.
- * The escape is the user-facing "Deliver now" affordance, which clears the
- * typing signal instead of bypassing this rule.
+ * The escape for the typing reason is the user-facing "Deliver now"
+ * affordance, which clears the typing signal instead of bypassing this rule;
+ * the agent reasons have no escape and release only when the engine says idle.
  */
-export function shouldDeferDelivery(s: TypingSnapshot, now: number): boolean {
+export function deliveryHoldReason(s: DeliverySnapshot, now: number): HoldReason | null {
+  // A permission/question prompt is output-idle, so the clock gate alone
+  // would type into it; and a silent long tool call is output-idle too.
+  // `unknown` deliberately falls through to the clock — the engine has no
+  // opinion, and the pre-Đ2 behaviour is the right fallback.
+  if (s.agentState === 'blocked') return 'agent-blocked'
+  if (s.agentState === 'working') return 'agent-working'
   // Unfocused-but-dirty still holds: the line survives losing focus.
-  if (s.dirty) return true
-  if (!s.focused) return false
+  if (s.dirty) return 'typing'
+  if (!s.focused) return null
   // Safety net for input the dirty flag can miss — a TUI consuming keystrokes
   // through a path `onData` does not represent.
-  return s.lastKeyAt !== undefined && now - s.lastKeyAt < TYPING_QUIET_MS
+  return s.lastKeyAt !== undefined && now - s.lastKeyAt < TYPING_QUIET_MS ? 'typing' : null
+}
+
+/** Boolean view of `deliveryHoldReason` for callers that only need yes/no. */
+export function shouldDeferDelivery(s: DeliverySnapshot, now: number): boolean {
+  return deliveryHoldReason(s, now) !== null
+}
+
+/** UI copy per reason. `releasable` = "Deliver now" may be offered: it clears
+ *  the typing signal, which is meaningless against an agent hold — and a real
+ *  bypass would press Enter on the very prompt the agent is waiting on. */
+export function holdReasonCopy(reason: HoldReason): { title: string; releasable: boolean } {
+  switch (reason) {
+    case 'typing':
+      return { title: "Held because you're typing here. Click to deliver now.", releasable: true }
+    case 'agent-blocked':
+      return {
+        title: 'Held — the agent is waiting on a permission or question prompt. Delivers once it is idle.',
+        releasable: false
+      }
+    case 'agent-working':
+      return { title: 'Held — the agent is still working. Delivers once it is idle.', releasable: false }
+  }
 }

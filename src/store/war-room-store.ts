@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { flushQueue, type PendingDelivery } from '@/lib/war-room-nudge'
+import { flushQueue, type HoldReason, type PendingDelivery } from '@/lib/war-room-nudge'
 import type {
   WarRoomDeliver, WarRoomEvent, WarRoomMemberInfo, WarRoomRoomInfo, WarRoomRoomMeta
 } from '@/tauri/warroom'
@@ -29,10 +29,12 @@ interface WarRoomStore {
   transcriptByRoom: Record<string, WarRoomEvent[]>
   /** Pending deliveries per recipient terminalId, flushed on sustained idle. */
   queues: Record<string, PendingDelivery[]>
-  /** Terminals whose queue the delivery scheduler is withholding because the
-   *  user is typing there. Surfaced by the in-pane pill and the panel badge;
-   *  the scheduler owns writing it (see war-room-delivery.ts). */
-  held: Record<string, boolean>
+  /** Terminals whose queue the delivery scheduler is withholding, keyed to
+   *  WHY (user typing, agent blocked on a prompt, agent working). Surfaced by
+   *  the in-pane pill and the panel badge — the reason decides whether a
+   *  "Deliver now" release is even offered; the scheduler owns writing it
+   *  (see war-room-delivery.ts). */
+  held: Record<string, HoldReason>
 
   /** Routes a server event into its room's member list / transcript. */
   applyEvent: (e: WarRoomEvent) => void
@@ -45,7 +47,7 @@ interface WarRoomStore {
   enqueue: (d: WarRoomDeliver) => void
   /** Queue the join intro as a verbatim paste (execute-shaped: full text + Enter). */
   enqueueIntro: (terminalId: string, text: string) => void
-  setHeld: (terminalId: string, held: boolean) => void
+  setHeld: (terminalId: string, reason: HoldReason | null) => void
   /** Drain a terminal's queue into ordered paste payloads. */
   takeFlush: (terminalId: string) => string[]
   /** Member of ANY room. */
@@ -196,13 +198,13 @@ export const useWarRoomStore = create<WarRoomStore>((set, get) => ({
       }
     })),
 
-  setHeld: (terminalId, held) =>
+  setHeld: (terminalId, reason) =>
     set((s) => {
-      if ((s.held[terminalId] ?? false) === held) return s
+      if ((s.held[terminalId] ?? null) === reason) return s
       const next = { ...s.held }
-      // Deleting rather than storing `false` keeps the map small and lets the
+      // Deleting rather than storing null keeps the map small and lets the
       // panel's badge total iterate keys without filtering.
-      if (held) next[terminalId] = true
+      if (reason !== null) next[terminalId] = reason
       else delete next[terminalId]
       return { held: next }
     }),

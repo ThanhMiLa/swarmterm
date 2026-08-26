@@ -73,7 +73,7 @@ describe('room routing', () => {
     seedRooms()
     useWarRoomStore.getState().applyEvent(join('room-1', 't1'))
     useWarRoomStore.getState().enqueue({ toId: 't1', fromName: 'X', mode: 'probe', content: null })
-    useWarRoomStore.getState().setHeld('t1', true)
+    useWarRoomStore.getState().setHeld('t1', 'agent-blocked')
     useWarRoomStore.getState().applyEvent({ kind: 'leave', seq: 2, roomId: 'room-1', terminalId: 't1', name: 'T1', ts: 2 })
     const s = useWarRoomStore.getState()
     expect(s.queues['t1']).toBeUndefined()
@@ -155,19 +155,26 @@ describe('queues', () => {
 })
 
 describe('held', () => {
-  it('sets and clears the flag, deleting the key on clear', () => {
+  it('sets and clears the reason, deleting the key on clear', () => {
     seedRooms()
     const s = useWarRoomStore.getState()
-    s.setHeld('t1', true)
-    expect(useWarRoomStore.getState().held['t1']).toBe(true)
-    s.setHeld('t1', false)
+    s.setHeld('t1', 'typing')
+    expect(useWarRoomStore.getState().held['t1']).toBe('typing')
+    s.setHeld('t1', null)
     expect(useWarRoomStore.getState().held['t1']).toBeUndefined()
+  })
+
+  it('replaces one reason with another without deleting the key', () => {
+    seedRooms()
+    useWarRoomStore.getState().setHeld('t1', 'typing')
+    useWarRoomStore.getState().setHeld('t1', 'agent-blocked')
+    expect(useWarRoomStore.getState().held['t1']).toBe('agent-blocked')
   })
 
   it('does not churn state when nothing changes', () => {
     seedRooms()
     const before = useWarRoomStore.getState().held
-    useWarRoomStore.getState().setHeld('t1', false)
+    useWarRoomStore.getState().setHeld('t1', null)
     expect(useWarRoomStore.getState().held).toBe(before)
   })
 
@@ -176,7 +183,7 @@ describe('held', () => {
     const s = useWarRoomStore.getState()
     s.applyEvent(join('room-1', 't1'))
     s.enqueue({ toId: 't1', fromName: 'B', mode: 'probe', content: null })
-    s.setHeld('t1', true)
+    s.setHeld('t1', 'typing')
     useWarRoomStore.getState().takeFlush('t1')
     expect(useWarRoomStore.getState().held['t1']).toBeUndefined()
   })
@@ -186,7 +193,7 @@ describe('held', () => {
     const s = useWarRoomStore.getState()
     s.applyEvent(join('room-1', 't1'))
     s.enqueue({ toId: 't1', fromName: 'B', mode: 'probe', content: null })
-    s.setHeld('t1', true)
+    s.setHeld('t1', 'typing')
     s.applyEvent({ kind: 'leave', seq: 2, roomId: 'room-1', terminalId: 't1', name: 'T1', ts: 2 })
     const after = useWarRoomStore.getState()
     expect(after.held['t1']).toBeUndefined()

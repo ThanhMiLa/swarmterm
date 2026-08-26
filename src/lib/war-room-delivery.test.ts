@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { NUDGE_IDLE_MS, TYPING_QUIET_MS } from './war-room-nudge'
+import { useAgentStateStore } from '@/store/agent-state-store'
 import { useAppStore } from '@/store/app-store'
 import { useWarRoomStore } from '@/store/war-room-store'
 import { useTerminalActivityStore } from '@/store/terminal-activity-store'
@@ -42,6 +43,7 @@ beforeEach(() => {
   useWarRoomStore.getState().hydrateRooms([{ roomId: 'room-1', name: 'War Room', members: [] }])
   useTerminalActivityStore.setState({ active: {} })
   useTerminalTypingStore.setState({ lastKeyAt: {}, dirty: {} })
+  useAgentStateStore.setState({ byId: {} })
   useAppStore.setState({ workspaces: [], activeWorkspaceId: '' })
   stop = startWarRoomDelivery()
 })
@@ -141,7 +143,7 @@ describe('nudge typing guard', () => {
     // The idle window passes, but nothing is typed into the pane.
     vi.advanceTimersByTime(NUDGE_IDLE_MS + HOLD_RECHECK_MS * 4)
     expect(events).toHaveLength(0)
-    expect(useWarRoomStore.getState().held['t1']).toBe(true)
+    expect(useWarRoomStore.getState().held['t1']).toBe('typing')
     // Held, not dropped.
     expect(useWarRoomStore.getState().queues['t1']).toHaveLength(1)
 
@@ -178,6 +180,69 @@ describe('nudge typing guard', () => {
     vi.advanceTimersByTime(NUDGE_IDLE_MS - 500)
     // t2 is a different pane; this must not short-circuit t1's idle countdown.
     useTerminalTypingStore.getState().noteInput('t2', 'a')
+    expect(events).toHaveLength(0)
+    vi.advanceTimersByTime(600)
+    expect(events).toHaveLength(1)
+  })
+})
+
+describe('agent-state guard', () => {
+  const pub = (id: string, state: 'working' | 'blocked' | 'idle' | 'unknown') =>
+    useAgentStateStore.getState().publish(id, state, { paneWatched: true })
+
+  it('holds a blocked agent past the idle window and releases on idle', () => {
+    useWarRoomStore.getState().applyEvent(join('room-1', 't1', 1))
+    pub('t1', 'blocked')
+    useWarRoomStore.getState().enqueue({ toId: 't1', fromName: 'Codex', mode: 'execute', content: 'do it' })
+    vi.advanceTimersByTime(NUDGE_IDLE_MS + HOLD_RECHECK_MS * 4)
+    // A permission prompt is output-idle; the flush's Enter would approve it.
+    expect(events).toHaveLength(0)
+    expect(useWarRoomStore.getState().held['t1']).toBe('agent-blocked')
+    // Held, not dropped.
+    expect(useWarRoomStore.getState().queues['t1']).toHaveLength(1)
+    pub('t1', 'idle')
+    vi.advanceTimersByTime(SUBMIT_DELAY_MS * 2)
+    expect(events.map((e) => e.kind)).toEqual(['body', 'submit'])
+    expect(useWarRoomStore.getState().held['t1']).toBeUndefined()
+  })
+
+  it('holds a working agent, releases on idle', () => {
+    useWarRoomStore.getState().applyEvent(join('room-1', 't1', 1))
+    pub('t1', 'working')
+    useWarRoomStore.getState().enqueue({ toId: 't1', fromName: 'Codex', mode: 'probe', content: null })
+    vi.advanceTimersByTime(NUDGE_IDLE_MS + HOLD_RECHECK_MS * 2)
+    expect(events).toHaveLength(0)
+    expect(useWarRoomStore.getState().held['t1']).toBe('agent-working')
+    pub('t1', 'idle')
+    vi.advanceTimersByTime(SUBMIT_DELAY_MS * 2)
+    expect(events).toHaveLength(2)
+  })
+
+  it('an unknown engine state delivers on the plain clock (pre-Đ2 behaviour)', () => {
+    useWarRoomStore.getState().applyEvent(join('room-1', 't1', 1))
+    pub('t1', 'unknown')
+    useWarRoomStore.getState().enqueue({ toId: 't1', fromName: 'Codex', mode: 'probe', content: null })
+    vi.advanceTimersByTime(NUDGE_IDLE_MS + 2)
+    expect(events).toHaveLength(1)
+  })
+
+  it('Deliver now (clearTyping) cannot release an agent hold', () => {
+    useWarRoomStore.getState().applyEvent(join('room-1', 't1', 1))
+    pub('t1', 'blocked')
+    useTerminalTypingStore.getState().noteInput('t1', 'x')
+    useWarRoomStore.getState().enqueue({ toId: 't1', fromName: 'Codex', mode: 'probe', content: null })
+    vi.advanceTimersByTime(NUDGE_IDLE_MS + 2)
+    useTerminalTypingStore.getState().clearTyping('t1')
+    vi.advanceTimersByTime(HOLD_RECHECK_MS * 3)
+    expect(events).toHaveLength(0)
+    expect(useWarRoomStore.getState().held['t1']).toBe('agent-blocked')
+  })
+
+  it("another pane's state change never wakes a queue still inside its idle window", () => {
+    useWarRoomStore.getState().applyEvent(join('room-1', 't1', 1))
+    useWarRoomStore.getState().enqueue({ toId: 't1', fromName: 'Codex', mode: 'probe', content: null })
+    vi.advanceTimersByTime(NUDGE_IDLE_MS - 500)
+    pub('t2', 'idle')
     expect(events).toHaveLength(0)
     vi.advanceTimersByTime(600)
     expect(events).toHaveLength(1)
@@ -229,12 +294,12 @@ describe('the focused-and-recent arm (no terminal is focused anywhere else in th
 
     vi.advanceTimersByTime(NUDGE_IDLE_MS)
     expect(events).toHaveLength(0)
-    expect(useWarRoomStore.getState().held['t1']).toBe(true)
+    expect(useWarRoomStore.getState().held['t1']).toBe('typing')
 
     // Still short of TYPING_QUIET_MS since the nav keystroke — stays held
     // through the periodic re-checks.
     vi.advanceTimersByTime(HOLD_RECHECK_MS * 3)
-    expect(useWarRoomStore.getState().held['t1']).toBe(true)
+    expect(useWarRoomStore.getState().held['t1']).toBe('typing')
     expect(events).toHaveLength(0)
 
     // Crossing TYPING_QUIET_MS since the last keystroke releases it on the
