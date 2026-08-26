@@ -167,3 +167,45 @@ describe('getShortcutGroups window group: find in terminal', () => {
     expect(mac?.entries).toContainEqual({ description: 'Close find', keys: ['Esc'] })
   })
 })
+
+describe('matchAppShortcut jump-to-attention', () => {
+  it('Ctrl+Shift+J jumps on non-mac', () => {
+    expect(matchAppShortcut(key({ ctrlKey: true, shiftKey: true, key: 'J' }), false)).toBe('jump-to-attention')
+  })
+
+  it('Cmd+Shift+J jumps on mac', () => {
+    expect(matchAppShortcut(key({ metaKey: true, shiftKey: true, key: 'J' }), true)).toBe('jump-to-attention')
+  })
+
+  it('lowercase j with shift flag still matches (xterm may report either case)', () => {
+    expect(matchAppShortcut(key({ ctrlKey: true, shiftKey: true, key: 'j' }), false)).toBe('jump-to-attention')
+  })
+
+  it('Ctrl+J WITHOUT Shift must NOT match (it is LF in the shell)', () => {
+    expect(matchAppShortcut(key({ ctrlKey: true, key: 'j' }), false)).toBeNull()
+  })
+
+  it('Ctrl+Shift+J does NOT match on mac (wrong modifier)', () => {
+    expect(matchAppShortcut(key({ ctrlKey: true, shiftKey: true, key: 'J' }), true)).toBeNull()
+  })
+
+  it('Cmd+Shift+J does not match on non-mac', () => {
+    expect(matchAppShortcut(key({ metaKey: true, shiftKey: true, key: 'J' }), false)).toBeNull()
+  })
+
+  it('rejects when Alt is held', () => {
+    expect(matchAppShortcut(key({ ctrlKey: true, shiftKey: true, altKey: true, key: 'J' }), false)).toBeNull()
+  })
+
+  it('rejects when the opposite modifier is also held', () => {
+    expect(matchAppShortcut(key({ ctrlKey: true, metaKey: true, shiftKey: true, key: 'J' }), false)).toBeNull()
+  })
+
+  it('is listed in the Window shortcut group on both platforms', () => {
+    for (const isMac of [false, true]) {
+      const win = getShortcutGroups(isMac).find((g) => g.id === 'window')
+      const entry = win?.entries.find((e) => e.description === 'Jump to next pane needing attention')
+      expect(entry?.keys).toEqual([isMac ? '⌘' : 'Ctrl', 'Shift', 'J'])
+    }
+  })
+})

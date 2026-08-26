@@ -21,6 +21,7 @@ import { GuardedPointerSensor } from '@/lib/dnd-sensors'
 import { collectLeaves } from '@/lib/layout-tree'
 import { useAppStore, type Workspace } from '@/store/app-store'
 import { useNavbarVisibilityStore } from '@/store/navbar-visibility-store'
+import { AttentionBadge } from '@/components/Navbar/AttentionBadge'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -106,9 +107,10 @@ export function Navbar({ onNewWorkspace, settingsOpen, onToggleSettings }: Navba
     >
       <div className="flex h-full w-56 flex-col">
         <div className="flex min-h-0 flex-1 flex-col">
-          <p className="shrink-0 border-b border-border bg-muted/40 px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-foreground/80">
-            Workspaces
-          </p>
+          <div className="flex shrink-0 items-center justify-between border-b border-border bg-muted/40 px-3 py-2">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-foreground/80">Workspaces</p>
+            <AttentionBadge />
+          </div>
           <div className="min-h-0 flex-1 overflow-y-auto p-2">
           <DndContext
             sensors={sensors}

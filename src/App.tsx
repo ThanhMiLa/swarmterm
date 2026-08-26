@@ -16,6 +16,7 @@ import { useNavbarVisibilityStore } from '@/store/navbar-visibility-store'
 import { useStatuslineStore } from '@/store/statusline-store'
 import { useAgentStateStore } from '@/store/agent-state-store'
 import { matchAppShortcut } from '@/lib/keybindings'
+import { jumpToAttention } from '@/lib/attention-jump'
 import { collectLeaves, findLeaf } from '@/lib/layout-tree'
 import { isMacPlatform } from '@/lib/platform'
 import { nextSystemChromeReveal, systemChromeOffset } from '@/lib/titlebar-chrome'
@@ -297,8 +298,9 @@ export default function App(): ReactElement {
           return
         }
       }
-      // Cmd+B / Cmd+Shift+B / Cmd+F on mac, Ctrl+B / Ctrl+Shift+B / Ctrl+F
-      // elsewhere. If these bindings change, update src/lib/keybindings.ts.
+      // Cmd+B / Cmd+Shift+B / Cmd+F / Cmd+Shift+J on mac, Ctrl+B /
+      // Ctrl+Shift+B / Ctrl+F / Ctrl+Shift+J elsewhere. If these bindings
+      // change, update src/lib/keybindings.ts.
       const action = matchAppShortcut(e, isMac)
       if (action === 'toggle-broadcast') {
         e.preventDefault()
@@ -327,6 +329,17 @@ export default function App(): ReactElement {
           useTerminalSearchStore.getState().open(terminalId)
           return
         }
+      }
+      if (action === 'jump-to-attention') {
+        // Same stand-down as find: never yank focus out of the composer, a
+        // rename field, a menu, or the Settings overlay.
+        if (!isAnyTerminalFocused() && !shouldReturnFocus(describeFocusedElement(document.activeElement))) {
+          return
+        }
+        // No candidate → let the keystroke fall through (the registry gate
+        // already dropped it toward the pty, so nothing leaks either way).
+        if (jumpToAttention()) e.preventDefault()
+        return
       }
     }
     window.addEventListener('keydown', onKeyDown, { capture: true })

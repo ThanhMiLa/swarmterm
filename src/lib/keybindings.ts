@@ -11,7 +11,11 @@ export interface KeybindingGroup {
 }
 
 /** Window-level app shortcuts App.tsx listens for. */
-export type AppShortcutAction = 'toggle-navbar' | 'toggle-broadcast' | 'find-in-terminal'
+export type AppShortcutAction =
+  | 'toggle-navbar'
+  | 'toggle-broadcast'
+  | 'find-in-terminal'
+  | 'jump-to-attention'
 
 /** The subset of a KeyboardEvent the matcher needs, kept pure for unit tests. */
 export interface ShortcutKeyEvent {
@@ -40,6 +44,9 @@ export function matchAppShortcut(
   // No shifted variant exists for find, so Shift+F falls through untouched
   // (returns null) rather than claiming a binding nothing implements.
   if (key === 'f' && !event.shiftKey) return 'find-in-terminal'
+  // Shift is mandatory: bare Ctrl+J is a line feed in every shell, and the
+  // registry gate would otherwise swallow a keystroke users rely on.
+  if (key === 'j' && event.shiftKey) return 'jump-to-attention'
   return null
 }
 
@@ -63,6 +70,7 @@ export function getShortcutGroups(isMac: boolean): KeybindingGroup[] {
       entries: [
         { description: 'Toggle sidebar',   keys: [mod, 'B'] },
         { description: 'Find in terminal', keys: [mod, 'F'] },
+        { description: 'Jump to next pane needing attention', keys: [mod, 'Shift', 'J'] },
         { description: 'Close find',       keys: ['Esc'] },
         { description: 'Close Settings',   keys: ['Esc'] },
       ],
