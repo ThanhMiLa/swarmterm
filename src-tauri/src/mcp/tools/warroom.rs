@@ -11,6 +11,25 @@ pub const NOT_IN_ROOM: &str =
     "this terminal is not in a War Room — ask the user to drag this pane into a room \
      in the War Room panel (right sidebar) to join";
 
+/// `war_room.send` mode "execute" toward a peer the renderer mirrored as
+/// `blocked` (sitting on a permission / question prompt). Pasting a prompt
+/// there would be read as the ANSWER to that prompt, so the send is refused
+/// outright instead of held. Every other state — including `None` (no report
+/// yet / plain shell / forgotten on pty death) — fails OPEN: `working` is a
+/// renderer-side hold (T1) that still delivers on idle, `done` is exactly the
+/// hand-off case, and an unknown state must never block a legitimate send.
+pub fn execute_refusal(peer_name: &str, state: Option<&str>) -> Option<String> {
+    if state != Some("blocked") {
+        return None;
+    }
+    Some(format!(
+        "{peer_name} is blocked on a prompt (permission or question) — a pasted \
+         prompt would be taken as its answer. Call war_room.wait_peer with until \
+         [\"idle\",\"done\"] and re-send once it returns, or war_room.read_peer to \
+         see what it is asking"
+    ))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -47,6 +66,28 @@ mod tests {
         };
         let j = serde_json::to_value(&result).unwrap();
         assert_eq!(j["room"], "Website A");
+    }
+
+    #[test]
+    fn execute_refusal_only_for_blocked() {
+        let msg = execute_refusal("Codex", Some("blocked")).expect("blocked must refuse");
+        assert!(msg.contains("Codex"));
+        assert!(msg.contains("war_room.wait_peer"));
+        assert!(msg.contains("war_room.read_peer"));
+    }
+
+    #[test]
+    fn execute_refusal_fails_open_for_every_other_state() {
+        for s in [None, Some("working"), Some("idle"), Some("done"), Some("unknown"), Some("")] {
+            assert!(execute_refusal("Codex", s).is_none(), "{s:?} must not refuse");
+        }
+    }
+
+    #[test]
+    fn execute_refusal_is_exact_match() {
+        assert!(execute_refusal("Codex", Some("Blocked")).is_none());
+        assert!(execute_refusal("Codex", Some("blocked ")).is_none());
+        assert!(execute_refusal("Codex", Some("blocked-ish")).is_none());
     }
 }
 
@@ -162,7 +203,7 @@ impl SwarmtermMcpServer {
 
     #[tool(
         name = "war_room.send",
-        description = "Send to War Room peers. mode \"probe\" (default): the content goes to the peer's inbox and they are nudged to read it — use for questions, debate, coordination. mode \"execute\": the content is pasted into the peer's terminal and run as their next prompt — use to hand over an agreed task. Omit \"to\" to broadcast a probe to all peers."
+        description = "Send to War Room peers. mode \"probe\" (default): the content goes to the peer's inbox and they are nudged to read it — use for questions, debate, coordination. mode \"execute\": the content is pasted into the peer's terminal and run as their next prompt — use to hand over an agreed task. Omit \"to\" to broadcast a probe to all peers. An execute toward a peer that is blocked on a prompt is refused — war_room.wait_peer for idle/done first."
     )]
     pub async fn war_room_send(
         &self,
@@ -175,6 +216,20 @@ impl SwarmtermMcpServer {
         let mode = MessageMode::parse(args.mode.as_deref())
             .map_err(|m| rmcp::ErrorData::invalid_params(m, None))?;
         let state = self.app.state::<AppState>();
+        // Mirror lookup for the execute→blocked refusal. `peer_states` is its
+        // own lock (pty.rs) and must never be taken inside `war_rooms`, so read
+        // the target's state here, scoped, and carry only the String across.
+        // Snapshot→send is a µs TOCTOU; T1's renderer hold is the backstop if
+        // the peer flips to blocked in between.
+        let target_state: Option<String> = match (mode, args.to.as_deref()) {
+            (MessageMode::Execute, Some(to)) => state
+                .peer_states
+                .lock()
+                .unwrap()
+                .snapshot(to)
+                .map(|s| s.state),
+            _ => None,
+        };
         // Lock, mutate, collect what to emit, drop the lock BEFORE emitting —
         // emit re-enters Tauri and must never run under our mutex.
         let (room_id, connected_ev, event, deliveries) = {
@@ -184,6 +239,24 @@ impl SwarmtermMcpServer {
                 .ok_or_else(|| rmcp::ErrorData::invalid_request(NOT_IN_ROOM, None))?;
             let room_id = entry.id.clone();
             let room = &mut entry.room;
+            // Refuse BEFORE mark_connected/send so nothing is queued or emitted.
+            // Guarded on membership + agent_id so self / non-member / plain-shell
+            // targets keep `WarRoom::send`'s own clearer errors, and so the mirror
+            // leaks nothing about ids outside this room.
+            if mode == MessageMode::Execute {
+                if let Some(to) = args.to.as_deref() {
+                    let target = room
+                        .peers()
+                        .into_iter()
+                        .find(|(id, m)| id == to && m.agent_id.is_some())
+                        .map(|(_, m)| m.display_name.clone());
+                    if let Some(name) = target {
+                        if let Some(msg) = execute_refusal(&name, target_state.as_deref()) {
+                            return Err(rmcp::ErrorData::invalid_params(msg, None));
+                        }
+                    }
+                }
+            }
             // The call itself IS the handshake — a sender is proven by definition.
             let connected_ev = room.mark_connected(&terminal.0, now_ms());
             let out = room
@@ -216,7 +289,8 @@ impl SwarmtermMcpServer {
                                        Expect a reply via your own inbox — check war_room.read_inbox."
                     .into(),
                 MessageMode::Execute => "The prompt will be pasted into the peer's terminal and run \
-                                         when that pane is idle."
+                                         when that pane is idle. Follow up with war_room.wait_peer \
+                                         (afterChange true) to learn when it needs input or finishes."
                     .into(),
             },
         }))
