@@ -17,12 +17,13 @@ const split = (a: LayoutNode, b: LayoutNode): LayoutNode => ({
   sizes: [50, 50],
   children: [a, b]
 })
-const working: AgentPaneState = { state: 'working', seen: true }
-const blocked: AgentPaneState = { state: 'blocked', seen: true }
-const done: AgentPaneState = { state: 'idle', seen: false }
-const pane = (terminalId: string, display: AttentionPane['display']): AttentionPane => ({
+const working: AgentPaneState = { state: 'working', seen: true, sinceMs: 0 }
+const blocked: AgentPaneState = { state: 'blocked', seen: true, sinceMs: 0 }
+const done: AgentPaneState = { state: 'idle', seen: false, sinceMs: 0 }
+const pane = (terminalId: string, display: AttentionPane['display'], sinceMs?: number): AttentionPane => ({
   terminalId,
-  display
+  display,
+  sinceMs
 })
 
 describe('collectAttentionPanes', () => {
@@ -34,9 +35,14 @@ describe('collectAttentionPanes', () => {
   it('maps store state through displayState; plain shells (no entry) are undefined', () => {
     const workspaces = [{ layout: split(leaf('a'), leaf('b')) }]
     expect(collectAttentionPanes(workspaces, { a: done })).toEqual([
-      { terminalId: 'a', display: 'done' },
-      { terminalId: 'b', display: undefined }
+      { terminalId: 'a', display: 'done', sinceMs: 0 },
+      { terminalId: 'b', display: undefined, sinceMs: undefined }
     ])
+  })
+
+  it('copies sinceMs from the store entry', () => {
+    const workspaces = [{ layout: leaf('a') }]
+    expect(collectAttentionPanes(workspaces, { a: { ...blocked, sinceMs: 777 } })[0].sinceMs).toBe(777)
   })
 
   it('maps every engine state, including blocked', () => {
@@ -70,6 +76,26 @@ describe('attentionRing', () => {
 
   it('is empty when nothing is an agent', () => {
     expect(attentionRing([pane('plain', undefined)])).toEqual([])
+  })
+
+  it('within blocked, the longest-waiting pane comes first regardless of visual order', () => {
+    const panes = [pane('b-new', 'blocked', 900), pane('b-old', 'blocked', 100), pane('w', 'working', 0)]
+    expect(attentionRing(panes)).toEqual(['b-old', 'b-new', 'w'])
+  })
+
+  it('within done, the earliest finish comes first', () => {
+    const panes = [pane('d-new', 'done', 900), pane('d-old', 'done', 100)]
+    expect(attentionRing(panes)).toEqual(['d-old', 'd-new'])
+  })
+
+  it('working and idle keep visual order even when stamped (age carries no urgency there)', () => {
+    const panes = [pane('w-new', 'working', 900), pane('w-old', 'working', 100), pane('i-new', 'idle', 900), pane('i-old', 'idle', 100)]
+    expect(attentionRing(panes)).toEqual(['w-new', 'w-old', 'i-new', 'i-old'])
+  })
+
+  it('equal stamps fall back to visual order', () => {
+    const panes = [pane('b2', 'blocked', 5), pane('b1', 'blocked', 5)]
+    expect(attentionRing(panes)).toEqual(['b2', 'b1'])
   })
 })
 

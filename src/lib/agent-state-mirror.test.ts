@@ -9,11 +9,11 @@ import {
 
 type States = Record<string, AgentPaneState>
 
-const working: AgentPaneState = { state: 'working', seen: true }
-const blocked: AgentPaneState = { state: 'blocked', seen: true }
-const idleSeen: AgentPaneState = { state: 'idle', seen: true }
-const idleUnseen: AgentPaneState = { state: 'idle', seen: false }
-const unknown: AgentPaneState = { state: 'unknown', seen: true }
+const working: AgentPaneState = { state: 'working', seen: true, sinceMs: 0 }
+const blocked: AgentPaneState = { state: 'blocked', seen: true, sinceMs: 0 }
+const idleSeen: AgentPaneState = { state: 'idle', seen: true, sinceMs: 0 }
+const idleUnseen: AgentPaneState = { state: 'idle', seen: false, sinceMs: 0 }
+const unknown: AgentPaneState = { state: 'unknown', seen: true, sinceMs: 0 }
 
 describe('mirrorChanges', () => {
   it('reports a new id with displayState semantics', () => {
@@ -26,7 +26,7 @@ describe('mirrorChanges', () => {
     expect(mirrorChanges({ a: working }, { a: working })).toEqual([])
     // Same-valued but new object identity is still "unchanged" — the diff is
     // on display state, not on reference.
-    expect(mirrorChanges({ a: working }, { a: { state: 'working', seen: true } })).toEqual([])
+    expect(mirrorChanges({ a: working }, { a: { state: 'working', seen: true, sinceMs: 0 } })).toEqual([])
   })
 
   it('reports a state change', () => {
@@ -39,7 +39,7 @@ describe('mirrorChanges', () => {
   })
 
   it('ignores a seen flip that does not change the display state', () => {
-    expect(mirrorChanges({ a: { state: 'working', seen: false } }, { a: working })).toEqual([])
+    expect(mirrorChanges({ a: { state: 'working', seen: false, sinceMs: 0 } }, { a: working })).toEqual([])
   })
 
   it('does NOT report ids removed from cur (Rust forgets on pty death itself)', () => {

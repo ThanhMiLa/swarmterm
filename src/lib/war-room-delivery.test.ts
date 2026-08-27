@@ -188,7 +188,7 @@ describe('nudge typing guard', () => {
 
 describe('agent-state guard', () => {
   const pub = (id: string, state: 'working' | 'blocked' | 'idle' | 'unknown') =>
-    useAgentStateStore.getState().publish(id, state, { paneWatched: true })
+    useAgentStateStore.getState().publish(id, state, { paneWatched: true, nowMs: 0 })
 
   it('holds a blocked agent past the idle window and releases on idle', () => {
     useWarRoomStore.getState().applyEvent(join('room-1', 't1', 1))

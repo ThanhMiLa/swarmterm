@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AgentPaneState } from '@/lib/agent-state/rollup'
 import { NOTIFY_DELAY_MS, startNotificationWatch, type NotificationWatchDeps } from './notification-watch'
 
-const s = (state: AgentPaneState['state'], seen = true): AgentPaneState => ({ state, seen })
+const s = (state: AgentPaneState['state'], seen = true): AgentPaneState => ({ state, seen, sinceMs: 0 })
 
 interface Harness {
   deps: NotificationWatchDeps

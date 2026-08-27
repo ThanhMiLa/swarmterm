@@ -71,7 +71,11 @@ export function TerminalList(): ReactElement | null {
                     activity[leaf.terminalId] === true
                   )
                   if (dot === null) return null
-                  return dot === 'activity' ? <ActivityDot /> : <StateDot state={dot} />
+                  return dot === 'activity' ? (
+                    <ActivityDot />
+                  ) : (
+                    <StateDot state={dot} sinceMs={agentStates[leaf.terminalId]?.sinceMs} />
+                  )
                 })()}
               </div>
             </li>

@@ -21,7 +21,7 @@ const sanitizeOsc = (raw: string): string =>
 export interface DetectorDeps {
   getView(): BufferView | null
   isPaneWatched(): boolean
-  publish(state: AgentEngineState, opts: { paneWatched: boolean }): void
+  publish(state: AgentEngineState, opts: { paneWatched: boolean; nowMs: number }): void
   now(): number
   setTimer(fn: () => void, ms: number): unknown
   clearTimer(handle: unknown): void
@@ -135,7 +135,7 @@ export class AgentStateDetector {
   private setState(state: AgentEngineState): void {
     if (this.state === state) return
     this.state = state
-    this.deps.publish(state, { paneWatched: this.deps.isPaneWatched() })
+    this.deps.publish(state, { paneWatched: this.deps.isPaneWatched(), nowMs: this.deps.now() })
   }
 
   private schedule(ms: number): void {

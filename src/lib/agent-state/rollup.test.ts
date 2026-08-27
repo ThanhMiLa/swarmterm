@@ -3,9 +3,9 @@ import { displayState, paneDot, workspaceDot } from '@/lib/agent-state/rollup'
 
 describe('displayState', () => {
   it('derives done from unseen idle', () => {
-    expect(displayState({ state: 'idle', seen: false })).toBe('done')
-    expect(displayState({ state: 'idle', seen: true })).toBe('idle')
-    expect(displayState({ state: 'blocked', seen: true })).toBe('blocked')
+    expect(displayState({ state: 'idle', seen: false, sinceMs: 0 })).toBe('done')
+    expect(displayState({ state: 'idle', seen: true, sinceMs: 0 })).toBe('idle')
+    expect(displayState({ state: 'blocked', seen: true, sinceMs: 0 })).toBe('blocked')
     expect(displayState(undefined)).toBeUndefined()
   })
 })

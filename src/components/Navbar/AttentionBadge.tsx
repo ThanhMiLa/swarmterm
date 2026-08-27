@@ -1,6 +1,7 @@
 import type { ReactElement } from 'react'
 import { attentionCount, collectAttentionPanes } from '@/lib/attention'
 import { jumpToAttention } from '@/lib/attention-jump'
+import { formatStateAge, longestWaitMs } from '@/lib/state-age'
 import { cn } from '@/lib/utils'
 import { useAgentStateStore } from '@/store/agent-state-store'
 import { useAppStore } from '@/store/app-store'
@@ -16,11 +17,18 @@ import { useAppStore } from '@/store/app-store'
 export function AttentionBadge(): ReactElement | null {
   const workspaces = useAppStore((s) => s.workspaces)
   const byId = useAgentStateStore((s) => s.byId)
-  const { blocked, done } = attentionCount(collectAttentionPanes(workspaces, byId))
+  const panes = collectAttentionPanes(workspaces, byId)
+  const { blocked, done } = attentionCount(panes)
   if (blocked === 0 && done === 0) return null
   return (
     <span className="flex items-center gap-1">
-      {blocked > 0 && <Pill count={blocked} tone="blocked" />}
+      {blocked > 0 && (
+        <Pill
+          count={blocked}
+          tone="blocked"
+          longest={() => longestWaitMs(panes, 'blocked', Date.now())}
+        />
+      )}
       {done > 0 && <Pill count={done} tone="done" />}
     </span>
   )
@@ -33,14 +41,35 @@ const TONE = {
   done: { className: 'bg-[#23D18B] text-black', title: 'pane(s) finished while you were away' }
 } as const
 
-function Pill({ count, tone }: { count: number; tone: keyof typeof TONE }): ReactElement {
+function Pill({
+  count,
+  tone,
+  longest
+}: {
+  count: number
+  tone: keyof typeof TONE
+  /** Only the blocked pill names its longest wait — a done pane's age is not a wait. */
+  longest?: () => number | undefined
+}): ReactElement {
   const { className, title } = TONE[tone]
+  // Same render-then-refresh-on-mouseenter pattern as StateDot: the native
+  // tooltip is read when it shows, so the age is recomputed at hover time.
+  // `formatStateAge(0, ms)` is the age-of-a-duration idiom — `ms` is already
+  // an elapsed span, not a timestamp.
+  const fullTitle = (): string => {
+    const ms = longest?.()
+    const tail = ms === undefined ? '' : ` (longest ${formatStateAge(0, ms)})`
+    return `${count} ${title}${tail} — click or press Mod+Shift+J to jump`
+  }
   return (
     <button
       type="button"
       // Focus must stay with the terminal (see CLAUDE.md "Keyboard focus").
       tabIndex={-1}
-      title={`${count} ${title} — click or press Mod+Shift+J to jump`}
+      title={fullTitle()}
+      onMouseEnter={(e) => {
+        e.currentTarget.title = fullTitle()
+      }}
       onClick={() => jumpToAttention()}
       className={cn(
         'min-w-[18px] rounded-full px-1.5 text-[10px] font-semibold leading-4 tabular-nums',

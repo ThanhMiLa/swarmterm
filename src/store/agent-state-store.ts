@@ -13,10 +13,12 @@ import type { AgentEngineState } from '@/lib/agent-state/types'
  * focused. unknown → idle is deliberately NOT a completion — unlike herdr,
  * our `unknown` only occurs at spawn/respawn/exit, and a fresh agent
  * settling into its first prompt must not greet the user with a done badge.
+ * `sinceMs` is stamped only on a state change and comes in via `opts.nowMs`
+ * so the store stays clock-free.
  */
 export interface AgentStateStore {
   byId: Record<string, AgentPaneState>
-  publish: (terminalId: string, state: AgentEngineState, opts: { paneWatched: boolean }) => void
+  publish: (terminalId: string, state: AgentEngineState, opts: { paneWatched: boolean; nowMs: number }) => void
   markSeen: (terminalId: string) => void
   clear: (terminalId: string) => void
 }
@@ -24,15 +26,16 @@ export interface AgentStateStore {
 export const useAgentStateStore = create<AgentStateStore>((set) => ({
   byId: {},
 
-  publish: (terminalId, state, { paneWatched }) =>
+  publish: (terminalId, state, { paneWatched, nowMs }) =>
     set((s) => {
       const prev = s.byId[terminalId]
-      // Same state again: keep the entry (and its seen-bit) untouched so a
-      // steady idle republish can't clear a done badge.
+      // Same state again: keep the entry (seen-bit AND sinceMs) untouched so
+      // a steady idle republish can neither clear a done badge nor reset the
+      // age a tooltip shows.
       if (prev !== undefined && prev.state === state) return s
       const completion = state === 'idle' && (prev?.state === 'working' || prev?.state === 'blocked')
       const seen = completion ? paneWatched : true
-      return { byId: { ...s.byId, [terminalId]: { state, seen } } }
+      return { byId: { ...s.byId, [terminalId]: { state, seen, sinceMs: nowMs } } }
     }),
 
   markSeen: (terminalId) =>

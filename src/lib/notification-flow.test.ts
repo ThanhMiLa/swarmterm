@@ -3,7 +3,7 @@ import type { AgentPaneState } from '@/lib/agent-state/rollup'
 import { diffAgentStates } from './notification-flow'
 import { notificationCopy, resolveFire } from './notification-flow'
 
-const s = (state: AgentPaneState['state'], seen = true): AgentPaneState => ({ state, seen })
+const s = (state: AgentPaneState['state'], seen = true): AgentPaneState => ({ state, seen, sinceMs: 0 })
 
 describe('diffAgentStates', () => {
   it('returns nothing for identical records', () => {

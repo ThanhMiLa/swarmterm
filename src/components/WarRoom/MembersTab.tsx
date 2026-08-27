@@ -68,7 +68,7 @@ function MemberRow({ member }: { member: WarRoomMember }): ReactElement {
           dot === 'activity' ? (
             <ActivityDot className="h-1.5 w-1.5" />
           ) : (
-            <StateDot state={dot} className="h-1.5 w-1.5" />
+            <StateDot state={dot} sinceMs={agentState?.sinceMs} className="h-1.5 w-1.5" />
           )
         ) : (
           <span

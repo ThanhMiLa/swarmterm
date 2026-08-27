@@ -5,6 +5,11 @@ import type { AgentEngineState, DisplayState } from '@/lib/agent-state/types'
 export interface AgentPaneState {
   state: AgentEngineState
   seen: boolean
+  /** When this state was entered (`Date.now()` domain, stamped by the store
+   *  from the detector's clock). Required on purpose: the store is the sole
+   *  producer, so tsc forces every literal to carry it and no dot can ever
+   *  show a stale or missing age. */
+  sinceMs: number
 }
 
 export function displayState(s: AgentPaneState | undefined): DisplayState | undefined {
