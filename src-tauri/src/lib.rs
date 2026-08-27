@@ -10,6 +10,8 @@ mod sessions;
 mod shell;
 // Public so `main.rs` can reach `--statusline` without booting Tauri.
 pub mod statusline;
+// Public so `main.rs` can reach `--hook` without booting Tauri.
+pub mod hook;
 mod tray;
 mod warroom;
 mod window_fit;

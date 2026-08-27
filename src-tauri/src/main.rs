@@ -16,5 +16,11 @@ fn main() {
         swarmterm_lib::statusline::run_cli();
         return;
     }
+    // `swarmterm --hook` is Claude Code's hook command: same pre-Tauri
+    // short-circuit as above, and the same Windows stdio note applies.
+    if std::env::args().skip(1).any(|a| a == "--hook") {
+        swarmterm_lib::hook::run_cli();
+        return;
+    }
     swarmterm_lib::run()
 }

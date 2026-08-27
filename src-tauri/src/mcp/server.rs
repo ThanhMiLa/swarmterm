@@ -58,7 +58,7 @@ use tauri::{AppHandle, Manager};
 use axum::extract::State as AxumState;
 use axum::http::{header::AUTHORIZATION, HeaderMap, StatusCode};
 use axum::response::{IntoResponse, Response};
-use axum::routing::get;
+use axum::routing::{get, post};
 use axum::Json;
 
 use crate::mcp::auth::{self, AuthError, TerminalId};
@@ -206,12 +206,16 @@ pub fn axum_router(app: AppHandle) -> axum::Router {
         // `layer` applies to routes registered ABOVE it only, which is why
         // `/status` is added afterwards: the status probe is Swarmterm asking
         // itself a question, and must never be able to manufacture the
-        // `connected` verdict it is about to read.
+        // `connected` verdict it is about to read. `/hook` sits below the
+        // layer for the same reason: a hook POST is Swarmterm's own
+        // `--hook` CLI talking to itself, not an MCP client, so it must
+        // never stamp `connected` either.
         .layer(axum::middleware::from_fn_with_state(
             app.clone(),
             record_client,
         ))
         .route("/status", get(status_handler))
+        .route("/hook", post(hook_handler))
         .with_state(app)
 }
 
@@ -236,31 +240,71 @@ async fn record_client(
     next.run(req).await
 }
 
-/// `GET /status` — the status line's only backend call. Loopback-only (the
-/// listener binds `127.0.0.1:0`) and reveals nothing beyond one boolean about
-/// the caller's own pane. Auth goes through `auth::resolve`, so a killed pane's
-/// token stops answering the instant its PTY dies — the same revocation rule
-/// the MCP tools use.
-async fn status_handler(AxumState(app): AxumState<AppHandle>, headers: HeaderMap) -> Response {
-    let header = headers
+/// The bearer gate shared by the loopback side routes (`/status`, `/hook`):
+/// resolve the header's token to a LIVE terminal id, or `None`. Auth goes
+/// through `auth::resolve`, so a killed pane's token stops answering the
+/// instant its PTY dies — the same revocation rule the MCP tools use.
+fn live_caller(app: &AppHandle, headers: &HeaderMap) -> Option<String> {
+    let token = auth::bearer(bearer_header(headers));
+    let state = app.state::<AppState>();
+    let terminals = state.terminals.lock().unwrap();
+    auth::resolve(token, |id| terminals.contains_key(id))
+        .ok()
+        .map(|TerminalId(id)| id)
+}
+
+fn bearer_header(headers: &HeaderMap) -> &str {
+    headers
         .get(AUTHORIZATION)
         .and_then(|h| h.to_str().ok())
-        .unwrap_or("");
-    let token = auth::bearer(header);
-    let state = app.state::<AppState>();
-    let live = {
-        let terminals = state.terminals.lock().unwrap();
-        auth::resolve(token, |id| terminals.contains_key(id)).is_ok()
-    };
-    if !live {
+        .unwrap_or("")
+}
+
+/// `GET /status` — the status line's only backend call. Loopback-only (the
+/// listener binds `127.0.0.1:0`) and reveals nothing beyond one boolean about
+/// the caller's own pane.
+async fn status_handler(AxumState(app): AxumState<AppHandle>, headers: HeaderMap) -> Response {
+    if live_caller(&app, &headers).is_none() {
         return StatusCode::UNAUTHORIZED.into_response();
     }
-    let connected = state.mcp_clients.lock().unwrap().has_seen(token);
+    let token = auth::bearer(bearer_header(&headers));
+    let connected = app.state::<AppState>().mcp_clients.lock().unwrap().has_seen(token);
     (
         StatusCode::OK,
         // The probe reads to EOF rather than implementing keep-alive framing.
         [(axum::http::header::CONNECTION, "close")],
         Json(serde_json::json!({ "mcp": { "connected": connected } })),
+    )
+        .into_response()
+}
+
+/// `POST /hook` — the `swarmterm --hook` CLI reporting one Claude Code hook
+/// event for its own pane. The body is a closed enum (`HookBody`), never the
+/// hook's stdin: prompt text, tool input and cwd stay inside the pane. The
+/// verdict is re-emitted to the renderer as `agent:hook` (payload in lockstep
+/// with `src/tauri/agent-state.ts::AgentHookEvent`); Rust keeps no hook state
+/// itself — precedence over screen-scrape is decided in the renderer.
+async fn hook_handler(
+    AxumState(app): AxumState<AppHandle>,
+    headers: HeaderMap,
+    Json(body): Json<crate::hook::HookBody>,
+) -> Response {
+    let Some(terminal_id) = live_caller(&app, &headers) else {
+        return StatusCode::UNAUTHORIZED.into_response();
+    };
+    use tauri::Emitter;
+    let _ = app.emit(
+        "agent:hook",
+        &crate::hook::AgentHookEvent {
+            terminal_id,
+            signal: body.signal,
+            at_ms: crate::warroom::now_ms(),
+        },
+    );
+    // The CLI reads to EOF with a 300 ms budget; `close` ends it promptly.
+    (
+        StatusCode::NO_CONTENT,
+        [(axum::http::header::CONNECTION, "close")],
     )
         .into_response()
 }
