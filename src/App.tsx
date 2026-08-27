@@ -10,6 +10,7 @@ import {
 import {
   useAppStore,
   selectFocusedTerminalId,
+  selectWorkspaceByTerminalId,
   type Workspace as WorkspaceModel
 } from '@/store/app-store'
 import { useNavbarVisibilityStore } from '@/store/navbar-visibility-store'
@@ -62,6 +63,7 @@ import { useTerminalTitleStore } from '@/store/terminal-title-store'
 import { useNotificationPrefStore } from '@/store/notification-pref-store'
 import { startNotificationWatch } from '@/lib/notification-watch'
 import { startAgentStateMirror } from '@/lib/agent-state-mirror'
+import { startGitRefreshWatch } from '@/lib/git-refresh'
 import { reportAgentState, onAgentHook } from '@/tauri/agent-state'
 import { playChime } from '@/lib/notification-sound'
 import { sendSystemNotification } from '@/tauri/notification'
@@ -618,6 +620,36 @@ export default function App(): ReactElement {
       playChime,
       sendSystemNotification: (opts) => void sendSystemNotification(opts),
       now: Date.now,
+      setTimer: (fn, ms) => window.setTimeout(fn, ms),
+      clearTimer: (h) => window.clearTimeout(h as number)
+    })
+  }, [])
+
+  // Git panel self-refresh: an agent pane leaving `working` (or exiting) inside
+  // the selected worktree re-fetches it in place. Same outside-the-render-path
+  // subscription as the notification watch. The live registry cwd (OSC 7) is
+  // preferred — `leaf.cwd` is only the spawn/picker value — and the watch
+  // caches it for panes that have already been disposed.
+  useEffect(() => {
+    return startGitRefreshWatch({
+      subscribeAgentStates: (listener) =>
+        useAgentStateStore.subscribe((cur, prev) => listener(cur.byId, prev.byId)),
+      cwdOf: (id) => {
+        const live = getTerminalCwd(id)
+        if (live !== undefined) return live
+        const ws = selectWorkspaceByTerminalId(useAppStore.getState(), id)
+        if (ws === undefined) return undefined
+        return collectLeaves(ws.layout).find((l) => l.terminalId === id)?.cwd ?? ws.cwd
+      },
+      getGit: () => {
+        const g = useGitStore.getState()
+        return {
+          panelVisible: g.panelOpen && g.mode === 'git',
+          worktrees: g.worktrees,
+          selectedWorktreePath: g.selectedWorktreePath
+        }
+      },
+      refreshSelected: () => useGitStore.getState().refreshSelected(),
       setTimer: (fn, ms) => window.setTimeout(fn, ms),
       clearTimer: (h) => window.clearTimeout(h as number)
     })

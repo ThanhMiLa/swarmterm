@@ -29,14 +29,15 @@ function contains(root: string, cwd: string): boolean {
 }
 
 /**
- * Picks the worktree that OWNS `cwd`. Longest root wins so a nested worktree
- * beats its parent and `<repo>.worktrees/<slug>` beats `<repo>` regardless of
- * the order git listed them in. Falls back to the main worktree — a cwd
- * outside every worktree is a "show me the repo" case, not "show me whichever
- * git listed first" — then to trees[0] so the function stays total.
+ * The worktree that STRICTLY owns `cwd` — longest root wins so a nested
+ * worktree beats its parent and `<repo>.worktrees/<slug>` beats `<repo>` in
+ * any list order — or `undefined` when no root contains it. For callers where
+ * "no owner" must mean "not this repo at all": the Git panel's self-refresh
+ * must not re-fetch main because an agent in ANOTHER repo finished. The
+ * panel's auto-select wants main for that case, hence the two entry points.
  * Returns the ORIGINAL entry: callers select/highlight by verbatim `path`.
  */
-export function matchWorktreeForCwd<T extends { path: string; isMain: boolean }>(
+export function worktreeOwningCwd<T extends { path: string }>(
   trees: readonly T[],
   cwd: string,
 ): T | undefined {
@@ -50,5 +51,20 @@ export function matchWorktreeForCwd<T extends { path: string; isMain: boolean }>
       bestLen = root.length
     }
   }
-  return best ?? trees.find(t => t.isMain) ?? trees[0]
+  return best
+}
+
+/**
+ * Picks the worktree that OWNS `cwd`. Longest root wins so a nested worktree
+ * beats its parent and `<repo>.worktrees/<slug>` beats `<repo>` regardless of
+ * the order git listed them in. Falls back to the main worktree — a cwd
+ * outside every worktree is a "show me the repo" case, not "show me whichever
+ * git listed first" — then to trees[0] so the function stays total.
+ * Returns the ORIGINAL entry: callers select/highlight by verbatim `path`.
+ */
+export function matchWorktreeForCwd<T extends { path: string; isMain: boolean }>(
+  trees: readonly T[],
+  cwd: string,
+): T | undefined {
+  return worktreeOwningCwd(trees, cwd) ?? trees.find(t => t.isMain) ?? trees[0]
 }

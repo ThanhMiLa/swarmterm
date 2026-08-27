@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { matchWorktreeForCwd } from '@/lib/worktree-match'
+import { matchWorktreeForCwd, worktreeOwningCwd } from '@/lib/worktree-match'
 
 type Wt = { path: string; isMain: boolean }
 const wt = (path: string, isMain = false): Wt => ({ path, isMain })
@@ -63,5 +63,28 @@ describe('matchWorktreeForCwd', () => {
     const a = wt('/a')
     const b = wt('/b')
     expect(matchWorktreeForCwd([a, b], '/zzz')).toBe(a)
+  })
+})
+
+describe('worktreeOwningCwd', () => {
+  it('returns the longest root containing cwd, in either list order', () => {
+    expect(worktreeOwningCwd(trees, '/x/myapp.worktrees/alpha-1/src')).toBe(alpha)
+    expect(worktreeOwningCwd(shuffled, '/x/myapp.worktrees/alpha-1/src')).toBe(alpha)
+    expect(worktreeOwningCwd(trees, '/x/myapp/src')).toBe(main)
+  })
+
+  it('is strict: a cwd outside every worktree yields undefined, never main', () => {
+    expect(worktreeOwningCwd(trees, '/y/other-repo')).toBeUndefined()
+    expect(worktreeOwningCwd(trees, '/x/myapp2')).toBeUndefined()
+    expect(worktreeOwningCwd([], '/x/myapp')).toBeUndefined()
+  })
+
+  it('applies the same separator / drive-letter normalisation as the matcher', () => {
+    const win = [wt('C:/w/app', true), wt('C:/w/app.worktrees/beta-2')]
+    expect(worktreeOwningCwd(win, 'c:\\w\\app.worktrees\\beta-2\\src')).toBe(win[1])
+  })
+
+  it('matchWorktreeForCwd still falls back to main for an outside cwd', () => {
+    expect(matchWorktreeForCwd(trees, '/y/other-repo')).toBe(main)
   })
 })
