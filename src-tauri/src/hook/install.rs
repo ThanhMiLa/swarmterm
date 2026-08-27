@@ -10,8 +10,8 @@
 //! decided per command string (`is_ours_hook`), never by position.
 //!
 //! Steady state must be ZERO writes: the decision is `Value` equality, not
-//! string equality, because re-serialising would reorder and reformat the
-//! user's whole settings file on every boot for no change.
+//! string equality, so a user's own reformatting never triggers a rewrite —
+//! and every real write keeps their key order and indent (`json_style`).
 //!
 //! Runs at boot, before any pane launches `claude`. Claude Code snapshots
 //! hooks at session start, so new sessions see us; already-running sessions
@@ -117,16 +117,25 @@ pub fn merge_hooks(existing: Option<&str>, command: Option<&str>) -> Result<Hook
     let mut root = before.clone();
     let obj = root.as_object_mut().unwrap();
 
-    let mut hooks = match obj.remove("hooks") {
-        None => serde_json::Map::new(),
-        Some(Value::Object(m)) => m,
-        Some(_) => return Err("`hooks` is not a JSON object".into()),
+    // Edit `hooks` and each event array IN PLACE. The old remove-and-reinsert
+    // dance is not order-neutral under `preserve_order`: `Map::remove` is
+    // swap_remove (drags the last key into the hole) and a re-insert lands at
+    // the end — either way the user's file gets shuffled. `entry` on an absent
+    // key appends, which is the only order that makes sense for a new key.
+    let hooks = match obj.entry("hooks").or_insert_with(|| json!({})) {
+        Value::Object(m) => m,
+        _ => return Err("`hooks` is not a JSON object".into()),
     };
     for event in HOOK_EVENTS {
-        let mut groups = match hooks.remove(event) {
-            None => Vec::new(),
+        if !hooks.contains_key(event) {
+            if let Some(cmd) = command {
+                hooks.insert(event.to_owned(), Value::Array(vec![our_group(cmd)]));
+            }
+            continue;
+        }
+        let groups = match hooks.get_mut(event) {
             Some(Value::Array(a)) => a,
-            Some(_) => return Err(format!("`hooks.{event}` is not a JSON array")),
+            _ => return Err(format!("`hooks.{event}` is not a JSON array")),
         };
         // Dropping every all-ours group and re-adding one is what repairs a
         // stale exe path (dev build → release build, or a moved app).
@@ -134,20 +143,22 @@ pub fn merge_hooks(existing: Option<&str>, command: Option<&str>) -> Result<Hook
         if let Some(cmd) = command {
             groups.push(our_group(cmd));
         }
-        if !groups.is_empty() {
-            hooks.insert(event.to_owned(), Value::Array(groups));
+        if groups.is_empty() {
+            hooks.shift_remove(event);
         }
     }
-    if !hooks.is_empty() {
-        obj.insert("hooks".to_owned(), Value::Object(hooks));
+    if hooks.is_empty() {
+        // shift, not swap — see above. Also what turns a pre-existing
+        // `"hooks": {}` into "we were never here".
+        obj.shift_remove("hooks");
     }
 
     if root == before {
         return Ok(HooksWrite::Unchanged);
     }
-    serde_json::to_string_pretty(&root)
+    crate::json_style::JsonStyle::detect(existing)
+        .render(&root)
         .map(HooksWrite::Write)
-        .map_err(|e| e.to_string())
 }
 
 /// Read → merge → write tmp → rename. The rename is atomic, so a crash
@@ -353,9 +364,10 @@ mod tests {
         // equality, not byte equality, or every boot would rewrite the file.
         let compact = parse(&pretty).to_string();
         assert!(matches!(merge_hooks(Some(&compact), Some(OURS)).unwrap(), HooksWrite::Unchanged));
-        let reordered = compact.replace(
-            r#"{"command":"#, r#"{"timeout":5,"command":"#,
-        ).replace(r#","timeout":5,"type":"command"}"#, r#","type":"command"}"#);
+        let reordered = compact
+            .replace(r#"{"type":"command","command":"#, r#"{"command":"#)
+            .replace(r#","timeout":5}"#, r#","timeout":5,"type":"command"}"#);
+        assert_ne!(reordered, compact, "the reorder must be real or this proves nothing");
         assert!(matches!(merge_hooks(Some(&reordered), Some(OURS)).unwrap(), HooksWrite::Unchanged));
     }
 
@@ -415,6 +427,75 @@ mod tests {
         assert!(matches!(merge_hooks(Some(&foreign_only), None).unwrap(), HooksWrite::Unchanged));
         assert!(matches!(merge_hooks(Some("{}"), None).unwrap(), HooksWrite::Unchanged));
         assert!(matches!(merge_hooks(None, None).unwrap(), HooksWrite::Unchanged));
+    }
+
+    fn pos(text: &str, key: &str) -> usize {
+        text.find(&format!("\"{key}\"")).unwrap_or_else(|| panic!("{key} missing in {text}"))
+    }
+
+    fn written(existing: Option<&str>, command: Option<&str>) -> String {
+        match merge_hooks(existing, command).unwrap() {
+            HooksWrite::Write(s) => s,
+            HooksWrite::Unchanged => panic!("expected a write"),
+        }
+    }
+
+    #[test]
+    fn install_keeps_top_level_and_event_order() {
+        // `hooks` sits between z and a; remove-and-reinsert would push it last.
+        let existing = format!(
+            r#"{{"z":1,"hooks":{{"PreToolUse":[{}]}},"a":2}}"#,
+            foreign_group("lint")
+        );
+        let out = written(Some(&existing), Some(OURS));
+        assert!(pos(&out, "z") < pos(&out, "hooks") && pos(&out, "hooks") < pos(&out, "a"), "{out}");
+        // The user's event stays first; ours are appended in HOOK_EVENTS order.
+        assert!(pos(&out, "PreToolUse") < pos(&out, "UserPromptSubmit"), "{out}");
+        assert!(pos(&out, "UserPromptSubmit") < pos(&out, "SessionEnd"), "{out}");
+    }
+
+    #[test]
+    fn stale_replacement_keeps_the_event_in_its_slot() {
+        let existing = format!(
+            r#"{{"hooks":{{"PreToolUse":[{}],"Stop":[{}],"Notification":[{}]}}}}"#,
+            foreign_group("lint"),
+            ours_group(STALE),
+            foreign_group(FOREIGN)
+        );
+        let out = written(Some(&existing), Some(OURS));
+        assert!(pos(&out, "PreToolUse") < pos(&out, "Stop") && pos(&out, "Stop") < pos(&out, "Notification"), "{out}");
+        let v = parse(&out);
+        assert_eq!(v["hooks"]["Stop"], json!([ours_group(OURS)]));
+    }
+
+    #[test]
+    fn remove_shifts_instead_of_swapping_at_both_levels() {
+        // Top level: z, hooks, m, a → z, m, a (swap would give z, a, m).
+        let existing = format!(r#"{{"z":1,"hooks":{{"Stop":[{}]}},"m":2,"a":3}}"#, ours_group(OURS));
+        let out = written(Some(&existing), None);
+        assert!(!out.contains("hooks"), "{out}");
+        assert!(pos(&out, "z") < pos(&out, "m") && pos(&out, "m") < pos(&out, "a"), "{out}");
+        // Event level: dropping Stop must not move PostToolUse ahead of Notification.
+        let existing = format!(
+            r#"{{"hooks":{{"PreToolUse":[{0}],"Stop":[{1}],"Notification":[{0}],"PostToolUse":[{0}]}}}}"#,
+            foreign_group("lint"),
+            ours_group(OURS)
+        );
+        let out = written(Some(&existing), None);
+        assert!(!out.contains("Stop"), "{out}");
+        assert!(pos(&out, "PreToolUse") < pos(&out, "Notification") && pos(&out, "Notification") < pos(&out, "PostToolUse"), "{out}");
+    }
+
+    #[test]
+    fn keeps_the_file_indent_and_trailing_newline() {
+        let four = written(Some("{\n    \"theme\": \"dark\"\n}\n"), Some(OURS));
+        assert!(four.contains("\n    \"hooks\": {\n        \"UserPromptSubmit\": [\n            {"), "{four}");
+        assert!(four.ends_with("}\n"), "{four}");
+        let tab = written(Some("{\n\t\"theme\": \"dark\"\n}"), Some(OURS));
+        assert!(tab.contains("\n\t\"hooks\": {\n\t\t\"UserPromptSubmit\": [\n\t\t\t{"), "{tab}");
+        assert!(tab.ends_with('}'), "{tab}");
+        let fresh = written(None, Some(OURS));
+        assert_eq!(fresh, serde_json::to_string_pretty(&parse(&fresh)).unwrap());
     }
 
     #[test]

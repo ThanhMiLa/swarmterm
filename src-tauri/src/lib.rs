@@ -2,6 +2,7 @@ mod agents;
 mod analytics;
 mod commands;
 mod git;
+mod json_style;
 mod links;
 mod mcp;
 mod preview;

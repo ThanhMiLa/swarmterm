@@ -77,9 +77,9 @@ pub fn merge_settings(
     match command {
         Some(cmd) => {
             if current.as_deref() == Some(cmd) {
-                // Re-serialising would reorder and reformat the user's whole
-                // settings file for no change — the same churn `mcp/config.rs`
-                // avoids on `~/.claude.json`.
+                // A rewrite for no change is pure churn on the user's settings
+                // file (and a needless race window) — the same skip
+                // `mcp/config.rs` makes on `~/.claude.json`.
                 return Ok(SettingsWrite::Unchanged);
             }
             obj.insert(
@@ -91,13 +91,18 @@ pub fn merge_settings(
             if current.is_none() {
                 return Ok(SettingsWrite::Unchanged);
             }
-            obj.remove("statusLine");
+            // shift, not swap: under `preserve_order` `Map::remove` is
+            // swap_remove, which would drag the file's last key into this slot.
+            obj.shift_remove("statusLine");
         }
     }
 
-    serde_json::to_string_pretty(&root)
+    // Render in the file's own indent + trailing-newline style (detected on
+    // the RAW text, not the trimmed parse input) so the write is a one-key
+    // diff, not a whole-file reformat.
+    crate::json_style::JsonStyle::detect(existing)
+        .render(&root)
         .map(SettingsWrite::Write)
-        .map_err(|e| e.to_string())
 }
 
 /// Resolve Claude Code's user-scope settings file. Honors `CLAUDE_CONFIG_DIR`
@@ -316,6 +321,64 @@ mod tests {
             merge_settings(Some(r#"{"theme":"dark"}"#), None).unwrap(),
             SettingsWrite::Unchanged
         ));
+    }
+
+    fn pos(text: &str, key: &str) -> usize {
+        text.find(&format!("\"{key}\""))
+            .unwrap_or_else(|| panic!("{key} missing in {text}"))
+    }
+
+    fn written(existing: Option<&str>, command: Option<&str>) -> String {
+        match merge_settings(existing, command).unwrap() {
+            SettingsWrite::Write(s) => s,
+            other => panic!("expected a write, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn install_keeps_key_order_and_appends_status_line_last() {
+        let out = written(Some(r#"{"z":1,"a":2}"#), Some(OURS));
+        assert!(
+            pos(&out, "z") < pos(&out, "a") && pos(&out, "a") < pos(&out, "statusLine"),
+            "{out}"
+        );
+    }
+
+    #[test]
+    fn disable_shifts_the_remaining_keys_instead_of_swapping() {
+        // Four keys, ours second: swap_remove would drag `a` into slot 1
+        // (z, a, m); the user's order is z, m, a.
+        let existing = format!(
+            r#"{{"z":1,"statusLine":{{"type":"command","command":{}}},"m":2,"a":3}}"#,
+            serde_json::to_string(OURS).unwrap()
+        );
+        let out = written(Some(&existing), None);
+        assert!(!out.contains("statusLine"), "{out}");
+        assert!(
+            pos(&out, "z") < pos(&out, "m") && pos(&out, "m") < pos(&out, "a"),
+            "{out}"
+        );
+    }
+
+    #[test]
+    fn keeps_the_file_indent_and_trailing_newline() {
+        let four = written(Some("{\n    \"theme\": \"dark\"\n}\n"), Some(OURS));
+        assert!(
+            four.contains("\n    \"statusLine\": {\n        \"type\": \"command\""),
+            "{four}"
+        );
+        assert!(four.ends_with("}\n"), "{four}");
+        let tab = written(Some("{\n\t\"theme\": \"dark\"\n}"), Some(OURS));
+        assert!(
+            tab.contains("\n\t\"statusLine\": {\n\t\t\"type\": \"command\""),
+            "{tab}"
+        );
+        assert!(tab.ends_with('}'), "{tab}");
+        let fresh = written(None, Some(OURS));
+        assert_eq!(
+            fresh,
+            serde_json::to_string_pretty(&parse(&fresh)).unwrap()
+        );
     }
 
     #[test]

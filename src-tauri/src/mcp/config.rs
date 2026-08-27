@@ -65,7 +65,10 @@ fn merge_mcp_servers_json(existing: Option<&str>, entry: Value) -> Result<String
             servers.insert("swarmterm".to_string(), entry);
         }
     }
-    serde_json::to_string_pretty(&root).map_err(|e| e.to_string())
+    // Style is detected on the RAW `existing` text, not the trimmed copy fed
+    // to the parser: the trailing-newline verdict lives in exactly the bytes
+    // `trim()` would throw away.
+    crate::json_style::JsonStyle::detect(existing).render(&root)
 }
 
 /// Whether `config` (a parsed root object) already carries every key of
@@ -153,12 +156,12 @@ fn write_mcp_servers_json_to_file(
         Err(e) => return Err(format!("read: {e}")),
     };
     // Skip rewriting when the user's config already carries our entry (our
-    // keys with our values; user-added extras allowed). Serde
-    // re-serialization would otherwise reorder keys (serde_json's default
-    // BTreeMap) and reformat the file on every boot — a needless, noisy churn
-    // of the user's PRIMARY config for that CLI, and it would also widen the
-    // (already tiny) read-merge-rename race against a concurrently running
-    // CLI. So we only ever write on the first run (or if the entry drifts).
+    // keys with our values; user-added extras allowed). This is the user's
+    // PRIMARY config for that CLI: even though a rewrite now keeps key order
+    // and indent (`json_style`), it would still widen the (already tiny)
+    // read-merge-rename race against a concurrently running CLI, and a
+    // steady-state write per boot is noise. So we only ever write on the
+    // first run (or if the entry drifts).
     if let Some(s) = existing.as_deref() {
         let strict = serde_json::from_str::<Value>(s).ok();
         // Qwen parses settings via strip-json-comments; recognise an entry
@@ -490,6 +493,42 @@ mod tests {
         let v = parse(&out);
         assert_eq!(v["projects"]["foo"], 1);
         assert_eq!(v["mcpServers"]["swarmterm"]["type"], "http");
+    }
+
+    /// Byte offset of `"key"` in the rendered text — order is a TEXT property,
+    /// `Value` equality is order-free.
+    fn pos(text: &str, key: &str) -> usize {
+        text.find(&format!("\"{key}\"")).unwrap_or_else(|| panic!("{key} missing in {text}"))
+    }
+
+    #[test]
+    fn merge_keeps_user_key_order_and_appends_mcp_servers_last() {
+        let out = merge_claude(Some(r#"{"z":1,"a":2}"#)).unwrap();
+        assert!(pos(&out, "z") < pos(&out, "a"), "{out}");
+        assert!(pos(&out, "a") < pos(&out, "mcpServers"), "{out}");
+    }
+
+    #[test]
+    fn merge_keeps_four_space_indent_and_trailing_newline() {
+        let out = merge_claude(Some("{\n    \"z\": 1\n}\n")).unwrap();
+        assert!(out.starts_with("{\n    \"z\": 1,\n    \"mcpServers\": {\n        \"swarmterm\": {\n            \"type\": \"http\""), "{out}");
+        assert!(out.ends_with("}\n") && !out.ends_with("\n\n"), "{out}");
+    }
+
+    #[test]
+    fn merge_keeps_tab_indent_and_no_trailing_newline() {
+        let out = merge_claude(Some("{\n\t\"z\": 1\n}")).unwrap();
+        assert!(out.contains("\n\t\"mcpServers\": {\n\t\t\"swarmterm\": {\n\t\t\t\"type\""), "{out}");
+        assert!(out.ends_with('}'), "{out}");
+    }
+
+    #[test]
+    fn merge_of_compact_or_new_file_is_byte_identical_to_pretty() {
+        let compact = merge_claude(Some(r#"{"z":1}"#)).unwrap();
+        assert!(compact.starts_with("{\n  \"z\": 1,\n  \"mcpServers\""), "{compact}");
+        assert!(compact.ends_with('}'), "{compact}");
+        let fresh = merge_claude(None).unwrap();
+        assert_eq!(fresh, serde_json::to_string_pretty(&parse(&fresh)).unwrap());
     }
 
     #[test]

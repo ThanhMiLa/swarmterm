@@ -27,7 +27,12 @@ tauri-plugin-dialog = "2"
 tauri-plugin-clipboard-manager = "2"
 portable-pty = "0.8"
 serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+# `preserve_order`: the three settings writers (mcp/config.rs,
+# statusline/install.rs, hook/install.rs) rebuild USER-owned JSON files
+# through `Value`; the default BTreeMap alphabetises every key on the
+# first write. indexmap is already in the graph, so this adds no crate.
+# Trap: with this feature `Map::remove` is swap_remove — use shift_remove.
+serde_json = { version = "1", features = ["preserve_order"] }
 url = "2"
 tauri-plugin-opener = "2"
 tauri-plugin-updater = "2"
