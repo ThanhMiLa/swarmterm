@@ -169,6 +169,28 @@ impl Default for WarRoom {
     }
 }
 
+/// Refuse a body that carries a terminal control character. The renderer
+/// neutralises these at the pty choke point (`lib/prompt-sanitize.ts`), but
+/// the core refuses them too — belt-and-braces for the one input an agent
+/// (or the Moderator composer) authors directly. Refusing rather than
+/// rewriting is deliberate: the sender gets a clear error and rephrases, and
+/// the transcript never shows something different from what was sent.
+/// `\t` `\n` `\r` are legitimate prompt structure and stay legal.
+/// `char::is_control` is exactly Unicode `Cc` = C0 (incl. ESC) + DEL + C1
+/// (U+0080–U+009F, where U+009B is a one-char CSI for some parsers).
+pub fn control_byte_refusal(content: &str) -> Option<String> {
+    let (idx, ch) = content
+        .chars()
+        .enumerate()
+        .find(|&(_, c)| c.is_control() && !matches!(c, '\t' | '\n' | '\r'))?;
+    Some(format!(
+        "content contains a terminal control character (U+{:04X} at char {idx}) — \
+         send plain text; if you mean to quote an escape sequence write it as the \
+         literal text \"ESC[...\"",
+        ch as u32
+    ))
+}
+
 impl WarRoom {
     fn next_seq(&mut self) -> u64 {
         self.seq += 1;
@@ -288,6 +310,9 @@ impl WarRoom {
         let content = content.trim();
         if content.is_empty() {
             return Err("content must not be empty".into());
+        }
+        if let Some(msg) = control_byte_refusal(content) {
+            return Err(msg);
         }
         let from_name = self
             .members
@@ -839,6 +864,45 @@ mod tests {
             .send("t1", Some("t2"), "run this", MessageMode::Execute, 12)
             .unwrap();
         assert_eq!(out.deliveries[0].content.as_deref(), Some("run this"));
+        assert!(r.drain_inbox("t2").unwrap().is_empty());
+    }
+
+    #[test]
+    fn control_byte_refusal_accepts_plain_text() {
+        for ok in [
+            "run this",
+            "line one\nline two",
+            "a\tb",
+            "crlf\r\n",
+            "café 🚀 ─┼─ 日本語",
+        ] {
+            assert!(control_byte_refusal(ok).is_none(), "{ok:?} must be accepted");
+        }
+    }
+
+    #[test]
+    fn control_byte_refusal_names_the_byte_and_char_index() {
+        let msg = control_byte_refusal("ab\x1b[201~ls").expect("ESC must refuse");
+        assert!(msg.contains("U+001B"), "{msg}");
+        assert!(msg.contains("char 2"), "{msg}");
+        assert!(control_byte_refusal("\x07").unwrap().contains("U+0007"));
+        assert!(control_byte_refusal("x\0").unwrap().contains("U+0000"));
+        assert!(control_byte_refusal("x\x7f").unwrap().contains("U+007F"));
+        assert!(control_byte_refusal("x\u{9b}").unwrap().contains("U+009B"));
+    }
+
+    #[test]
+    fn send_refuses_control_bytes_on_both_modes() {
+        let mut r = room_with_two();
+        let err = r
+            .send("t1", Some("t2"), "ok\x1b[201~rm -rf /", MessageMode::Execute, 12)
+            .unwrap_err();
+        assert!(err.contains("control"), "{err}");
+        let err = r
+            .send("t1", None, "hi\x07", MessageMode::Probe, 13)
+            .unwrap_err();
+        assert!(err.contains("control"), "{err}");
+        // Nothing leaked into an inbox on the refused probe.
         assert!(r.drain_inbox("t2").unwrap().is_empty());
     }
 

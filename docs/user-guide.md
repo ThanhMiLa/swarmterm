@@ -158,6 +158,7 @@ On macOS the modifier is `⌘`, which deliberately leaves `Ctrl + B` to the term
 - **An agent is greyed out in the composer** — its CLI isn't on your `PATH`; install it and reopen the composer.
 - **A War Room message never arrived** — look for the pill in the pane or `⏸N` on the room tab: it's held behind an unsubmitted prompt line, or the agent is working / sitting on a prompt (the pill says which). Press Enter or click "Deliver now" for a typing hold; answer the prompt or wait for the agent to finish otherwise.
 - **An agent says its execute was refused** — the target pane is blocked on a permission or question; answer that prompt (or let the sending agent `wait_peer`) and the hand-off goes through on re-send.
+- **A War Room send was refused for a "control character"** — the message contained an escape code or other terminal control byte, which Swarmterm never types into a pane (it could break out of the paste and run as keystrokes). Resend as plain text; quote escape sequences as the literal text `ESC[…` instead.
 - **An agent says it isn't in the War Room** — its pane was removed or restarted; drag it back in.
 - **A relative path isn't clickable after `cd`** — a PowerShell quirk; absolute paths (everything agents print) still work.
 - **The app disappeared** — it's in the tray; click the icon to bring it back.

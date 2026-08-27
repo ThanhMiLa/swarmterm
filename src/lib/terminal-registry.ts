@@ -22,6 +22,7 @@ import {
   type LinkKind
 } from '@/lib/terminal-links'
 import { parseFileUrl } from '@/lib/file-url'
+import { sanitizePromptText } from '@/lib/prompt-sanitize'
 import { detectPathCandidates, parsePathSuffix } from '@/lib/path-link-parse'
 import { classifyOscLink, openPathLocation } from '@/lib/terminal-link-actions'
 import { openUrl } from '@/tauri/opener'
@@ -956,8 +957,17 @@ export function deliverPromptToTerminal(id: string, text: string): void {
   const entry = entries.get(id)
   if (!entry) return
   entry.resetInputSegment()
+  // Sanitise BEFORE framing so the bracketed-paste markers added below are the
+  // only ESCs on the wire: a body containing `\x1b[201~` would close the paste
+  // early and the remainder would run as raw keystrokes in the recipient TUI.
+  // This is the single choke point every War Room text crosses (execute body,
+  // nudge, intro — the latter two interpolate renderer-supplied names), which
+  // is why it lives here and not in the scheduler. pasteIntoTerminal is left
+  // alone on purpose: the user pasting escape codes into their own pane is not
+  // the threat. Proved by prompt-sanitize.test.ts + tsc — the delivery test
+  // mocks this function wholesale and the registry needs xterm/DOM.
   // Parity with term.paste's own CRLF normalization: terminals expect CR for line breaks.
-  const normalized = text.replace(/\r?\n/g, '\r')
+  const normalized = sanitizePromptText(text).replace(/\r?\n/g, '\r')
   const body = entry.term.modes.bracketedPasteMode ? `\x1b[200~${normalized}\x1b[201~` : normalized
   void writeTerminal(id, body)
 }
