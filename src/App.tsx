@@ -617,6 +617,7 @@ export default function App(): ReactElement {
       getPaneTitle: (id) => useTerminalTitleStore.getState().titles[id] ?? '',
       playChime,
       sendSystemNotification: (opts) => void sendSystemNotification(opts),
+      now: Date.now,
       setTimer: (fn, ms) => window.setTimeout(fn, ms),
       clearTimer: (h) => window.clearTimeout(h as number)
     })

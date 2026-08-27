@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AgentPaneState } from '@/lib/agent-state/rollup'
-import { NOTIFY_DELAY_MS, startNotificationWatch, type NotificationWatchDeps } from './notification-watch'
+import { COALESCE_MS, NOTIFY_DELAY_MS, startNotificationWatch, type NotificationWatchDeps } from './notification-watch'
 
 const s = (state: AgentPaneState['state'], seen = true): AgentPaneState => ({ state, seen, sinceMs: 0 })
 
@@ -12,6 +12,8 @@ interface Harness {
   sendSystem: ReturnType<typeof vi.fn>
   states: { current: Record<string, AgentPaneState> }
   focus: { window: boolean; watchedId: string | null }
+  clock: { now: number }
+  titles: Record<string, string>
 }
 
 function harness(): Harness {
@@ -22,6 +24,8 @@ function harness(): Harness {
   const sendSystem = vi.fn()
   const states = { current: {} as Record<string, AgentPaneState> }
   const focus = { window: true, watchedId: null as string | null }
+  const clock = { now: 0 }
+  const titles: Record<string, string> = {}
   const deps: NotificationWatchDeps = {
     subscribeAgentStates: (l) => {
       listener = l
@@ -30,9 +34,10 @@ function harness(): Harness {
     getAgentStates: () => states.current,
     isPaneWatched: (id) => focus.watchedId === id,
     isWindowFocused: () => focus.window,
-    getAgentId: (id) => (id === 'plain' ? undefined : 'claude-code'),
+    getAgentId: (id) => (id === 'plain' ? undefined : id.startsWith('cx') ? 'codex' : 'claude-code'),
     getPrefs: () => ({ sound: true, system: true, perAgent: {} }),
-    getPaneTitle: () => 'my pane',
+    getPaneTitle: (id) => titles[id] ?? 'my pane',
+    now: () => clock.now,
     playChime,
     sendSystemNotification: sendSystem,
     setTimer: (fn, ms) => {
@@ -57,7 +62,9 @@ function harness(): Harness {
     playChime,
     sendSystem,
     states,
-    focus
+    focus,
+    clock,
+    titles
   }
 }
 
@@ -120,5 +127,61 @@ describe('startNotificationWatch', () => {
     stop()
     h.fireTimers()
     expect(h.playChime).not.toHaveBeenCalled()
+  })
+
+  it('flushes every entry due within COALESCE_MS as one chime + one grouped banner', () => {
+    startNotificationWatch(h.deps)
+    h.titles.t1 = 'pane A'
+    h.titles.t2 = 'pane B'
+    h.emit({ t1: s('blocked'), t2: s('working') }, { t1: s('working'), t2: s('working') })
+    h.clock.now = 200
+    h.emit({ t1: s('blocked'), t2: s('blocked') }, { t1: s('blocked'), t2: s('working') })
+    h.focus.window = false
+    h.clock.now = NOTIFY_DELAY_MS
+    h.fireTimers()
+    expect(h.playChime).toHaveBeenCalledTimes(1)
+    expect(h.playChime).toHaveBeenCalledWith('attention')
+    expect(h.sendSystem).toHaveBeenCalledTimes(1)
+    expect(h.sendSystem).toHaveBeenCalledWith({ title: '2 Claude Code panes need your input', body: 'pane A · pane B' })
+  })
+
+  it('attention wins the tone and leads the copy even when the completion was armed first', () => {
+    startNotificationWatch(h.deps)
+    h.titles.cx1 = 'build'
+    h.titles.t1 = 'review'
+    h.emit({ cx1: s('idle', false), t1: s('working') }, { cx1: s('working'), t1: s('working') })
+    h.clock.now = 100
+    h.emit({ cx1: s('idle', false), t1: s('blocked') }, { cx1: s('idle', false), t1: s('working') })
+    h.focus.window = false
+    h.clock.now = NOTIFY_DELAY_MS
+    h.fireTimers()
+    expect(h.playChime).toHaveBeenCalledTimes(1)
+    expect(h.playChime).toHaveBeenCalledWith('attention')
+    expect(h.sendSystem).toHaveBeenCalledWith({ title: 'Claude Code needs your input · Codex finished', body: 'review · build' })
+  })
+
+  it('an entry due later than COALESCE_MS after the firing one is left for its own timer', () => {
+    startNotificationWatch(h.deps)
+    h.emit({ t1: s('blocked'), t2: s('working') }, { t1: s('working'), t2: s('working') })
+    h.clock.now = NOTIFY_DELAY_MS - COALESCE_MS + 300
+    h.emit({ t1: s('blocked'), t2: s('blocked') }, { t1: s('blocked'), t2: s('working') })
+    h.focus.window = false
+    h.clock.now = NOTIFY_DELAY_MS
+    h.fireTimers()
+    expect(h.playChime).toHaveBeenCalledTimes(2)
+    expect(h.sendSystem).toHaveBeenCalledTimes(2)
+    expect(h.sendSystem).toHaveBeenNthCalledWith(1, { title: 'Claude Code needs your input', body: 'my pane' })
+    expect(h.sendSystem).toHaveBeenNthCalledWith(2, { title: 'Claude Code needs your input', body: 'my pane' })
+  })
+
+  it('a batch whose other entry resolved during the delay falls back to single-entry copy', () => {
+    startNotificationWatch(h.deps)
+    h.emit({ t1: s('blocked'), t2: s('blocked') }, { t1: s('working'), t2: s('working') })
+    h.states.current = { t1: s('blocked'), t2: s('working') }
+    h.focus.window = false
+    h.clock.now = NOTIFY_DELAY_MS
+    h.fireTimers()
+    expect(h.playChime).toHaveBeenCalledTimes(1)
+    expect(h.sendSystem).toHaveBeenCalledWith({ title: 'Claude Code needs your input', body: 'my pane' })
   })
 })

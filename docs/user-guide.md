@@ -35,7 +35,7 @@ The sidebar header also shows a small counter across **all** workspaces — a re
 
 ## Notifications
 
-A background agent pane chimes when it blocks (needs your input) or finishes — a short WebAudio tone, so you don't have to keep watching the dots. The chime fires about a second after the state change, and Swarmterm re-checks at that moment: a blocked flash that resolves itself, or a pane you've since switched to, never sounds.
+A background agent pane chimes when it blocks (needs your input) or finishes — a short WebAudio tone, so you don't have to keep watching the dots. The chime fires about a second after the state change, and Swarmterm re-checks at that moment: a blocked flash that resolves itself, or a pane you've since switched to, never sounds. Several panes changing within about half a second share one chime and one banner — a pane that needs your input wins the tone, and the banner lists them ("Claude Code needs your input · Codex finished", "2 Claude Code panes finished").
 
 A system notification (banner) only appears while the Swarmterm window is **unfocused** — it's sent silent, since the chime is already the audible part; focus the window and you get the chime alone. macOS asks for notification permission the first time a banner would show, and declining it still leaves the chime working.
 

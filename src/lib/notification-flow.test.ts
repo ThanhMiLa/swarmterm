@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { AgentPaneState } from '@/lib/agent-state/rollup'
 import { diffAgentStates } from './notification-flow'
-import { notificationCopy, resolveFire } from './notification-flow'
+import { coalesceNotifications, notificationCopy, resolveFire } from './notification-flow'
 
 const s = (state: AgentPaneState['state'], seen = true): AgentPaneState => ({ state, seen, sinceMs: 0 })
 
@@ -128,5 +128,79 @@ describe('notificationCopy', () => {
       body: 'fix tests'
     })
     expect(notificationCopy('completion', 'Codex', '')).toEqual({ title: 'Codex finished', body: '' })
+  })
+})
+
+describe('coalesceNotifications', () => {
+  const f = (kind: 'attention' | 'completion', agentName: string, paneTitle: string) => ({ kind, agentName, paneTitle })
+
+  it('returns null for an empty batch', () => {
+    expect(coalesceNotifications([])).toBeNull()
+  })
+
+  it("a single entry is byte-identical to notificationCopy (today's banners unchanged)", () => {
+    expect(coalesceNotifications([f('attention', 'Claude Code', 'fix tests')])).toEqual({
+      kind: 'attention',
+      ...notificationCopy('attention', 'Claude Code', 'fix tests')
+    })
+    expect(coalesceNotifications([f('completion', 'Codex', '')])).toEqual({
+      kind: 'completion',
+      title: 'Codex finished',
+      body: ''
+    })
+  })
+
+  it('groups same-agent completions as "<n> <name> panes finished"', () => {
+    expect(coalesceNotifications([f('completion', 'Claude Code', 'a'), f('completion', 'Claude Code', 'b')])).toEqual({
+      kind: 'completion',
+      title: '2 Claude Code panes finished',
+      body: 'a · b'
+    })
+  })
+
+  it('groups mixed-agent completions as "<n> agents finished"', () => {
+    expect(coalesceNotifications([f('completion', 'Claude Code', 'a'), f('completion', 'Codex', 'b')])).toEqual({
+      kind: 'completion',
+      title: '2 agents finished',
+      body: 'a · b'
+    })
+  })
+
+  it('attention outranks completion and is listed first regardless of input order', () => {
+    expect(coalesceNotifications([f('completion', 'Codex', 'build'), f('attention', 'Claude Code', 'review')])).toEqual({
+      kind: 'attention',
+      title: 'Claude Code needs your input · Codex finished',
+      body: 'review · build'
+    })
+  })
+
+  it('pluralises attention as "<n> agents need your input" and keeps the completion segment', () => {
+    expect(
+      coalesceNotifications([
+        f('attention', 'Claude Code', 'a'),
+        f('completion', 'Codex', 'c'),
+        f('attention', 'Codex', 'b')
+      ])
+    ).toEqual({
+      kind: 'attention',
+      title: '2 agents need your input · Codex finished',
+      body: 'a · b · c'
+    })
+  })
+
+  it('pluralises same-agent attention as "<n> <name> panes need your input"', () => {
+    expect(coalesceNotifications([f('attention', 'Claude Code', 'a'), f('attention', 'Claude Code', 'b')])).toEqual({
+      kind: 'attention',
+      title: '2 Claude Code panes need your input',
+      body: 'a · b'
+    })
+  })
+
+  it('drops empty pane titles from a grouped body', () => {
+    expect(coalesceNotifications([f('completion', 'Codex', ''), f('completion', 'Codex', 'b'), f('completion', 'Codex', '')])).toEqual({
+      kind: 'completion',
+      title: '3 Codex panes finished',
+      body: 'b'
+    })
   })
 })

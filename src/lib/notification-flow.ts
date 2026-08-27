@@ -84,3 +84,54 @@ export function notificationCopy(
     body: paneTitle
   }
 }
+
+export interface FiredNotification {
+  kind: NotificationKind
+  agentName: string
+  paneTitle: string
+}
+
+export interface CoalescedNotification {
+  kind: NotificationKind
+  title: string
+  body: string
+}
+
+/**
+ * Fold every notification that survived fire-time re-validation in one batch
+ * into ONE chime kind + ONE banner. A single entry is byte-identical to
+ * `notificationCopy` so today's banners never change. With several, attention
+ * outranks completion for the tone (a pane waiting on the user matters more
+ * than one that finished) and is listed first in the copy; each kind becomes
+ * one title segment, pluralised by agent name when every pane in the segment
+ * belongs to the same CLI ("2 Claude Code panes finished") and generically
+ * otherwise ("3 agents finished"). Empty pane titles carry no information in a
+ * group, so they are dropped from the body — only the single-entry path keeps
+ * an empty body, for parity with `notificationCopy`.
+ */
+export function coalesceNotifications(fired: readonly FiredNotification[]): CoalescedNotification | null {
+  const only = fired.length === 1 ? fired[0] : undefined
+  if (only !== undefined) return { kind: only.kind, ...notificationCopy(only.kind, only.agentName, only.paneTitle) }
+  if (fired.length === 0) return null
+  const attention = fired.filter((f) => f.kind === 'attention')
+  const completion = fired.filter((f) => f.kind === 'completion')
+  const segments = [attention, completion].filter((g) => g.length > 0).map(segmentTitle)
+  return {
+    kind: attention.length > 0 ? 'attention' : 'completion',
+    title: segments.join(' · '),
+    body: [...attention, ...completion]
+      .map((f) => f.paneTitle)
+      .filter((t) => t !== '')
+      .join(' · ')
+  }
+}
+
+// Only ever called with a non-empty, single-kind group — the caller's
+// `filter((g) => g.length > 0)` guarantees `group[0]` exists.
+function segmentTitle(group: readonly FiredNotification[]): string {
+  const first = group[0]
+  if (group.length === 1) return notificationCopy(first.kind, first.agentName, '').title
+  const sameAgent = group.every((f) => f.agentName === first.agentName)
+  const subject = sameAgent ? `${group.length} ${first.agentName} panes` : `${group.length} agents`
+  return first.kind === 'attention' ? `${subject} need your input` : `${subject} finished`
+}
