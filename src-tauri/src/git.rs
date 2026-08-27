@@ -547,9 +547,16 @@ pub fn remove_worktree(repo_cwd: &Path, worktree_path: &Path) -> Result<(), Stri
 pub fn branch_unmerged_count(repo_cwd: &Path, branch: &str) -> Result<u32, String> {
     let main_root = resolve_main_root(repo_cwd)?;
     let root = main_root.to_str().ok_or("non-UTF-8 repo root")?;
-    let range = format!("HEAD..{branch}");
+    rev_list_count(root, &format!("HEAD..{branch}"))
+}
+
+/// `git rev-list --count <range>` run at `root` (the main worktree, so `HEAD`
+/// in the range means main's HEAD). Shared by the ahead (`HEAD..branch`) and
+/// behind (`branch..HEAD`) probes; `rev-list` exists on every git we support,
+/// so it never needs the version fallback `merge_readiness` has.
+fn rev_list_count(root: &str, range: &str) -> Result<u32, String> {
     let out = git_command()
-        .args(["-C", root, "rev-list", "--count", &range])
+        .args(["-C", root, "rev-list", "--count", range])
         .output()
         .map_err(|e| format!("git not found: {e}"))?;
     if !out.status.success() {
@@ -559,6 +566,118 @@ pub fn branch_unmerged_count(repo_cwd: &Path, branch: &str) -> Result<u32, Strin
         .trim()
         .parse::<u32>()
         .map_err(|e| format!("could not parse rev-list count: {e}"))
+}
+
+/// Outcome of a dry-run merge of a branch into the main worktree's HEAD.
+/// Serde tag/content (same scheme as `PtyOut`) — must stay in lockstep with
+/// `MergeVerdict` in `src/tauri/git.ts`.
+#[derive(Clone, Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase", tag = "type", content = "payload")]
+pub enum MergeVerdict {
+    Clean,
+    /// Paths that would conflict, as `merge-tree --name-only` lists them.
+    Conflicts(Vec<String>),
+    /// This git cannot run the probe (`merge-tree --write-tree` is 2.38+).
+    /// Deliberately not an error: the renderer shows a "needs git ≥ 2.38"
+    /// line instead of silently dropping the footer as it does on real errors.
+    Unknown,
+}
+
+/// Lockstep with `MergeReadiness` in `src/tauri/git.ts`.
+#[derive(Clone, Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MergeReadiness {
+    pub verdict: MergeVerdict,
+    /// Commits on main's HEAD not on the branch (`branch..HEAD`). Computed for
+    /// every verdict, including `Unknown` — `rev-list` works on any git.
+    pub behind_main: u32,
+}
+
+/// Parse `git merge-tree --write-tree --name-only --no-messages` output.
+///
+/// The exit code alone cannot discriminate outcomes: a bad ref ALSO exits 1
+/// (message on stderr, empty stdout), exactly like a conflicted merge. The
+/// proof that a merge was actually attempted is the tree OID on line 1 — so
+/// an exit 1 without it is an error, never a verdict. Conflicting paths follow
+/// the OID one per line; parsing stops at the first blank line so a git that
+/// prints the informational block despite `--no-messages` cannot turn
+/// "Auto-merging a.txt" into a path. Exit 129 is git's "unknown option" — the
+/// pre-2.38 case, reported as `Unknown` rather than an error.
+pub fn parse_merge_tree(stdout: &str, code: Option<i32>) -> Result<MergeVerdict, String> {
+    if code == Some(129) {
+        return Ok(MergeVerdict::Unknown);
+    }
+    let mut lines = stdout.lines();
+    let first = lines.next().unwrap_or("").trim();
+    // 40 hex = sha1, 64 hex = sha256 repos. Lowercase only: git never prints
+    // uppercase, and "fatal: ..." must not slip through on length alone.
+    let is_oid = matches!(first.len(), 40 | 64)
+        && first
+            .bytes()
+            .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b));
+    if !is_oid {
+        return Err(format!("merge-tree: unexpected output: {first}"));
+    }
+    match code {
+        Some(0) => Ok(MergeVerdict::Clean),
+        Some(1) => Ok(MergeVerdict::Conflicts(
+            lines
+                .map(str::trim)
+                .take_while(|l| !l.is_empty())
+                .map(str::to_string)
+                .collect(),
+        )),
+        // `None` = killed by a signal; 128 = git's own fatal. Both mean the
+        // probe did not finish, whatever stdout says.
+        other => Err(format!("merge-tree exited with {other:?}")),
+    }
+}
+
+/// Would `branch` merge cleanly into the main worktree's HEAD, and how far
+/// behind it is — the "will this land?" signal for a worktree branch.
+///
+/// `merge-tree --write-tree` is a read-only dry run: it writes only loose tree
+/// objects into the object store and never touches any working tree or index,
+/// so it is safe to fire while an agent is mid-edit in that worktree. It MUST
+/// run at the main root (`resolve_main_root`): inside the worktree `HEAD` is
+/// the branch itself and the probe self-merges clean, every time. Branch refs
+/// are shared across worktrees, so `<branch>` resolves from the main root.
+/// The caller fires this only on an explicit selection, not on every refresh —
+/// each run leaves a few loose objects behind until the next `git gc`.
+///
+/// On a parse failure, git's own stderr ("not something we can merge") wins
+/// over our generic line when it has one; the renderer fails open on any
+/// error (no footer line), so the message only ever reaches the console.
+pub fn merge_readiness(repo_cwd: &Path, branch: &str) -> Result<MergeReadiness, String> {
+    let main_root = resolve_main_root(repo_cwd)?;
+    let root = main_root.to_str().ok_or("non-UTF-8 repo root")?;
+    let out = git_command()
+        .args([
+            "-C",
+            root,
+            "merge-tree",
+            "--write-tree",
+            "--name-only",
+            "--no-messages",
+            "HEAD",
+            branch,
+        ])
+        .output()
+        .map_err(|e| format!("git not found: {e}"))?;
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    let verdict = parse_merge_tree(&stdout, out.status.code()).map_err(|parse_err| {
+        let stderr = String::from_utf8_lossy(&out.stderr).trim().to_string();
+        if stderr.is_empty() {
+            parse_err
+        } else {
+            stderr
+        }
+    })?;
+    let behind_main = rev_list_count(root, &format!("{branch}..HEAD"))?;
+    Ok(MergeReadiness {
+        verdict,
+        behind_main,
+    })
 }
 
 /// UI-driven worktree removal: force-remove the directory and delete its branch.
@@ -656,6 +775,137 @@ mod tests {
         run_git(&wt, &["add", "."]);
         run_git(&wt, &["commit", "-m", "work"]);
         assert_eq!(branch_unmerged_count(&repo, "swarm/x").unwrap(), 1);
+    }
+
+    const OID: &str = "0123456789abcdef0123456789abcdef01234567";
+
+    #[test]
+    fn parse_merge_tree_clean_is_one_oid_line_exit_0() {
+        assert_eq!(
+            parse_merge_tree(&format!("{OID}\n"), Some(0)).unwrap(),
+            MergeVerdict::Clean
+        );
+    }
+
+    #[test]
+    fn parse_merge_tree_conflicts_lists_paths_after_oid() {
+        let v = parse_merge_tree(&format!("{OID}\na.txt\nsrc/b.ts\n"), Some(1)).unwrap();
+        assert_eq!(
+            v,
+            MergeVerdict::Conflicts(vec!["a.txt".into(), "src/b.ts".into()])
+        );
+    }
+
+    #[test]
+    fn parse_merge_tree_stops_at_blank_line_even_if_messages_leak() {
+        // --no-messages suppresses this block, but a future git that prints it
+        // anyway must not turn "Auto-merging a.txt" into a conflicting path.
+        let out = format!("{OID}\na.txt\n\nAuto-merging a.txt\nCONFLICT (content): a.txt\n");
+        assert_eq!(
+            parse_merge_tree(&out, Some(1)).unwrap(),
+            MergeVerdict::Conflicts(vec!["a.txt".into()])
+        );
+    }
+
+    #[test]
+    fn parse_merge_tree_exit_129_means_old_git() {
+        assert_eq!(
+            parse_merge_tree("", Some(129)).unwrap(),
+            MergeVerdict::Unknown
+        );
+    }
+
+    #[test]
+    fn parse_merge_tree_exit_1_without_oid_is_an_error_not_a_conflict() {
+        // Bad ref: exit 1 + empty stdout (message on stderr). Exit code alone
+        // cannot discriminate — the OID on line 1 is the proof of a merge attempt.
+        assert!(parse_merge_tree("", Some(1)).is_err());
+        assert!(parse_merge_tree("fatal: nope\n", Some(0)).is_err());
+        assert!(parse_merge_tree(&format!("{OID}\n"), None).is_err());
+        assert!(parse_merge_tree(&format!("{OID}\n"), Some(128)).is_err());
+    }
+
+    #[test]
+    fn merge_readiness_serde_shape_matches_renderer_union() {
+        // Lockstep with `MergeVerdict` / `MergeReadiness` in src/tauri/git.ts.
+        let clean = MergeReadiness {
+            verdict: MergeVerdict::Clean,
+            behind_main: 0,
+        };
+        assert_eq!(
+            serde_json::to_string(&clean).unwrap(),
+            r#"{"verdict":{"type":"clean"},"behindMain":0}"#
+        );
+        let conflicts = MergeReadiness {
+            verdict: MergeVerdict::Conflicts(vec!["a".into()]),
+            behind_main: 2,
+        };
+        assert_eq!(
+            serde_json::to_string(&conflicts).unwrap(),
+            r#"{"verdict":{"type":"conflicts","payload":["a"]},"behindMain":2}"#
+        );
+        let unknown = MergeReadiness {
+            verdict: MergeVerdict::Unknown,
+            behind_main: 0,
+        };
+        assert_eq!(
+            serde_json::to_string(&unknown).unwrap(),
+            r#"{"verdict":{"type":"unknown"},"behindMain":0}"#
+        );
+    }
+
+    #[test]
+    fn merge_readiness_tracks_main_and_worktree_edits() {
+        let tmp = tempfile::tempdir().unwrap();
+        let repo = tmp.path().join("repo");
+        std::fs::create_dir_all(&repo).unwrap();
+        init_repo(&repo);
+        let created = create_worktree(&repo, "swarm/m").unwrap();
+        let wt = std::path::PathBuf::from(&created.path);
+
+        // Fresh branch == main HEAD: clean, nothing behind.
+        let r = merge_readiness(&repo, "swarm/m").unwrap();
+        assert_eq!(
+            r,
+            MergeReadiness {
+                verdict: MergeVerdict::Clean,
+                behind_main: 0
+            }
+        );
+
+        // Main advances on an unrelated file: still clean, one commit behind.
+        std::fs::write(repo.join("other.txt"), "main").unwrap();
+        run_git(&repo, &["add", "."]);
+        run_git(&repo, &["commit", "-q", "-m", "main other"]);
+        let r = merge_readiness(&repo, "swarm/m").unwrap();
+        assert_eq!(
+            r,
+            MergeReadiness {
+                verdict: MergeVerdict::Clean,
+                behind_main: 1
+            }
+        );
+
+        // Both sides edit README.md: one conflict, two behind. Called FROM the
+        // worktree path to prove resolve_main_root keeps HEAD = main's HEAD
+        // (a merge-tree run with the worktree as cwd would self-merge clean).
+        std::fs::write(wt.join("README.md"), "wt").unwrap();
+        run_git(&wt, &["add", "."]);
+        run_git(&wt, &["commit", "-q", "-m", "wt readme"]);
+        std::fs::write(repo.join("README.md"), "main").unwrap();
+        run_git(&repo, &["add", "."]);
+        run_git(&repo, &["commit", "-q", "-m", "main readme"]);
+        let r = merge_readiness(&wt, "swarm/m").unwrap();
+        assert_eq!(
+            r,
+            MergeReadiness {
+                verdict: MergeVerdict::Conflicts(vec!["README.md".into()]),
+                behind_main: 2
+            }
+        );
+
+        // Unknown branch: an error (renderer fails open to "no line"), never a verdict.
+        assert!(merge_readiness(&repo, "swarm/nope").is_err());
     }
 
     #[test]

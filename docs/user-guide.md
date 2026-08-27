@@ -53,7 +53,7 @@ Two rules protect your work: closing a pane or workspace **never deletes a workt
 
 ## The Git panel
 
-The **Git** tab in the right panel shows, for the focused pane: its worktree and branch (and which agent owns each branch), changed files with an inline diff, and how many commits it is ahead of the main line. It follows your focus between panes.
+The **Git** tab in the right panel shows, for the focused pane: its worktree and branch (and which agent owns each branch), changed files with an inline diff, and how many commits it is ahead of the main line. It follows your focus between panes. For a worktree branch, a footer line also tells you whether it **merges cleanly into the main branch** or lists the conflicting files, plus how many commits it is behind — a dry run that never touches your files (needs git ≥ 2.38).
 
 ## Web preview
 

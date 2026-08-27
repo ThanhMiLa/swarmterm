@@ -207,6 +207,18 @@ pub async fn git_branch_unmerged_count(repo_root: String, branch: String) -> Res
 }
 
 #[tauri::command]
+pub async fn git_merge_readiness(
+    repo_root: String,
+    branch: String,
+) -> Result<crate::git::MergeReadiness, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        crate::git::merge_readiness(std::path::Path::new(&repo_root), &branch)
+    })
+    .await
+    .map_err(|e| format!("git task failed: {e}"))?
+}
+
+#[tauri::command]
 pub async fn git_create_worktree(
     repo_root: String,
     branch: String,

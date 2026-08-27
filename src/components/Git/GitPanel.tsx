@@ -3,8 +3,24 @@ import { useEffect, useMemo, type ReactElement } from 'react'
 import { useAppStore, selectActiveWorkspace } from '@/store/app-store'
 import { collectLeaves, findLeaf } from '@/lib/layout-tree'
 import { useGitStore } from '@/store/git-store'
+import { cn } from '@/lib/utils'
+import {
+  formatMergeReadiness,
+  mergeReadinessTitle,
+  mergeReadinessTone,
+  mainBranchOf,
+  type MergeTone,
+} from '@/lib/merge-readiness'
 import { WorktreeSelector } from './WorktreeSelector'
 import { ChangedFileList } from './ChangedFileList'
+
+// Same green/amber the changed-file list uses for M/A statuses — one palette
+// across the panel, so "clean" and "conflicts" read like the statuses above.
+const TONE_CLASS: Record<MergeTone, string> = {
+  ok: 'text-[#4ec994]',
+  warn: 'text-[#e2c08d]',
+  muted: 'text-muted-foreground',
+}
 
 export function GitPanel(): ReactElement {
   const loading = useGitStore((s) => s.loading)
@@ -12,7 +28,12 @@ export function GitPanel(): ReactElement {
   const worktrees = useGitStore((s) => s.worktrees)
   const currentCwd = useGitStore((s) => s.currentCwd)
   const commitInfo = useGitStore((s) => s.commitInfo)
+  const mergeReadiness = useGitStore((s) => s.mergeReadiness)
   const fetchWorktrees = useGitStore((s) => s.fetchWorktrees)
+  // Derived from the worktree list already in the store (no extra git call);
+  // only meaningful while a non-main worktree is selected, which is exactly
+  // when the store leaves `mergeReadiness` non-null.
+  const mainBranch = mainBranchOf(worktrees)
 
   // Branch -> agent id for the panes currently bound to a worktree, so the
   // selector can show which agent owns each worktree. Computed with useMemo
@@ -88,6 +109,20 @@ export function GitPanel(): ReactElement {
           {commitInfo.headSha && (
             <span className="ml-auto font-mono">HEAD: {commitInfo.headSha}</span>
           )}
+        </div>
+      )}
+
+      {/* Absent for the main worktree by construction (the store never probes
+          it) and on any probe failure (fail-open null) — never a stale verdict. */}
+      {mergeReadiness && (
+        <div
+          className={cn(
+            'shrink-0 border-t border-border bg-muted/30 px-2 py-1 text-[10px]',
+            TONE_CLASS[mergeReadinessTone(mergeReadiness)],
+          )}
+          title={mergeReadinessTitle(mergeReadiness, mainBranch)}
+        >
+          {formatMergeReadiness(mergeReadiness, mainBranch)}
         </div>
       )}
     </div>

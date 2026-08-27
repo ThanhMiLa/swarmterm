@@ -50,6 +50,21 @@ export function branchUnmergedCount(repoRoot: string, branch: string): Promise<n
   return invoke('git_branch_unmerged_count', { repoRoot, branch })
 }
 
+/** Serde tag/content — lockstep with `MergeVerdict` in src-tauri/src/git.rs. */
+export type MergeVerdict =
+  | { type: 'clean' }
+  | { type: 'conflicts'; payload: string[] }
+  | { type: 'unknown' }
+
+export interface MergeReadiness {
+  verdict: MergeVerdict
+  behindMain: number
+}
+
+export function mergeReadiness(repoRoot: string, branch: string): Promise<MergeReadiness> {
+  return invoke('git_merge_readiness', { repoRoot, branch })
+}
+
 export function clearWorktree(
   repoRoot: string,
   worktreePath: string,

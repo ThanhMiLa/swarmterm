@@ -5,12 +5,14 @@ import {
   getChangedFiles,
   getFileDiff,
   getCommitInfo,
+  mergeReadiness,
   type WorktreeInfo,
   type ChangedFile,
   type CommitInfo,
+  type MergeReadiness,
 } from '@/tauri/git'
 
-export type { WorktreeInfo, ChangedFile, CommitInfo }
+export type { WorktreeInfo, ChangedFile, CommitInfo, MergeReadiness }
 
 interface GitStore {
   panelOpen: boolean
@@ -22,6 +24,8 @@ interface GitStore {
   worktreeCounts: Map<string, number>
   changedFiles: ChangedFile[]
   commitInfo: CommitInfo | null
+  /** Null for the main worktree (never probed) and on any probe error (fail-open: no footer line). */
+  mergeReadiness: MergeReadiness | null
   expandedFiles: Set<string>
   fileDiffs: Map<string, string>
   loading: boolean
@@ -46,6 +50,7 @@ export const useGitStore = create<GitStore>((set, get) => ({
   worktreeCounts: new Map(),
   changedFiles: [],
   commitInfo: null,
+  mergeReadiness: null,
   expandedFiles: new Set(),
   fileDiffs: new Map(),
   loading: false,
@@ -77,6 +82,7 @@ export const useGitStore = create<GitStore>((set, get) => ({
       selectedWorktreePath: path,
       changedFiles: [],
       commitInfo: null,
+      mergeReadiness: null,
       expandedFiles: new Set(),
       fileDiffs: new Map(),
       loading: true,
@@ -94,6 +100,18 @@ export const useGitStore = create<GitStore>((set, get) => ({
         set({ error: String(e), loading: false })
       }
     })()
+    // Merge probe rides its own promise: `git merge-tree` can be slower than the
+    // file list and must never delay it. Main worktree ⇒ never asked (self-merge).
+    // Passing the worktree path as repoRoot is fine — the Rust side resolves the
+    // main root through `--git-common-dir`, so the probe still runs at main's HEAD.
+    const wt = get().worktrees.find((t) => t.path === path)
+    if (wt && !wt.isMain && wt.branch !== '(detached)') {
+      void mergeReadiness(path, wt.branch)
+        .then((r) => {
+          if (get().selectedWorktreePath === path) set({ mergeReadiness: r })
+        })
+        .catch(() => { /* fail-open: no footer line */ })
+    }
   },
 
   toggleFileExpand: (filePath) => {
@@ -120,6 +138,7 @@ export const useGitStore = create<GitStore>((set, get) => ({
       worktreeCounts: new Map(),
       changedFiles: [],
       commitInfo: null,
+      mergeReadiness: null,
       expandedFiles: new Set(),
       fileDiffs: new Map(),
     })

@@ -128,6 +128,7 @@ pub fn run() {
             commands::git_create_worktree,
             commands::git_clear_worktree,
             commands::git_branch_unmerged_count,
+            commands::git_merge_readiness,
             commands::ensure_repo_with_commit,
             preview::preview_open,
             preview::preview_navigate,
