@@ -13,12 +13,23 @@ export function inSpawnGrace(spawnedAt: number, now: number): boolean {
 }
 
 /** Steady-state idle with no new pty output since the last scan: don't even
- *  materialize the buffer text. This is what makes 300ms polling free. */
+ *  materialize the buffer text. This is what makes 300ms polling free.
+ *
+ *  A live hook mark disables the skip: hooks are clock-driven, not
+ *  output-driven, so both the arrival tick AND the TTL expiry must be
+ *  observed on a pane that emits nothing (Claude prints no new bytes when a
+ *  `working` mark silently expires after an Esc interrupt). */
 export function shouldSkipScreenScan(args: {
   state: AgentEngineState
   contentSeq: number
   lastScannedSeq: number
   pendingIdle: boolean
+  hookActive: boolean
 }): boolean {
-  return args.state === 'idle' && !args.pendingIdle && args.contentSeq === args.lastScannedSeq
+  return (
+    args.state === 'idle' &&
+    !args.pendingIdle &&
+    args.contentSeq === args.lastScannedSeq &&
+    !args.hookActive
+  )
 }

@@ -52,6 +52,7 @@ import { AgentStateDetector, type DetectorDeps } from '@/lib/agent-state/detecto
 import { manifestForAgent } from '@/lib/agent-state/manifests'
 import { useAgentStateStore } from '@/store/agent-state-store'
 import type { BufferView } from '@/lib/agent-state/snapshot'
+import type { AgentHookSignal } from '@/tauri/agent-state'
 
 export type { TerminalStatus }
 
@@ -1079,6 +1080,22 @@ export function getTerminalCwd(id: string): string | undefined {
 /** The agent template id this terminal was spawned with, if any. */
 export function getTerminalAgentId(id: string): string | undefined {
   return entries.get(id)?.config.agentId
+}
+
+/**
+ * Route one `agent:hook` event (App.tsx subscription) into the pane's detector.
+ * Gated on the Claude Code manifest, NOT on "has a detector": a `claude`
+ * launched by hand inside a Codex/Gemini/other agent pane inherits that pane's
+ * `SWARMTERM_SESSION` and would otherwise drive the wrong detector with edges
+ * the Codex screen never shows. Only the Claude Code manifest was tuned
+ * against these hooks (its visibleIdle/visibleBlocker flags are what
+ * `resolveHookState` arbitrates on), so every other pane keeps following its
+ * screen alone. Plain Terminal panes have no detector and fall through too.
+ */
+export function noteAgentHook(id: string, signal: AgentHookSignal): void {
+  const e = entries.get(id)
+  if (e?.detectorManifestId !== 'claude-code') return
+  e.detector?.noteHook(signal)
 }
 
 export function subscribeTerminalStatus(id: string, listener: () => void): () => void {

@@ -27,6 +27,7 @@ import {
   getTerminalAgentId,
   getTerminalCwd,
   isAnyTerminalFocused,
+  noteAgentHook,
   refitAttachedTerminals
 } from '@/lib/terminal-registry'
 import {
@@ -61,7 +62,7 @@ import { useTerminalTitleStore } from '@/store/terminal-title-store'
 import { useNotificationPrefStore } from '@/store/notification-pref-store'
 import { startNotificationWatch } from '@/lib/notification-watch'
 import { startAgentStateMirror } from '@/lib/agent-state-mirror'
-import { reportAgentState } from '@/tauri/agent-state'
+import { reportAgentState, onAgentHook } from '@/tauri/agent-state'
 import { playChime } from '@/lib/notification-sound'
 import { sendSystemNotification } from '@/tauri/notification'
 import { useTerminalSearchStore } from '@/store/terminal-search-store'
@@ -571,6 +572,15 @@ export default function App(): ReactElement {
   // and failures in a native dialog).
   useEffect(() => {
     const unlisten = onUpdateCheckRequested(() => void useUpdaterStore.getState().check(true))
+    return () => void unlisten.then((fn) => fn())
+  }, [])
+
+  // Claude Code hook edges (`swarmterm --hook` → POST /hook → `agent:hook`)
+  // feed the pane's detector directly. Mount-once and routed by terminalId so
+  // no per-pane component has to own a listener — the registry decides whether
+  // the pane's detector is one that understands hooks (Claude Code only).
+  useEffect(() => {
+    const unlisten = onAgentHook((e) => noteAgentHook(e.terminalId, e.signal))
     return () => void unlisten.then((fn) => fn())
   }, [])
 

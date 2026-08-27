@@ -1,5 +1,11 @@
 import { evaluateManifest } from '@/lib/agent-state/engine'
 import { inSpawnGrace, shouldSkipScreenScan, TICK_MS } from '@/lib/agent-state/detect-schedule'
+import {
+  isHookLive,
+  resolveHookState,
+  type HookMark,
+  type HookSignal
+} from '@/lib/agent-state/hook-signal'
 import { decideIdleHold, PENDING_IDLE_RECHECK_MS, type PendingIdle } from '@/lib/agent-state/pending-idle'
 import { buildSnapshot, type BufferView } from '@/lib/agent-state/snapshot'
 import type { AgentEngineState, Manifest } from '@/lib/agent-state/types'
@@ -40,6 +46,12 @@ export class AgentStateDetector {
   private spawnedAt: number
   private state: AgentEngineState = 'unknown'
   private pending: PendingIdle | null = null
+  /** Latest Claude Code hook edge (`agent:hook`). Hooks are exact — Claude
+   *  itself reported the turn ending or a permission prompt — whereas the
+   *  scrape is a guess over a redraw, so a live mark overrules the scrape
+   *  (`resolveHookState`). Only its TTL retires it: Claude fires no Stop on
+   *  an Esc interrupt, so nothing else ever would. */
+  private hook: HookMark | null = null
   private timer: unknown = null
   private exited = false
   private disposed = false
@@ -66,6 +78,21 @@ export class AgentStateDetector {
     this.oscProgress = sanitizeOsc(payload)
   }
 
+  /** A Claude Code hook fired for this pane. `forget` (SessionEnd) drops the
+   *  mark rather than being one — the pane is a plain shell again and the
+   *  scrape must rule. The mark is stamped with the detector clock, NOT the
+   *  event's own `atMs`: one clock drives both the TTL and the tick
+   *  scheduler (which keeps the manual-clock harness honest), and Tauri
+   *  events are FIFO so the ordering the timestamp would encode is already
+   *  guaranteed. Then tick immediately: the edge should land now, not up to
+   *  300 ms later — and on an idle pane with unchanged output the regular
+   *  cadence would have skipped the scan entirely. */
+  noteHook(signal: HookSignal | 'forget'): void {
+    if (this.disposed || this.exited) return
+    this.hook = signal === 'forget' ? null : { signal, atMs: this.deps.now() }
+    this.schedule(0)
+  }
+
   /** Pty exited or errored: stop detecting, drop to unknown so the UI falls
    *  back to the plain activity dot instead of freezing a stale state. Clear
    *  the pending timer too — tick()'s exited early-return already declines to
@@ -74,6 +101,7 @@ export class AgentStateDetector {
   noteExit(): void {
     this.exited = true
     this.pending = null
+    this.hook = null
     this.setState('unknown')
     if (this.timer !== null) this.deps.clearTimer(this.timer)
     this.timer = null
@@ -89,6 +117,8 @@ export class AgentStateDetector {
     this.oscTitle = ''
     this.oscProgress = ''
     this.pending = null
+    // A respawned pty must not inherit a stale `blocked` from the old one.
+    this.hook = null
     this.exited = false
     this.spawnedAt = this.deps.now()
     this.lastScannedSeq = -1
@@ -129,7 +159,8 @@ export class AgentStateDetector {
         state: this.state,
         contentSeq: this.contentSeq,
         lastScannedSeq: this.lastScannedSeq,
-        pendingIdle: this.pending !== null
+        pendingIdle: this.pending !== null,
+        hookActive: isHookLive(this.hook, now)
       })
     ) {
       this.schedule(TICK_MS)
@@ -152,15 +183,28 @@ export class AgentStateDetector {
       })
       this.lastScannedSeq = seq
       if (!verdict.skip) {
-        const decision = decideIdleHold({
-          prev: this.state,
-          next: verdict,
-          pending: this.pending,
-          now,
-          processExited: this.exited
-        })
-        this.pending = decision.pending
-        if (decision.publish) verdictState = verdict.state
+        // Hook precedence runs BEFORE the idle hold: the hold exists to
+        // confirm a scraped idle over three quiet rechecks, and a Stop hook
+        // IS that confirmation — so it publishes idle on this very tick.
+        // Every other resolution still goes through the hold with the
+        // resolved state substituted, so a hook-working verdict over a
+        // false-idle frame is seen as working (no hold opens) while a
+        // scrape-only idle after an expired mark is held as before.
+        const resolved = resolveHookState({ hook: this.hook, scrape: verdict, now })
+        if (resolved.bypassIdleHold) {
+          this.pending = null
+          verdictState = resolved.state
+        } else {
+          const decision = decideIdleHold({
+            prev: this.state,
+            next: { ...verdict, state: resolved.state },
+            pending: this.pending,
+            now,
+            processExited: this.exited
+          })
+          this.pending = decision.pending
+          if (decision.publish) verdictState = resolved.state
+        }
       }
     } catch (err) {
       // A broken rule must degrade to the old activity-dot behavior, never

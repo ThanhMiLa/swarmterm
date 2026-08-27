@@ -10,9 +10,16 @@ describe('inSpawnGrace', () => {
 
 describe('shouldSkipScreenScan', () => {
   it('skips only when idle with no new output and no pending hold', () => {
-    expect(shouldSkipScreenScan({ state: 'idle', contentSeq: 5, lastScannedSeq: 5, pendingIdle: false })).toBe(true)
-    expect(shouldSkipScreenScan({ state: 'idle', contentSeq: 6, lastScannedSeq: 5, pendingIdle: false })).toBe(false)
-    expect(shouldSkipScreenScan({ state: 'working', contentSeq: 5, lastScannedSeq: 5, pendingIdle: false })).toBe(false)
-    expect(shouldSkipScreenScan({ state: 'idle', contentSeq: 5, lastScannedSeq: 5, pendingIdle: true })).toBe(false)
+    expect(shouldSkipScreenScan({ state: 'idle', contentSeq: 5, lastScannedSeq: 5, pendingIdle: false, hookActive: false })).toBe(true)
+    expect(shouldSkipScreenScan({ state: 'idle', contentSeq: 6, lastScannedSeq: 5, pendingIdle: false, hookActive: false })).toBe(false)
+    expect(shouldSkipScreenScan({ state: 'working', contentSeq: 5, lastScannedSeq: 5, pendingIdle: false, hookActive: false })).toBe(false)
+    expect(shouldSkipScreenScan({ state: 'idle', contentSeq: 5, lastScannedSeq: 5, pendingIdle: true, hookActive: false })).toBe(false)
+  })
+
+  it('never skips while a hook is active', () => {
+    // A live hook must be observed on its arrival tick AND on the tick its TTL
+    // expires — even on a pane that emits nothing, which is exactly the case
+    // the idle+unchanged-seq skip was built for.
+    expect(shouldSkipScreenScan({ state: 'idle', contentSeq: 5, lastScannedSeq: 5, pendingIdle: false, hookActive: true })).toBe(false)
   })
 })
