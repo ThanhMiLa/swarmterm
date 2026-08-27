@@ -71,6 +71,13 @@ pub fn run() {
             // instead of dropping a .mcp.json into every project. One-shot,
             // idempotent, log-only.
             crate::mcp::config::register_user_scope(app.handle());
+            // Register `swarmterm --hook` under Claude Code's hook events in
+            // ~/.claude/settings.json so Claude Code panes report exact
+            // working/blocked/idle edges instead of relying on screen-scrape
+            // alone. Additive on `hooks` (the user's own groups survive),
+            // one-shot, idempotent, log-only. Must run BEFORE any pane launches
+            // `claude`: hooks are snapshotted at session start.
+            crate::hook::install::register(app.handle());
             // Boot the MCP server. Any failure is logged and swallowed: browser
             // preview via MCP just won't work for this run, but Swarmterm as a
             // whole still functions.

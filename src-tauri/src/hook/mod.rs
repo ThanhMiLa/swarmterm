@@ -25,6 +25,7 @@
 //! cwd) must not leave the pane, so it is never even read into a struct.
 
 pub mod post;
+pub mod install;
 
 /// What a hook event means for the pane's agent state. `Forget` = drop hook
 /// authority (SessionStart/SessionEnd) so the screen-scraper resumes alone:
