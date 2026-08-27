@@ -150,7 +150,7 @@ War Room abilities only work for panes you dragged into a room, worktree abiliti
 | `⌘/Ctrl + Enter` | Create the workspace from the composer |
 | `⌘/Ctrl + C` · `⌘/Ctrl + V` | Copy (when text is selected) · paste |
 | `⌘/Ctrl + Click` | Open a file path in your editor, at that line |
-| `⌘/Ctrl + F` | Find in the focused terminal · `Esc` closes it |
+| `⌘/Ctrl + F` | Find in the focused terminal · press again to re-select the query · `Esc` closes it |
 | `⌘/Ctrl + Shift + J` | Jump to the next pane needing attention (longest-waiting blocked → done → working → idle) |
 
 On macOS the modifier is `⌘`, which deliberately leaves `Ctrl + B` to the terminal for tmux.
@@ -176,3 +176,4 @@ On macOS the modifier is `⌘`, which deliberately leaves `Ctrl + B` to the term
 - **Claude Code hooks are written at every launch** — the `swarmterm --hook` entries in `~/.claude/settings.json` are re-checked on each boot (no write when nothing changed; your own hooks are left alone).
 - **`claude` started by hand in a plain Terminal pane gets no coloured dot** — only panes created as Claude Code agents are wired to the hooks.
 - **After Esc (interrupt) a Claude Code pane can read "working" for up to 30 s** — Claude fires no Stop hook on an interrupt, so the working signal has to time out before screen reading takes over again.
+- **Find widget with regex on shows "Invalid regex" while you type** — a pattern that does not parse yet (for example `foo(`) reads **Invalid regex** in the counter and clears the previous highlights until the pattern is valid again. Toggle regex off to search it as literal text.

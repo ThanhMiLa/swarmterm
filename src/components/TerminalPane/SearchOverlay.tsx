@@ -11,6 +11,9 @@ import {
   type TerminalSearchOptions
 } from '@/lib/terminal-registry'
 import { cn } from '@/lib/utils'
+import { matchSummary, validateSearchQuery, type SearchQueryError } from '@/lib/terminal-search'
+import { matchAppShortcut } from '@/lib/keybindings'
+import { isMacPlatform } from '@/lib/platform'
 
 interface SearchOverlayProps {
   terminalId: string
@@ -25,18 +28,8 @@ interface SearchToggles {
 
 const NO_TOGGLES: SearchToggles = { caseSensitive: false, wholeWord: false, regex: false }
 
-/**
- * "k of n" / "No results" summary. xterm's SearchAddon reports `resultIndex:
- * -1` once the match count exceeds its internal highlight cap (1000 by
- * default — see `ISearchResultChangeEvent`) instead of a real 0-based index,
- * so that case renders the bare total rather than a nonsensical "0 of n".
- */
-function matchSummary(query: string, resultIndex: number, resultCount: number): string {
-  if (query === '') return ''
-  if (resultCount === 0) return 'No results'
-  if (resultIndex < 0) return `${resultCount} results`
-  return `${resultIndex + 1} of ${resultCount}`
-}
+// Evaluated once at module load, not per keystroke (same idiom as App.tsx).
+const isMac = isMacPlatform()
 
 /**
  * VS Code-style find widget for one terminal pane. `TerminalPane` mounts this
@@ -51,6 +44,7 @@ export function SearchOverlay({ terminalId }: SearchOverlayProps): ReactElement 
   const [toggles, setToggles] = useState<SearchToggles>(NO_TOGGLES)
   const [resultIndex, setResultIndex] = useState(-1)
   const [resultCount, setResultCount] = useState(0)
+  const [error, setError] = useState<SearchQueryError | null>(null)
 
   // Autofocus on mount, and again for every later Cmd/Ctrl+F while this
   // overlay stays mounted: App.tsx calls `open(terminalId)` again with the
@@ -86,8 +80,22 @@ export function SearchOverlay({ terminalId }: SearchOverlayProps): ReactElement 
       // to be reset here rather than left to the subscription above.
       setResultIndex(-1)
       setResultCount(0)
+      setError(null)
       return
     }
+    const err = validateSearchQuery(q, opts.regex)
+    if (err) {
+      // The addon would wipe the highlights and then throw before firing
+      // onDidChangeResults (the registry swallows it) — take the same reset
+      // path as the empty query so the previous match's selection and count
+      // go too, instead of freezing on the last valid query's "k of n".
+      setError(err)
+      clearTerminalSearch(terminalId)
+      setResultIndex(-1)
+      setResultCount(0)
+      return
+    }
+    setError(null)
     const searchOpts: TerminalSearchOptions = { ...opts, incremental }
     if (direction === 'next') terminalSearchNext(terminalId, q, searchOpts)
     else terminalSearchPrevious(terminalId, q, searchOpts)
@@ -136,6 +144,17 @@ export function SearchOverlay({ terminalId }: SearchOverlayProps): ReactElement 
           // xterm's listener there — this guards against anything else on
           // the way up, e.g. a future document-level shortcut).
           e.stopPropagation()
+          if (matchAppShortcut(e, isMac) === 'find-in-terminal') {
+            // App.tsx's capture-phase handler stands down while an <input>
+            // has focus (terminal-focus.ts) and returns WITHOUT
+            // preventDefault, so a repeat Cmd/Ctrl+F would fall to the
+            // webview default (WebView2's own find bar on Windows). Own it
+            // here: re-select the query, like VS Code. No focus() — the
+            // input already has it.
+            e.preventDefault()
+            e.currentTarget.select()
+            return
+          }
           if (e.key === 'Enter') {
             e.preventDefault()
             handleStep(e.shiftKey ? 'previous' : 'next')
@@ -148,8 +167,15 @@ export function SearchOverlay({ terminalId }: SearchOverlayProps): ReactElement 
         aria-label="Find in terminal"
         className="h-6 w-40 rounded border border-transparent bg-[#3c3c3c] px-1.5 text-[#cccccc] placeholder:text-[#8c8c8c] outline-none focus:border-[#0078d4]"
       />
-      <span className="min-w-[3.5rem] shrink-0 whitespace-nowrap px-1 text-center text-[#a0a0a0]">
-        {matchSummary(query, resultIndex, resultCount)}
+      <span
+        // Error tint is VS Code's errorForeground (Dark Modern), matching the
+        // hard-coded widget palette above.
+        className={cn(
+          'min-w-[3.5rem] shrink-0 whitespace-nowrap px-1 text-center',
+          error ? 'text-[#f48771]' : 'text-[#a0a0a0]',
+        )}
+      >
+        {matchSummary(query, resultIndex, resultCount, error)}
       </span>
       <ToggleButton label="Match case" pressed={toggles.caseSensitive} onClick={() => handleToggle('caseSensitive')}>
         <CaseSensitive className="h-3.5 w-3.5" />
