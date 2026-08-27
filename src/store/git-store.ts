@@ -11,6 +11,7 @@ import {
   type CommitInfo,
   type MergeReadiness,
 } from '@/tauri/git'
+import { matchWorktreeForCwd } from '@/lib/worktree-match'
 
 export type { WorktreeInfo, ChangedFile, CommitInfo, MergeReadiness }
 
@@ -149,8 +150,10 @@ export const useGitStore = create<GitStore>((set, get) => ({
         set({ worktrees: [], loading: false })
         return
       }
-      // Auto-select the worktree whose path is a prefix of (or equals) cwd.
-      const match = trees.find(t => cwd.startsWith(t.path)) ?? trees[0]
+      // Auto-select the worktree that owns cwd. Not a bare startsWith: git lists
+      // main first and `<repo>.worktrees/<slug>` begins with `<repo>`, so agent
+      // panes used to land on main (and Windows `C:\` vs `C:/` never matched).
+      const match = matchWorktreeForCwd(trees, cwd) ?? trees[0]
       set({ worktrees: trees, loading: false })
       get().selectWorktree(match.path)
       // Fill per-worktree change counts in parallel (best-effort, non-blocking).
