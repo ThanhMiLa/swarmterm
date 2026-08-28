@@ -44,6 +44,21 @@ describe('noteInput', () => {
     expect(after.lastKeyAt['t1']).toBe(Date.now())
   })
 
+  it('arms dirty on a bracketed paste, single- or multi-line, until a real Enter', () => {
+    const s = useTerminalTypingStore.getState()
+    s.noteInput('t1', '\x1b[200~deploy prod\x1b[201~')
+    expect(useTerminalTypingStore.getState().dirty['t1']).toBe(true)
+    s.clearTyping('t1')
+    vi.advanceTimersByTime(500)
+    s.noteInput('t1', '\x1b[200~line one\rline two\x1b[201~')
+    const after = useTerminalTypingStore.getState()
+    expect(after.dirty['t1']).toBe(true)
+    expect(after.lastKeyAt['t1']).toBe(Date.now())
+    // The Enter the user presses AFTER the paste is the submit that releases.
+    s.noteInput('t1', '\r')
+    expect(useTerminalTypingStore.getState().dirty['t1']).toBeUndefined()
+  })
+
   it('keeps terminals independent', () => {
     const s = useTerminalTypingStore.getState()
     s.noteInput('t1', 'a')
