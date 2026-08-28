@@ -93,6 +93,8 @@ The left half tells you whether Claude actually connected to Swarmterm — and t
 
 Toggle it in **Settings → Terminal**. Swarmterm merge-writes the entry into `~/.claude/settings.json` and never touches a status line you already have.
 
+The pane header mirrors the percentage as a small `ctx 63%` chip (same amber / red bands) once the first reply lands, so you can compare panes without reading each status line. It needs the status line enabled — that is where the number comes from — and disappears on `/clear`, when `claude` exits, and on very narrow panes.
+
 ## Terminal essentials
 
 - **Real PTYs with 24-bit truecolor** — agent CLIs, emoji and box drawing render exactly as in your normal terminal, and IMEs (Vietnamese Telex, CJK) work without dropped characters.

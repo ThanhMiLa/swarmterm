@@ -15,6 +15,7 @@ import { useAgentAvailabilityStore } from '@/store/agent-availability-store'
 import { KNOWN_SHELLS, visibleShells, type ShellId } from '@/lib/terminal-pref'
 import { useShellAvailabilityStore } from '@/store/shell-availability-store'
 import { resolveHeaderLevel, shortenPath, type HeaderLevel } from '@/lib/header-layout'
+import { contextBand, contextUsageTitle, formatContextUsage, type ContextBand } from '@/lib/context-usage'
 import { cn } from '@/lib/utils'
 
 interface PaneHeaderProps {
@@ -47,6 +48,19 @@ interface PaneHeaderProps {
   dragAttributes: DraggableAttributes
   /** Branch of the bound git worktree, shown as a chip; absent for normal panes. */
   worktreeBranch?: string
+  /** Context-window % from Claude Code's status line (S15); absent ⇒ no chip. */
+  ctxPct?: number
+}
+
+// Band → colour. Amber is VS Code Dark Modern `editorWarning.foreground`, red is
+// the StateDot / AttentionBadge danger red, so the chip speaks the same colour
+// language as the rest of the chrome AND as the in-pane status line, whose
+// `render.rs::ctx_color` flips at the very same 70 / 90 thresholds — one number
+// must never show two verdicts.
+const CTX_BAND_CLASS: Record<ContextBand, string> = {
+  normal: 'text-muted-foreground',
+  warn: 'text-[#CCA700]',
+  danger: 'text-[#F14C4C]'
 }
 
 /**
@@ -56,7 +70,7 @@ interface PaneHeaderProps {
  * `resolveHeaderLevel`. A ResizeObserver on the header row drives the level.
  */
 export function PaneHeader(props: PaneHeaderProps): React.ReactElement {
-  const { agentId, shellId, resolvedCwd, hasCwdOverride, worktreeBranch } = props
+  const { agentId, shellId, resolvedCwd, hasCwdOverride, worktreeBranch, ctxPct } = props
   const agent = templateById(agentId)
   const agentLabel = agent.name
   const shellLabel = KNOWN_SHELLS.find((s) => s.id === shellId)?.label ?? KNOWN_SHELLS[0].label
@@ -227,6 +241,21 @@ export function PaneHeader(props: PaneHeaderProps): React.ReactElement {
               {worktreeBranch}
             </span>
           )}
+        </span>
+      )}
+
+      {/* Context usage — Claude Code's own status-line number mirrored into the
+          chrome. Rides the folder-path threshold so narrow panes stay exactly as
+          they were; tabular-nums so the width does not jitter every turn. */}
+      {ctxPct !== undefined && level.showFolderPath && (
+        <span
+          title={contextUsageTitle(ctxPct)}
+          className={cn(
+            'flex shrink-0 items-center rounded bg-accent px-1.5 py-0.5 text-[11px] tabular-nums',
+            CTX_BAND_CLASS[contextBand(ctxPct)]
+          )}
+        >
+          {formatContextUsage(ctxPct)}
         </span>
       )}
 

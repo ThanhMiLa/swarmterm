@@ -7,6 +7,7 @@ import { useAppStore, type ClearTarget } from '@/store/app-store'
 import { useTerminalPrefStore } from '@/store/terminal-pref-store'
 import { useTerminalTitleStore } from '@/store/terminal-title-store'
 import { useTerminalSearchStore } from '@/store/terminal-search-store'
+import { useContextUsageStore } from '@/store/context-usage-store'
 import { Button } from '@/components/ui/button'
 import { HeldDeliveryPill } from '@/components/TerminalPane/HeldDeliveryPill'
 import { SearchOverlay } from '@/components/TerminalPane/SearchOverlay'
@@ -81,6 +82,9 @@ export function TerminalPane({
   const { id: leafId, terminalId } = leaf
 
   const agentTitle = useTerminalTitleStore((s) => s.titles[terminalId])
+  // Per-terminal selector: only this pane wakes when ITS number changes, and the
+  // store returns the same state on a no-change sample, so streaming stays quiet.
+  const ctxPct = useContextUsageStore((s) => s.byId[terminalId])
   // Narrow boolean selector: only THIS pane re-renders when the find overlay
   // opens/closes for it, not every pane on every keystroke in some other one
   // (the overlay owns its own query/toggle state, not the store).
@@ -323,6 +327,7 @@ export function TerminalPane({
         dragAttributes={dragAttributes}
         worktreeBranch={leaf.worktreeBranch}
         agentTitle={agentTitle}
+        ctxPct={ctxPct}
       />
 
       <ClearWorktreeDialog

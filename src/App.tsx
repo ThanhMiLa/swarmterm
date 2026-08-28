@@ -17,6 +17,7 @@ import { useNavbarVisibilityStore } from '@/store/navbar-visibility-store'
 import { useStatuslineStore } from '@/store/statusline-store'
 import { useAgentStateStore } from '@/store/agent-state-store'
 import { useShellMarkStore } from '@/store/shell-mark-store'
+import { useContextUsageStore } from '@/store/context-usage-store'
 import { matchAppShortcut } from '@/lib/keybindings'
 import { jumpToAttention } from '@/lib/attention-jump'
 import { collectLeaves, findLeaf } from '@/lib/layout-tree'
@@ -65,7 +66,7 @@ import { useNotificationPrefStore } from '@/store/notification-pref-store'
 import { startNotificationWatch } from '@/lib/notification-watch'
 import { startAgentStateMirror } from '@/lib/agent-state-mirror'
 import { startGitRefreshWatch } from '@/lib/git-refresh'
-import { reportAgentState, onAgentHook } from '@/tauri/agent-state'
+import { reportAgentState, onAgentHook, onAgentContext } from '@/tauri/agent-state'
 import { playChime } from '@/lib/notification-sound'
 import { sendSystemNotification } from '@/tauri/notification'
 import { useTerminalSearchStore } from '@/store/terminal-search-store'
@@ -584,6 +585,15 @@ export default function App(): ReactElement {
   // the pane's detector is one that understands hooks (Claude Code only).
   useEffect(() => {
     const unlisten = onAgentHook((e) => noteAgentHook(e.terminalId, e.signal))
+    return () => void unlisten.then((fn) => fn())
+  }, [])
+
+  // Context-window usage (`swarmterm --statusline` → GET /status?ctx → `agent:context`)
+  // lands in its own store, keyed by terminalId, so only the pane whose number
+  // changed re-renders its chip. `pct: null` clears it — Rust publishes that on
+  // every Forget, and the store makes a null-on-nothing a no-op.
+  useEffect(() => {
+    const unlisten = onAgentContext((e) => useContextUsageStore.getState().apply(e.terminalId, e.pct))
     return () => void unlisten.then((fn) => fn())
   }, [])
 

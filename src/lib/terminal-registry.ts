@@ -38,6 +38,7 @@ import { ActivityTracker } from '@/lib/activity-tracker'
 import { useTerminalActivityStore } from '@/store/terminal-activity-store'
 import { useTerminalTypingStore } from '@/store/terminal-typing-store'
 import { useShellMarkStore } from '@/store/shell-mark-store'
+import { useContextUsageStore } from '@/store/context-usage-store'
 import {
   breaksSegment,
   diffToEdit,
@@ -830,6 +831,11 @@ function getOrCreate(id: string): Entry {
       // The pty behind the OSC 133 marks is gone: a `running` left here would
       // never see its D, and the next shell's first `D;0` must not close it.
       useShellMarkStore.getState().clear(id)
+      // Rust forgets the context % on kill/read_loop too, but the renderer
+      // clears as well so a respawned pane never paints the dead session's
+      // number for the window between Exit and the next `agent:context` —
+      // belt-and-braces, like mcp_clients.
+      useContextUsageStore.getState().clear(id)
     }
   })
 
@@ -915,6 +921,8 @@ export function disposeTerminal(id: string): void {
   useTerminalActivityStore.getState().clear(id)
   useTerminalTypingStore.getState().clearTyping(id)
   useShellMarkStore.getState().clear(id)
+  // …and the context chip, same reason.
+  useContextUsageStore.getState().clear(id)
   // Same ordering concern as activityTracker above: dispose() clears the
   // detector's pending timer first so a late tick can't re-publish a state
   // for an id the store is about to drop.
@@ -1042,6 +1050,8 @@ export function retryTerminal(id: string): void {
   // And to the OSC 133 state: a `running` left over from the dead pty would
   // turn the new shell's first `D;0` into a finished command.
   useShellMarkStore.getState().clear(id)
+  // …and the context chip, same reason.
+  useContextUsageStore.getState().clear(id)
   // And to the detector: it holds evidence (title/progress/pending-idle) from
   // the dead pty, which the new one hasn't produced.
   entry.detector?.reset()
@@ -1074,6 +1084,8 @@ export function respawnTerminal(id: string, config: AttachConfig): void {
   // And to the OSC 133 state: a `running` left over from the dead pty would
   // turn the new shell's first `D;0` into a finished command.
   useShellMarkStore.getState().clear(id)
+  // …and the context chip, same reason.
+  useContextUsageStore.getState().clear(id)
   // And to the detector: it holds evidence (title/progress/pending-idle) from
   // the dead pty, which the new one hasn't produced.
   entry.detector?.reset()
