@@ -39,7 +39,7 @@ A background agent pane chimes when it blocks (needs your input) or finishes —
 
 A system notification (banner) only appears while the Swarmterm window is **unfocused** — it's sent silent, since the chime is already the audible part; focus the window and you get the chime alone. macOS asks for notification permission the first time a banner would show, and declining it still leaves the chime working.
 
-Turn channels on or off in **Settings → Notifications**: **Sound** and **System notifications** apply everywhere, and a **per-agent** toggle below silences one CLI without touching the others — every agent with a state dot gets a row, and all default to on. Plain Terminal panes never notify; there's no agent state to notify about.
+Turn channels on or off in **Settings → Notifications**: **Sound** and **System notifications** apply everywhere, and a **per-agent** toggle below silences one CLI without touching the others — every agent with a state dot gets a row, and all default to on. A plain Terminal pane has no agent state, but once its shell has **shell integration** set up (see below) it chimes the same way when a command that ran for more than 10 seconds finishes while you were elsewhere — the banner reads "Command finished (42s)" or "Command failed (exit 1 · 42s)" — and the **Terminal** row in the per-agent list turns that off.
 
 ## Resume past agent sessions
 
@@ -104,7 +104,7 @@ Toggle it in **Settings → Terminal**. Swarmterm merge-writes the entry into `~
 
 ## Shell integration
 
-A plain Terminal pane has no agent, so Swarmterm cannot tell when a command you typed has finished — unless your shell says so. If it emits the standard **OSC 133** prompt marks (the same ones VS Code, WezTerm, Ghostty, kitty and Windows Terminal read), Swarmterm follows each command from prompt to exit and uses that to refresh the **Git panel** when a command finishes inside the selected worktree — a hand-typed `git commit` shows up just like an agent's. Nothing is injected into your shell: add the snippet for yours, guarded so it only runs inside Swarmterm (`SWARMTERM_SESSION` is set in every pane). If you already use another terminal's shell integration that emits these marks, there is nothing to add.
+A plain Terminal pane has no agent, so Swarmterm cannot tell when a command you typed has finished — unless your shell says so. If it emits the standard **OSC 133** prompt marks (the same ones VS Code, WezTerm, Ghostty, kitty and Windows Terminal read), Swarmterm follows each command from prompt to exit and uses that to refresh the **Git panel** when a command finishes inside the selected worktree — a hand-typed `git commit` shows up just like an agent's — and to notify you when a command that ran for more than 10 seconds finishes in a pane you weren't watching (see §Notifications). Nothing is injected into your shell: add the snippet for yours, guarded so it only runs inside Swarmterm (`SWARMTERM_SESSION` is set in every pane). If you already use another terminal's shell integration that emits these marks, there is nothing to add.
 
 **zsh** (`~/.zshrc`)
 

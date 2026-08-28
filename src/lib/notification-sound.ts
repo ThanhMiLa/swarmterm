@@ -9,7 +9,8 @@ import type { NotificationKind } from '@/lib/notification-flow'
  */
 const NOTES: Record<NotificationKind, [number, number]> = {
   attention: [660, 880],
-  completion: [880, 660]
+  completion: [880, 660],
+  command: [880, 660] // same tone as completion — something finished, whoever ran it
 }
 
 let ctx: AudioContext | null = null

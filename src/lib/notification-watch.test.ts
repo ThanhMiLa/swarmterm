@@ -1,16 +1,29 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AgentPaneState } from '@/lib/agent-state/rollup'
+import type { NotificationPrefs } from '@/lib/notification-pref'
+import type { CommandState, FinishedCommand } from '@/lib/shell-marks'
 import { COALESCE_MS, NOTIFY_DELAY_MS, startNotificationWatch, type NotificationWatchDeps } from './notification-watch'
 
 const s = (state: AgentPaneState['state'], seen = true): AgentPaneState => ({ state, seen, sinceMs: 0 })
+const fin = (durationMs: number, exitCode?: number): FinishedCommand => ({
+  startedAt: 100_000,
+  finishedAt: 100_000 + durationMs,
+  durationMs,
+  ...(exitCode === undefined ? {} : { exitCode })
+})
+const cmd = (phase: CommandState['phase'], last?: FinishedCommand): CommandState =>
+  last === undefined ? { phase } : { phase, last }
 
 interface Harness {
   deps: NotificationWatchDeps
   emit: (next: Record<string, AgentPaneState>, prev: Record<string, AgentPaneState>) => void
+  emitCommands: (next: Record<string, CommandState>, prev: Record<string, CommandState>) => void
   fireTimers: () => void
   playChime: ReturnType<typeof vi.fn>
   sendSystem: ReturnType<typeof vi.fn>
   states: { current: Record<string, AgentPaneState> }
+  commands: { current: Record<string, CommandState> }
+  prefs: NotificationPrefs
   focus: { window: boolean; watchedId: string | null }
   clock: { now: number }
   titles: Record<string, string>
@@ -18,11 +31,14 @@ interface Harness {
 
 function harness(): Harness {
   let listener: ((n: Record<string, AgentPaneState>, p: Record<string, AgentPaneState>) => void) | null = null
+  let cmdListener: ((n: Record<string, CommandState>, p: Record<string, CommandState>) => void) | null = null
   const timers = new Map<number, () => void>()
   let nextHandle = 1
   const playChime = vi.fn()
   const sendSystem = vi.fn()
   const states = { current: {} as Record<string, AgentPaneState> }
+  const commands = { current: {} as Record<string, CommandState> }
+  const prefs: NotificationPrefs = { sound: true, system: true, perAgent: {} }
   const focus = { window: true, watchedId: null as string | null }
   const clock = { now: 0 }
   const titles: Record<string, string> = {}
@@ -32,10 +48,16 @@ function harness(): Harness {
       return () => { listener = null }
     },
     getAgentStates: () => states.current,
+    subscribeCommands: (l) => {
+      cmdListener = l
+      return () => { cmdListener = null }
+    },
+    getCommandStates: () => commands.current,
     isPaneWatched: (id) => focus.watchedId === id,
     isWindowFocused: () => focus.window,
-    getAgentId: (id) => (id === 'plain' ? undefined : id.startsWith('cx') ? 'codex' : 'claude-code'),
-    getPrefs: () => ({ sound: true, system: true, perAgent: {} }),
+    getAgentId: (id) =>
+      id === 'plain' ? undefined : id.startsWith('sh') ? 'terminal' : id.startsWith('cx') ? 'codex' : 'claude-code',
+    getPrefs: () => prefs,
     getPaneTitle: (id) => titles[id] ?? 'my pane',
     now: () => clock.now,
     playChime,
@@ -54,6 +76,10 @@ function harness(): Harness {
       states.current = next
       listener?.(next, prev)
     },
+    emitCommands: (next, prev) => {
+      commands.current = next
+      cmdListener?.(next, prev)
+    },
     fireTimers: () => {
       const fns = [...timers.values()]
       timers.clear()
@@ -62,6 +88,8 @@ function harness(): Harness {
     playChime,
     sendSystem,
     states,
+    commands,
+    prefs,
     focus,
     clock,
     titles
@@ -183,5 +211,91 @@ describe('startNotificationWatch', () => {
     h.fireTimers()
     expect(h.playChime).toHaveBeenCalledTimes(1)
     expect(h.sendSystem).toHaveBeenCalledWith({ title: 'Claude Code needs your input', body: 'my pane' })
+  })
+})
+
+describe('startNotificationWatch — commands (OSC 133)', () => {
+  let h: Harness
+  beforeEach(() => { h = harness() })
+  const L = fin(12_000, 1)
+
+  it('a long command finishing in an unwatched plain pane chimes after the hold, with a banner when unfocused', () => {
+    startNotificationWatch(h.deps)
+    h.titles.sh1 = 'build'
+    h.emitCommands({ sh1: cmd('finished', L) }, { sh1: cmd('running') })
+    expect(h.playChime).not.toHaveBeenCalled()
+    h.focus.window = false
+    h.fireTimers()
+    expect(h.playChime).toHaveBeenCalledWith('command')
+    expect(h.sendSystem).toHaveBeenCalledWith({ title: 'Command failed (exit 1 · 12s)', body: 'build' })
+  })
+
+  it('a short command, or a pane without a registry entry, never arms', () => {
+    startNotificationWatch(h.deps)
+    h.emitCommands({ sh1: cmd('finished', fin(3_000)) }, { sh1: cmd('running') })
+    h.emitCommands({ plain: cmd('finished', L) }, {})
+    h.fireTimers()
+    expect(h.playChime).not.toHaveBeenCalled()
+  })
+
+  it('still fires after the prompt redraw that follows D (re-validated on `last`, not on phase)', () => {
+    startNotificationWatch(h.deps)
+    h.emitCommands({ sh1: cmd('finished', L) }, { sh1: cmd('running') })
+    h.emitCommands({ sh1: cmd('prompt', L) }, { sh1: cmd('finished', L) })
+    h.fireTimers()
+    expect(h.playChime).toHaveBeenCalledTimes(1)
+    expect(h.playChime).toHaveBeenCalledWith('command')
+  })
+
+  it('drops when a newer (short) command replaced `last` during the hold, or the entry was cleared', () => {
+    startNotificationWatch(h.deps)
+    h.emitCommands({ sh1: cmd('finished', L) }, { sh1: cmd('running') })
+    h.commands.current = { sh1: cmd('prompt', fin(500)) }
+    h.fireTimers()
+    expect(h.playChime).not.toHaveBeenCalled()
+    const M = fin(12_000)
+    h.emitCommands({ sh1: cmd('finished', M) }, { sh1: cmd('running') })
+    h.emitCommands({}, { sh1: cmd('finished', M) })
+    h.fireTimers()
+    expect(h.playChime).not.toHaveBeenCalled()
+  })
+
+  it('a watched pane and the Terminal per-agent toggle both silence it', () => {
+    startNotificationWatch(h.deps)
+    h.focus.watchedId = 'sh1'
+    h.emitCommands({ sh1: cmd('finished', L) }, { sh1: cmd('running') })
+    h.fireTimers()
+    expect(h.playChime).not.toHaveBeenCalled()
+    h.focus.watchedId = null
+    h.prefs.perAgent = { terminal: false }
+    h.emitCommands({ sh2: cmd('finished', L) }, { sh2: cmd('running') })
+    h.fireTimers()
+    expect(h.playChime).not.toHaveBeenCalled()
+  })
+
+  it('a command and an agent completion in one burst share the chime (agent tone) and one banner', () => {
+    startNotificationWatch(h.deps)
+    h.titles.t1 = 'pane A'
+    h.titles.sh1 = 'build'
+    h.emit({ t1: s('idle', false) }, { t1: s('working') })
+    h.emitCommands({ sh1: cmd('finished', fin(12_000)) }, { sh1: cmd('running') })
+    h.focus.window = false
+    h.clock.now = NOTIFY_DELAY_MS
+    h.fireTimers()
+    expect(h.playChime).toHaveBeenCalledTimes(1)
+    expect(h.playChime).toHaveBeenCalledWith('completion')
+    expect(h.sendSystem).toHaveBeenCalledTimes(1)
+    expect(h.sendSystem).toHaveBeenCalledWith({
+      title: 'Claude Code finished · Command finished (12s)',
+      body: 'pane A · build'
+    })
+  })
+
+  it('the disposer unsubscribes the command listener too', () => {
+    const stop = startNotificationWatch(h.deps)
+    stop()
+    h.emitCommands({ sh1: cmd('finished', L) }, { sh1: cmd('running') })
+    h.fireTimers()
+    expect(h.playChime).not.toHaveBeenCalled()
   })
 })

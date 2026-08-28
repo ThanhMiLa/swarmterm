@@ -1,9 +1,18 @@
 import { describe, expect, it } from 'vitest'
 import type { AgentPaneState } from '@/lib/agent-state/rollup'
-import { diffAgentStates } from './notification-flow'
+import type { CommandState, FinishedCommand } from '@/lib/shell-marks'
+import { diffAgentStates, diffCommands } from './notification-flow'
 import { coalesceNotifications, notificationCopy, resolveFire } from './notification-flow'
 
 const s = (state: AgentPaneState['state'], seen = true): AgentPaneState => ({ state, seen, sinceMs: 0 })
+const fin = (durationMs: number, exitCode?: number): FinishedCommand => ({
+  startedAt: 100_000,
+  finishedAt: 100_000 + durationMs,
+  durationMs,
+  ...(exitCode === undefined ? {} : { exitCode })
+})
+const cmd = (phase: CommandState['phase'], last?: FinishedCommand): CommandState =>
+  last === undefined ? { phase } : { phase, last }
 
 describe('diffAgentStates', () => {
   it('returns nothing for identical records', () => {
@@ -65,6 +74,36 @@ describe('diffAgentStates', () => {
   })
 })
 
+describe('diffCommands', () => {
+  it('returns nothing for identical records or entries without a finished command', () => {
+    const a = { sh1: cmd('running') }
+    expect(diffCommands(a, a)).toEqual([])
+    expect(diffCommands({}, { sh1: cmd('prompt') })).toEqual([])
+  })
+
+  it('reports a command when a new long `last` lands (D mark), including a previously absent entry', () => {
+    const L = fin(12_000, 1)
+    expect(diffCommands({ sh1: cmd('running') }, { sh1: cmd('finished', L) })).toEqual([
+      { terminalId: 'sh1', kind: 'command', last: L }
+    ])
+    expect(diffCommands({}, { sh1: cmd('finished', L) })).toEqual([{ terminalId: 'sh1', kind: 'command', last: L }])
+  })
+
+  it('ignores a short command', () => {
+    expect(diffCommands({ sh1: cmd('running') }, { sh1: cmd('finished', fin(9_999)) })).toEqual([])
+  })
+
+  it('ignores the prompt redraw that carries the same `last` by reference (D and A share a precmd)', () => {
+    const L = fin(12_000)
+    expect(diffCommands({ sh1: cmd('finished', L) }, { sh1: cmd('prompt', L) })).toEqual([])
+    expect(diffCommands({ sh1: cmd('prompt', L) }, { sh1: cmd('running', L) })).toEqual([])
+  })
+
+  it('reports removed when an entry disappears (exit/respawn clear)', () => {
+    expect(diffCommands({ sh1: cmd('prompt', fin(12_000)) }, {})).toEqual([{ terminalId: 'sh1', kind: 'removed' }])
+  })
+})
+
 const basePrefs = { sound: true, system: true, perAgent: {} }
 const pend = (kind: 'attention' | 'completion') => ({ terminalId: 't1', kind, agentId: 'claude-code' })
 const ctx = (over: Partial<Parameters<typeof resolveFire>[1]>) => ({
@@ -121,6 +160,37 @@ describe('resolveFire', () => {
   })
 })
 
+describe('resolveFire — command', () => {
+  const L = fin(12_000, 1)
+  const pendC = (finishedAt: number | null = L.finishedAt) => ({
+    terminalId: 'sh1',
+    kind: 'command' as const,
+    agentId: 'terminal',
+    ...(finishedAt === null ? {} : { finishedAt })
+  })
+  const ctxC = (over: Partial<Parameters<typeof resolveFire>[1]>) =>
+    ctx({ current: undefined, command: cmd('prompt', L), ...over })
+
+  it('fires on the matching `last` even though the pane has no agent state and is already back at the prompt', () => {
+    expect(resolveFire(pendC(), ctxC({}))).toEqual({ sound: true, system: false })
+    expect(resolveFire(pendC(), ctxC({ windowFocused: false }))).toEqual({ sound: true, system: true })
+  })
+
+  it('drops when the entry is gone, when a newer command replaced `last`, or when the pending carries no finishedAt', () => {
+    expect(resolveFire(pendC(), ctxC({ command: undefined }))).toEqual({ sound: false, system: false })
+    expect(resolveFire(pendC(), ctxC({ command: cmd('prompt', fin(3_000)) }))).toEqual({ sound: false, system: false })
+    expect(resolveFire(pendC(), ctxC({ command: cmd('running') }))).toEqual({ sound: false, system: false })
+    expect(resolveFire(pendC(null), ctxC({}))).toEqual({ sound: false, system: false })
+  })
+
+  it('drops a watched pane and honours the Terminal per-agent toggle', () => {
+    expect(resolveFire(pendC(), ctxC({ paneWatched: true }))).toEqual({ sound: false, system: false })
+    expect(
+      resolveFire(pendC(), ctxC({ prefs: { ...basePrefs, perAgent: { terminal: false } } }))
+    ).toEqual({ sound: false, system: false })
+  })
+})
+
 describe('notificationCopy', () => {
   it('phrases attention and completion with the agent display name', () => {
     expect(notificationCopy('attention', 'Claude Code', 'fix tests')).toEqual({
@@ -129,10 +199,59 @@ describe('notificationCopy', () => {
     })
     expect(notificationCopy('completion', 'Codex', '')).toEqual({ title: 'Codex finished', body: '' })
   })
+
+  it('phrases a command with its exit/duration and falls back without a record', () => {
+    expect(notificationCopy('command', 'Terminal', 'build', fin(42_000, 1))).toEqual({
+      title: 'Command failed (exit 1 · 42s)',
+      body: 'build'
+    })
+    expect(notificationCopy('command', 'Terminal', 'build', fin(42_000))).toEqual({
+      title: 'Command finished (42s)',
+      body: 'build'
+    })
+    expect(notificationCopy('command', 'Terminal', '')).toEqual({ title: 'Command finished', body: '' })
+  })
 })
 
 describe('coalesceNotifications', () => {
   const f = (kind: 'attention' | 'completion', agentName: string, paneTitle: string) => ({ kind, agentName, paneTitle })
+  const fc = (paneTitle: string, last: FinishedCommand) => ({
+    kind: 'command' as const,
+    agentName: 'Terminal',
+    paneTitle,
+    command: last
+  })
+
+  it('a single command is byte-identical to notificationCopy with its record', () => {
+    const L = fin(12_000, 2)
+    expect(coalesceNotifications([fc('build', L)])).toEqual({
+      kind: 'command',
+      ...notificationCopy('command', 'Terminal', 'build', L)
+    })
+  })
+
+  it('groups several commands as "<n> commands finished"', () => {
+    expect(coalesceNotifications([fc('a', fin(12_000)), fc('b', fin(15_000, 1))])).toEqual({
+      kind: 'command',
+      title: '2 commands finished',
+      body: 'a · b'
+    })
+  })
+
+  it('commands rank below agents for the tone and come last in the copy', () => {
+    expect(
+      coalesceNotifications([fc('build', fin(12_000)), f('completion', 'Codex', 'c'), f('attention', 'Claude Code', 'a')])
+    ).toEqual({
+      kind: 'attention',
+      title: 'Claude Code needs your input · Codex finished · Command finished (12s)',
+      body: 'a · c · build'
+    })
+    expect(coalesceNotifications([fc('build', fin(12_000)), f('completion', 'Codex', 'c')])).toEqual({
+      kind: 'completion',
+      title: 'Codex finished · Command finished (12s)',
+      body: 'c · build'
+    })
+  })
 
   it('returns null for an empty batch', () => {
     expect(coalesceNotifications([])).toBeNull()

@@ -1,7 +1,8 @@
 import type { AgentPaneState } from '@/lib/agent-state/rollup'
 import { agentNotificationsEnabled, type NotificationPrefs } from '@/lib/notification-pref'
+import { formatCommandFinished, isLongCommand, type CommandState, type FinishedCommand } from '@/lib/shell-marks'
 
-export type NotificationKind = 'attention' | 'completion'
+export type NotificationKind = 'attention' | 'completion' | 'command'
 
 export interface AgentStateTransition {
   terminalId: string
@@ -38,14 +39,47 @@ export function diffAgentStates(
   return out
 }
 
+export type CommandTransition =
+  | { terminalId: string; kind: 'command'; last: FinishedCommand }
+  | { terminalId: string; kind: 'removed' }
+
+/**
+ * The plain-pane counterpart of diffAgentStates, over shell-mark snapshots.
+ * Keyed on the IDENTITY of `last`, never on `phase`: bash/zsh print D and A
+ * in the same precmd, so by the time a snapshot is observed the pane is
+ * usually back at `prompt` — `last` is the one field that changes exactly
+ * once per finished command (shell-marks carries it by reference through
+ * A/B/C). Short commands are filtered here so nothing is ever armed for
+ * them; fire time only has to match `finishedAt`.
+ */
+export function diffCommands(
+  prev: Record<string, CommandState>,
+  next: Record<string, CommandState>
+): CommandTransition[] {
+  const out: CommandTransition[] = []
+  for (const [terminalId, cur] of Object.entries(next)) {
+    const last = cur.last
+    if (last === undefined || last === prev[terminalId]?.last) continue
+    if (isLongCommand(last)) out.push({ terminalId, kind: 'command', last })
+  }
+  for (const terminalId of Object.keys(prev)) {
+    if (!(terminalId in next)) out.push({ terminalId, kind: 'removed' })
+  }
+  return out
+}
+
 export interface PendingNotification {
   terminalId: string
   kind: NotificationKind
   agentId: string
+  /** `command` only — the finishedAt of the record that armed it; the fire-time identity key. */
+  finishedAt?: number
 }
 
 export interface FireContext {
   current: AgentPaneState | undefined
+  /** Shell-mark entry of the pane — plain panes only, agent panes have none. */
+  command?: CommandState
   paneWatched: boolean
   windowFocused: boolean
   prefs: NotificationPrefs
@@ -65,10 +99,18 @@ const DROP: FireVerdict = { sound: false, system: false }
  * unfocused AT THIS INSTANT — inside the app the chime alone is the signal.
  */
 export function resolveFire(pending: PendingNotification, ctx: FireContext): FireVerdict {
-  const { current } = ctx
-  if (current === undefined) return DROP
-  if (pending.kind === 'attention' && current.state !== 'blocked') return DROP
-  if (pending.kind === 'completion' && !(current.state === 'idle' && !current.seen)) return DROP
+  if (pending.kind === 'command') {
+    // A plain pane has no agent-state entry, so `current` says nothing here.
+    // The record that armed us must still be the pane's `last`: a newer
+    // (even short) command or a respawn clear means the user has moved on.
+    const last = ctx.command?.last
+    if (last === undefined || last.finishedAt !== pending.finishedAt) return DROP
+  } else {
+    const { current } = ctx
+    if (current === undefined) return DROP
+    if (pending.kind === 'attention' && current.state !== 'blocked') return DROP
+    if (pending.kind === 'completion' && !(current.state === 'idle' && !current.seen)) return DROP
+  }
   if (ctx.paneWatched) return DROP
   if (!agentNotificationsEnabled(ctx.prefs, pending.agentId)) return DROP
   return { sound: ctx.prefs.sound, system: ctx.prefs.system && !ctx.windowFocused }
@@ -77,18 +119,25 @@ export function resolveFire(pending: PendingNotification, ctx: FireContext): Fir
 export function notificationCopy(
   kind: NotificationKind,
   agentName: string,
-  paneTitle: string
+  paneTitle: string,
+  command?: FinishedCommand
 ): { title: string; body: string } {
-  return {
-    title: kind === 'attention' ? `${agentName} needs your input` : `${agentName} finished`,
-    body: paneTitle
-  }
+  const title =
+    kind === 'command'
+      ? command === undefined
+        ? 'Command finished'
+        : formatCommandFinished(command)
+      : kind === 'attention'
+        ? `${agentName} needs your input`
+        : `${agentName} finished`
+  return { title, body: paneTitle }
 }
 
 export interface FiredNotification {
   kind: NotificationKind
   agentName: string
   paneTitle: string
+  command?: FinishedCommand
 }
 
 export interface CoalescedNotification {
@@ -105,21 +154,30 @@ export interface CoalescedNotification {
  * than one that finished) and is listed first in the copy; each kind becomes
  * one title segment, pluralised by agent name when every pane in the segment
  * belongs to the same CLI ("2 Claude Code panes finished") and generically
- * otherwise ("3 agents finished"). Empty pane titles carry no information in a
- * group, so they are dropped from the body — only the single-entry path keeps
- * an empty body, for parity with `notificationCopy`.
+ * otherwise ("3 agents finished"). Hand-typed commands rank below both agent
+ * kinds and their segment reads "N commands finished". Empty pane titles
+ * carry no information in a group, so they are dropped from the body — only
+ * the single-entry path keeps an empty body, for parity with
+ * `notificationCopy`.
  */
 export function coalesceNotifications(fired: readonly FiredNotification[]): CoalescedNotification | null {
   const only = fired.length === 1 ? fired[0] : undefined
-  if (only !== undefined) return { kind: only.kind, ...notificationCopy(only.kind, only.agentName, only.paneTitle) }
+  if (only !== undefined) {
+    return { kind: only.kind, ...notificationCopy(only.kind, only.agentName, only.paneTitle, only.command) }
+  }
   if (fired.length === 0) return null
   const attention = fired.filter((f) => f.kind === 'attention')
   const completion = fired.filter((f) => f.kind === 'completion')
-  const segments = [attention, completion].filter((g) => g.length > 0).map(segmentTitle)
+  const command = fired.filter((f) => f.kind === 'command')
+  // Rank for the tone and the copy: a pane waiting on the user, then an agent
+  // that finished, then a hand-typed command — the least urgent fact last.
+  const ordered = [attention, completion, command]
+  const segments = ordered.filter((g) => g.length > 0).map(segmentTitle)
   return {
-    kind: attention.length > 0 ? 'attention' : 'completion',
+    kind: attention.length > 0 ? 'attention' : completion.length > 0 ? 'completion' : 'command',
     title: segments.join(' · '),
-    body: [...attention, ...completion]
+    body: ordered
+      .flat()
       .map((f) => f.paneTitle)
       .filter((t) => t !== '')
       .join(' · ')
@@ -130,7 +188,9 @@ export function coalesceNotifications(fired: readonly FiredNotification[]): Coal
 // `filter((g) => g.length > 0)` guarantees `group[0]` exists.
 function segmentTitle(group: readonly FiredNotification[]): string {
   const first = group[0]
-  if (group.length === 1) return notificationCopy(first.kind, first.agentName, '').title
+  if (group.length === 1) return notificationCopy(first.kind, first.agentName, '', first.command).title
+  // Commands have no CLI to pluralise by — every one belongs to "Terminal".
+  if (first.kind === 'command') return `${group.length} commands finished`
   const sameAgent = group.every((f) => f.agentName === first.agentName)
   const subject = sameAgent ? `${group.length} ${first.agentName} panes` : `${group.length} agents`
   return first.kind === 'attention' ? `${subject} need your input` : `${subject} finished`

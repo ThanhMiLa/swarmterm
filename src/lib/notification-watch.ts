@@ -1,12 +1,15 @@
 import {
   coalesceNotifications,
   diffAgentStates,
+  diffCommands,
   resolveFire,
+  type FiredNotification,
   type NotificationKind,
   type PendingNotification
 } from '@/lib/notification-flow'
 import type { NotificationPrefs } from '@/lib/notification-pref'
 import type { AgentPaneState } from '@/lib/agent-state/rollup'
+import type { CommandState } from '@/lib/shell-marks'
 import { templateById } from '@/lib/templates'
 
 export const NOTIFY_DELAY_MS = 1000
@@ -25,6 +28,10 @@ export interface NotificationWatchDeps {
     listener: (next: Record<string, AgentPaneState>, prev: Record<string, AgentPaneState>) => void
   ) => () => void
   getAgentStates: () => Record<string, AgentPaneState>
+  subscribeCommands: (
+    listener: (next: Record<string, CommandState>, prev: Record<string, CommandState>) => void
+  ) => () => void
+  getCommandStates: () => Record<string, CommandState>
   isPaneWatched: (terminalId: string) => boolean
   isWindowFocused: () => boolean
   getAgentId: (terminalId: string) => string | undefined
@@ -44,11 +51,14 @@ interface Armed {
 }
 
 /**
- * The impure half of agent notifications: diffs agent-state snapshots, holds ONE pending
- * notification per terminal (a newer qualifying transition replaces it — the
- * user cares about the latest fact, not the history), and delegates every
- * decision to the pure rules in notification-flow. Timers and the clock are
- * injected so the tests never sleep, mirroring DetectorDeps.
+ * The impure half of agent notifications: diffs agent-state snapshots — and
+ * shell-mark snapshots for plain panes (a long hand-typed command finishing),
+ * both feeding the same `armed` map; an agent pane never has a shell-mark
+ * entry and vice versa, so the two diffs cannot collide on an id — holds ONE
+ * pending notification per terminal (a newer qualifying transition replaces
+ * it — the user cares about the latest fact, not the history), and delegates
+ * every decision to the pure rules in notification-flow. Timers and the clock
+ * are injected so the tests never sleep, mirroring DetectorDeps.
  */
 export function startNotificationWatch(deps: NotificationWatchDeps): () => void {
   const armed = new Map<string, Armed>()
@@ -76,11 +86,13 @@ export function startNotificationWatch(deps: NotificationWatchDeps): () => void 
     // nothing and is a no-op — belt and braces.
     if (batch.length === 0) return
     const states = deps.getAgentStates()
+    const commands = deps.getCommandStates()
     const windowFocused = deps.isWindowFocused()
     const prefs = deps.getPrefs()
     const survivors = batch.flatMap((pending) => {
       const verdict = resolveFire(pending, {
         current: states[pending.terminalId],
+        command: commands[pending.terminalId],
         paneWatched: deps.isPaneWatched(pending.terminalId),
         windowFocused,
         prefs
@@ -88,11 +100,17 @@ export function startNotificationWatch(deps: NotificationWatchDeps): () => void 
       return verdict.sound || verdict.system ? [{ pending, verdict }] : []
     })
     const group = coalesceNotifications(
-      survivors.map(({ pending }) => ({
-        kind: pending.kind,
-        agentName: templateById(pending.agentId).name,
-        paneTitle: deps.getPaneTitle(pending.terminalId)
-      }))
+      survivors.map(({ pending }): FiredNotification => {
+        const base = {
+          kind: pending.kind,
+          agentName: templateById(pending.agentId).name,
+          paneTitle: deps.getPaneTitle(pending.terminalId)
+        }
+        // Survived ⇒ `last` is still the record that armed us (resolveFire
+        // matched its finishedAt), so it is the right one to phrase.
+        const last = commands[pending.terminalId]?.last
+        return pending.kind === 'command' && last !== undefined ? { ...base, command: last } : base
+      })
     )
     if (group === null) return
     // The sound/system split in resolveFire is purely global (prefs + window
@@ -104,11 +122,14 @@ export function startNotificationWatch(deps: NotificationWatchDeps): () => void 
     }
   }
 
-  const arm = (terminalId: string, kind: NotificationKind): void => {
+  const arm = (terminalId: string, kind: NotificationKind, finishedAt?: number): void => {
     const agentId = deps.getAgentId(terminalId)
     if (agentId === undefined) return
     cancel(terminalId)
-    const pending: PendingNotification = { terminalId, kind, agentId }
+    // No explicit `finishedAt: undefined` key: the specs compare pending
+    // objects structurally, and only command entries carry a finishedAt.
+    const pending: PendingNotification =
+      finishedAt === undefined ? { terminalId, kind, agentId } : { terminalId, kind, agentId, finishedAt }
     armed.set(terminalId, {
       pending,
       dueAt: deps.now() + NOTIFY_DELAY_MS,
@@ -123,8 +144,18 @@ export function startNotificationWatch(deps: NotificationWatchDeps): () => void 
     }
   })
 
+  // diffCommands already keeps only long commands and keys on the identity of
+  // `last`, so a prompt redraw (D and A share a precmd) never re-arms here.
+  const unsubscribeCommands = deps.subscribeCommands((next, prev) => {
+    for (const t of diffCommands(prev, next)) {
+      if (t.kind === 'removed') cancel(t.terminalId)
+      else arm(t.terminalId, 'command', t.last.finishedAt)
+    }
+  })
+
   return () => {
     for (const id of [...armed.keys()]) cancel(id)
     unsubscribe()
+    unsubscribeCommands()
   }
 }

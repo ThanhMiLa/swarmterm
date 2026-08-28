@@ -2,7 +2,8 @@ import type { ReactElement } from 'react'
 import { AgentIcon } from '@/components/AgentIcon'
 import { manifestForAgent } from '@/lib/agent-state/manifests'
 import { agentNotificationsEnabled } from '@/lib/notification-pref'
-import { TEMPLATES } from '@/lib/templates'
+import { LONG_COMMAND_MS } from '@/lib/shell-marks'
+import { TEMPLATES, templateById } from '@/lib/templates'
 import { cn } from '@/lib/utils'
 import { useNotificationPrefStore } from '@/store/notification-pref-store'
 
@@ -47,8 +48,15 @@ function ToggleRow({ label, description, checked, onChange, icon }: ToggleRowPro
   )
 }
 
-/** Agent templates that actually have a state detector — plain shells never notify. */
+/** Agent templates that have a state detector — one row each; the plain shell gets its own row below. */
 const AGENT_TEMPLATES = TEMPLATES.filter((t) => manifestForAgent(t.id) !== undefined)
+
+/**
+ * Plain shells notify too since S14.2, but only for long commands and only
+ * once the user's shell emits OSC 133 marks — the description says so, since
+ * an "on" toggle that never fires would otherwise look broken.
+ */
+const TERMINAL_TEMPLATE = templateById('terminal')
 
 export function NotificationsPanel(): ReactElement {
   const prefs = useNotificationPrefStore((s) => s.prefs)
@@ -61,18 +69,19 @@ export function NotificationsPanel(): ReactElement {
           Notifications
         </h1>
         <p className="mt-2 max-w-prose text-sm leading-relaxed text-muted-foreground">
-          When a background agent pane needs your input or finishes, Swarmterm plays a short
-          chime — and shows a system notification if the window is unfocused.
+          When a background agent pane needs your input or finishes — or a plain Terminal pane
+          finishes a command that ran over 10 s — Swarmterm plays a short chime — and shows a
+          system notification if the window is unfocused.
         </p>
         <div className="mt-4">
-          <ToggleRow label="Sound" description="Chime when a background agent blocks or finishes." checked={prefs.sound} onChange={setSound} />
+          <ToggleRow label="Sound" description="Chime when a background pane blocks or finishes." checked={prefs.sound} onChange={setSound} />
           <ToggleRow label="System notifications" description="Only shown while the Swarmterm window is unfocused." checked={prefs.system} onChange={setSystem} />
         </div>
       </section>
 
       <section>
         <h2 className="mb-1 text-sm font-semibold text-foreground">Per agent</h2>
-        <p className="mb-2 text-xs text-muted-foreground">Turn off both channels for a specific agent.</p>
+        <p className="mb-2 text-xs text-muted-foreground">Turn off both channels for a specific agent, or for plain Terminal panes.</p>
         {AGENT_TEMPLATES.map((t) => (
           <ToggleRow
             key={t.id}
@@ -82,6 +91,13 @@ export function NotificationsPanel(): ReactElement {
             icon={<AgentIcon template={t} className="h-4 w-4" />}
           />
         ))}
+        <ToggleRow
+          label={TERMINAL_TEMPLATE.name}
+          description={`Commands over ${LONG_COMMAND_MS / 1000} s — needs shell integration.`}
+          checked={agentNotificationsEnabled(prefs, TERMINAL_TEMPLATE.id)}
+          onChange={(on) => setAgentEnabled(TERMINAL_TEMPLATE.id, on)}
+          icon={<AgentIcon template={TERMINAL_TEMPLATE} className="h-4 w-4" />}
+        />
       </section>
     </div>
   )

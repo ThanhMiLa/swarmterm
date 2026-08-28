@@ -605,13 +605,17 @@ export default function App(): ReactElement {
     })
   }, [])
 
-  // Agent notifications: subscribed outside the render path (updater precedent)
-  // so per-tick agent-state churn never re-renders App.
+  // Agent notifications — plus long-command notifications for plain panes
+  // (OSC 133 shell marks) — subscribed outside the render path (updater
+  // precedent) so per-tick agent-state churn never re-renders App.
   useEffect(() => {
     return startNotificationWatch({
       subscribeAgentStates: (listener) =>
         useAgentStateStore.subscribe((cur, prev) => listener(cur.byId, prev.byId)),
       getAgentStates: () => useAgentStateStore.getState().byId,
+      subscribeCommands: (listener) =>
+        useShellMarkStore.subscribe((cur, prev) => listener(cur.byId, prev.byId)),
+      getCommandStates: () => useShellMarkStore.getState().byId,
       isPaneWatched: (id) =>
         document.hasFocus() && selectFocusedTerminalId(useAppStore.getState()) === id,
       isWindowFocused: () => document.hasFocus(),
