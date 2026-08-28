@@ -4,6 +4,7 @@
 pub mod auth;
 pub mod clients;
 pub mod config;
+pub mod context_usage;
 pub mod peer_state;
 pub mod server;
 pub mod tools;

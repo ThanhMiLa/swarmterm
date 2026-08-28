@@ -27,3 +27,23 @@ export interface AgentHookEvent {
 
 export const onAgentHook = (handler: (e: AgentHookEvent) => void): Promise<UnlistenFn> =>
   listen<AgentHookEvent>('agent:hook', (event) => handler(event.payload))
+
+/**
+ * One context-window usage sample for a Claude Code pane, relayed by Rust's
+ * `GET /status?ctx=` route (the status line rides its own percentage on the
+ * probe it already sends every render). Mirrors
+ * `src-tauri/src/mcp/context_usage.rs::AgentContextEvent` (serde camelCase) —
+ * keep the two in lockstep. Rust dedupes on the rounded integer, so one event
+ * means the chip's number actually changed. `pct: null` means the pane has no
+ * context data any more — cleared on `/clear`-style resets, session end, or a
+ * status line that could not parse its stdin — and the chip must disappear
+ * rather than show 0 %. Consumed by S15.2's context chip.
+ */
+export interface AgentContextEvent {
+  terminalId: string
+  pct: number | null
+  atMs: number
+}
+
+export const onAgentContext = (handler: (e: AgentContextEvent) => void): Promise<UnlistenFn> =>
+  listen<AgentContextEvent>('agent:context', (event) => handler(event.payload))

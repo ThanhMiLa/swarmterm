@@ -56,24 +56,48 @@ pub fn status_addr(mcp_url: &str) -> Option<(String, String)> {
     Some((host.clone(), format!("{host}:{port}")))
 }
 
+/// The one request the probe sends, with the pane's context usage riding it
+/// as `?ctx=<pct>`.
+///
+/// WHY the percentage travels on the probe at all: this CLI runs on every
+/// Claude Code render, and one loopback round-trip per render is the whole
+/// budget — a second transport (another request, a file, a socket) would
+/// double it for a cosmetic number. The server already authenticates this
+/// request by bearer token, so it knows exactly which pane the reading belongs
+/// to. `None` is "no data" (no API turn yet / unparseable stdin) and is sent as
+/// the bare path — never as `ctx=0`, which is a real reading (a fresh session).
+/// Non-finite values are dropped the same way: they cannot come from Claude
+/// Code's JSON, so they are a bug upstream, not a reading. `{:.1}` because the
+/// status line itself shows one decimal and the server rounds to an integer
+/// anyway; anything finer is noise on the wire.
+pub fn build_status_request(authority: &str, token: &str, ctx: Option<f64>) -> String {
+    let query = ctx
+        .filter(|p| p.is_finite())
+        .map(|p| format!("?ctx={p:.1}"))
+        .unwrap_or_default();
+    // Host carries the port: the server is on an ephemeral one, and a bare host
+    // is a malformed Host header for anything but :80.
+    format!(
+        "GET /status{query} HTTP/1.1\r\nHost: {authority}\r\nAuthorization: Bearer {token}\r\n\
+         Connection: close\r\nAccept: application/json\r\n\r\n"
+    )
+}
+
 /// `Some(connected)` when Swarmterm answered `200` with a well-formed body;
 /// `None` for every failure — refused, timed out, 401 from a dead pane,
 /// malformed reply. The caller collapses `None` to `mcp ✗`, because from the
 /// status line's point of view those are the same fact: we cannot vouch for
-/// this pane's MCP link.
-pub fn probe(mcp_url: &str, token: &str, timeout: Duration) -> Option<bool> {
+/// this pane's MCP link. `ctx` is the pane's context usage in percent, if the
+/// stdin payload carried one — see [`build_status_request`] for why it rides
+/// this request.
+pub fn probe(mcp_url: &str, token: &str, ctx: Option<f64>, timeout: Duration) -> Option<bool> {
     let (_host, authority) = status_addr(mcp_url)?;
     let addr = authority.to_socket_addrs().ok()?.next()?;
     let mut stream = TcpStream::connect_timeout(&addr, timeout).ok()?;
     stream.set_read_timeout(Some(timeout)).ok()?;
     stream.set_write_timeout(Some(timeout)).ok()?;
 
-    // Host carries the port: the server is on an ephemeral one, and a bare host
-    // is a malformed Host header for anything but :80.
-    let req = format!(
-        "GET /status HTTP/1.1\r\nHost: {authority}\r\nAuthorization: Bearer {token}\r\n\
-         Connection: close\r\nAccept: application/json\r\n\r\n"
-    );
+    let req = build_status_request(&authority, token, ctx);
     stream.write_all(req.as_bytes()).ok()?;
     stream.flush().ok()?;
 
@@ -181,6 +205,45 @@ mod tests {
         assert!(status_addr("").is_none());
     }
 
+    #[test]
+    fn request_without_ctx_is_the_bare_status_path() {
+        // `None` is "no data yet" (no API turn / unparseable stdin). It must
+        // reach the server as the bare path — never as `ctx=0`, which is a
+        // real reading.
+        let req = build_status_request("127.0.0.1:52431", "tok", None);
+        assert!(req.starts_with("GET /status HTTP/1.1\r\n"), "req was {req:?}");
+        assert!(req.contains("Host: 127.0.0.1:52431\r\n"));
+        assert!(req.contains("Authorization: Bearer tok\r\n"));
+        assert!(req.contains("Connection: close\r\n"));
+        assert!(req.ends_with("\r\n\r\n"));
+    }
+
+    #[test]
+    fn request_with_ctx_carries_one_decimal() {
+        let req = build_status_request("127.0.0.1:52431", "tok", Some(42.14));
+        assert!(
+            req.starts_with("GET /status?ctx=42.1 HTTP/1.1\r\n"),
+            "req was {req:?}"
+        );
+        // 0 % is data (a fresh session), distinct from `None`.
+        let req = build_status_request("127.0.0.1:52431", "tok", Some(0.0));
+        assert!(
+            req.starts_with("GET /status?ctx=0.0 HTTP/1.1\r\n"),
+            "req was {req:?}"
+        );
+    }
+
+    #[test]
+    fn non_finite_ctx_is_dropped() {
+        for bad in [f64::NAN, f64::INFINITY] {
+            let req = build_status_request("127.0.0.1:52431", "tok", Some(bad));
+            assert!(
+                req.starts_with("GET /status HTTP/1.1\r\n"),
+                "req for {bad} was {req:?}"
+            );
+        }
+    }
+
     /// Serve one canned response on a loopback port and hand back its URL.
     /// Exercises the read loop against a real socket — the part of `probe` that
     /// the pure parser tests above cannot reach.
@@ -219,12 +282,12 @@ mod tests {
               Content-Length: 26\r\nConnection: close\r\n\r\n{\"mcp\":{\"connected\":true}}",
         );
         assert_eq!(
-            probe(&url, "abc-123", Duration::from_millis(500)),
+            probe(&url, "abc-123", Some(42.1), Duration::from_millis(500)),
             Some(true)
         );
         let req = server.join().unwrap();
         assert!(
-            req.starts_with("GET /status HTTP/1.1\r\n"),
+            req.starts_with("GET /status?ctx=42.1 HTTP/1.1\r\n"),
             "req was {req:?}"
         );
         assert!(req.contains("Authorization: Bearer abc-123\r\n"));
@@ -238,10 +301,14 @@ mod tests {
               {\"mcp\":{\"connected\":false}}",
         );
         assert_eq!(
-            probe(&url, "abc-123", Duration::from_millis(500)),
+            probe(&url, "abc-123", None, Duration::from_millis(500)),
             Some(false)
         );
-        server.join().unwrap();
+        let req = server.join().unwrap();
+        assert!(
+            req.starts_with("GET /status HTTP/1.1\r\n"),
+            "req was {req:?}"
+        );
     }
 
     #[test]
@@ -251,7 +318,7 @@ mod tests {
         let (url, server) = serve_once(
             b"HTTP/1.1 401 Unauthorized\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
         );
-        assert_eq!(probe(&url, "ghost", Duration::from_millis(500)), None);
+        assert_eq!(probe(&url, "ghost", None, Duration::from_millis(500)), None);
         server.join().unwrap();
     }
 
@@ -260,7 +327,7 @@ mod tests {
         // Port 1 on loopback is reserved and never bound by us; the connect is
         // refused immediately rather than waiting out the timeout.
         assert_eq!(
-            probe("http://127.0.0.1:1/mcp", "tok", Duration::from_millis(300)),
+            probe("http://127.0.0.1:1/mcp", "tok", None, Duration::from_millis(300)),
             None
         );
     }

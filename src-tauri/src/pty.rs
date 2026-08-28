@@ -186,6 +186,11 @@ pub struct AppState {
     /// nested with `terminals` or `war_rooms`, because the `/mcp` middleware
     /// touches it on every inbound request and must not contend with pty I/O.
     pub mcp_clients: Mutex<crate::mcp::clients::McpClients>,
+    /// Last context-window percentage each Claude pane's status line reported
+    /// via `/status?ctx=` (`mcp::context_usage`). Its own lock, never nested:
+    /// `/status` hits it as often as every 300 ms per Claude pane while
+    /// streaming, so it must not queue behind pty spawn/kill or MCP traffic.
+    pub context_usage: Mutex<crate::mcp::context_usage::ContextUsage>,
     /// Mirror of the renderer's per-pane agent display state plus a raw
     /// screen tail (`mcp::peer_state`). Its own lock, never nested with
     /// `terminals` / `war_rooms` / `mcp_clients`: `read_loop` touches it on
@@ -207,6 +212,7 @@ impl Default for AppState {
             mcp_url: OnceLock::new(),
             war_rooms: Mutex::new(crate::warroom::WarRooms::default()),
             mcp_clients: Mutex::new(crate::mcp::clients::McpClients::default()),
+            context_usage: Mutex::new(Default::default()),
             peer_states: Mutex::new(crate::mcp::peer_state::PeerStates::default()),
             peer_wake: tokio::sync::Notify::new(),
         }
@@ -543,6 +549,8 @@ fn read_loop(
     if let Some(state) = app.try_state::<AppState>() {
         state.terminals.lock().unwrap().remove(&id);
         state.mcp_clients.lock().unwrap().forget(&id);
+        // Same-id respawn must start from "no data", not its predecessor's %.
+        state.context_usage.lock().unwrap().forget(&id);
         // Drop the state mirror + screen tail and wake any `wait_peer` sleeper
         // so it can report "peer left" instead of sitting out its timeout.
         state.peer_states.lock().unwrap().forget(&id);

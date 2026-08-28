@@ -35,12 +35,20 @@ pub fn mcp_state(
     }
 }
 
+/// The context-window numbers in a raw stdin payload, or `None` when there are
+/// none to show: unparseable input, an empty read, or a payload from before the
+/// first API turn (no `used_percentage`). `None` is a distinct "no data" that
+/// the probe sends as the bare path and the line renders as `ctx —` — it is
+/// never collapsed to 0 %.
+pub fn ctx_of(stdin: &str) -> Option<render::CtxInfo> {
+    let input: render::StatusInput = serde_json::from_str(stdin).unwrap_or_default();
+    input.context_window.as_ref().and_then(render::ctx_info)
+}
+
 /// Render the line for a raw stdin payload. Unparseable input yields the
 /// no-context line rather than an error.
 pub fn line_for(stdin: &str, mcp: McpState, color: bool) -> String {
-    let input: render::StatusInput = serde_json::from_str(stdin).unwrap_or_default();
-    let ctx = input.context_window.as_ref().and_then(render::ctx_info);
-    render::render(mcp, ctx, color)
+    render::render(mcp, ctx_of(stdin), color)
 }
 
 /// The `--statusline` entry point. Reached from `main.rs` BEFORE the Tauri
@@ -51,13 +59,21 @@ pub fn run_cli() {
     // A read error is treated like empty input: still print the ctx placeholder.
     let _ = std::io::stdin().read_to_string(&mut stdin);
 
+    // stdin is parsed ONCE, and BEFORE the probe, so the context percentage can
+    // ride the same `/status` request the `mcp` segment already pays for (see
+    // `probe::build_status_request`). A garbage payload is not an error here:
+    // `ctx_of` yields `None`, the probe sends the bare path, and the line still
+    // prints `ctx —` — exactly what `line_for` did before the probe carried it.
+    let ctx = ctx_of(&stdin);
+    let pct = ctx.map(|c| c.pct);
+
     let url = std::env::var("SWARMTERM_MCP_URL").ok();
     let token = std::env::var("SWARMTERM_SESSION").ok();
     let mcp = mcp_state(url.as_deref(), token.as_deref(), |u, t| {
-        probe::probe(u, t, PROBE_TIMEOUT)
+        probe::probe(u, t, pct, PROBE_TIMEOUT)
     });
 
-    println!("{}", line_for(&stdin, mcp, true));
+    println!("{}", render::render(mcp, ctx, true));
 }
 
 #[cfg(test)]
@@ -119,5 +135,31 @@ mod tests {
         // empty status line is invisible, a panic is a visible Claude Code error.
         assert_eq!(line_for("not json", McpState::Absent, false), "ctx —");
         assert_eq!(line_for("", McpState::Connected, false), "mcp ✓  ·  ctx —");
+    }
+
+    #[test]
+    fn ctx_of_reads_the_percentage() {
+        let raw = r#"{"context_window":{"total_input_tokens":84213,
+                     "context_window_size":200000,"used_percentage":42.1}}"#;
+        assert_eq!(
+            ctx_of(raw),
+            Some(render::CtxInfo {
+                used: 84213,
+                size: 200000,
+                pct: 42.1
+            })
+        );
+    }
+
+    #[test]
+    fn ctx_of_is_none_without_a_first_turn() {
+        // Before the first API turn Claude Code sends no `used_percentage`;
+        // that, garbage, and empty stdin are all "no data" — never 0 %.
+        assert_eq!(ctx_of("not json"), None);
+        assert_eq!(ctx_of(""), None);
+        assert_eq!(
+            ctx_of(r#"{"context_window":{"context_window_size":200000}}"#),
+            None
+        );
     }
 }

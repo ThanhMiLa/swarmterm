@@ -55,6 +55,7 @@ use rmcp::transport::streamable_http_server::tower::{
 use rmcp::{tool_handler, ServerHandler};
 use tauri::{AppHandle, Manager};
 
+use axum::extract::RawQuery;
 use axum::extract::State as AxumState;
 use axum::http::{header::AUTHORIZATION, HeaderMap, StatusCode};
 use axum::response::{IntoResponse, Response};
@@ -62,6 +63,7 @@ use axum::routing::{get, post};
 use axum::Json;
 
 use crate::mcp::auth::{self, AuthError, TerminalId};
+use crate::mcp::context_usage::{self, AgentContextEvent};
 use crate::pty::AppState;
 
 #[derive(Clone)]
@@ -260,13 +262,48 @@ fn bearer_header(headers: &HeaderMap) -> &str {
         .unwrap_or("")
 }
 
-/// `GET /status` — the status line's only backend call. Loopback-only (the
-/// listener binds `127.0.0.1:0`) and reveals nothing beyond one boolean about
-/// the caller's own pane.
-async fn status_handler(AxumState(app): AxumState<AppHandle>, headers: HeaderMap) -> Response {
-    if live_caller(&app, &headers).is_none() {
-        return StatusCode::UNAUTHORIZED.into_response();
+/// Record one context-usage sample for a pane and emit `agent:context` only
+/// if the ROUNDED value changed (`ContextUsage::record` is the dedupe). The
+/// lock is statement-scoped on purpose: `emit` fans out to every webview and
+/// must never run under a mutex that `/status` contends for every render.
+fn publish_context(app: &AppHandle, terminal_id: &str, pct: Option<f64>) {
+    let change = app
+        .state::<AppState>()
+        .context_usage
+        .lock()
+        .unwrap()
+        .record(terminal_id, pct);
+    if let Some(pct) = change {
+        use tauri::Emitter;
+        let _ = app.emit(
+            "agent:context",
+            &AgentContextEvent {
+                terminal_id: terminal_id.to_owned(),
+                pct,
+                at_ms: crate::warroom::now_ms(),
+            },
+        );
     }
+}
+
+/// `GET /status` — the status line's only backend call. Loopback-only (the
+/// listener binds `127.0.0.1:0`); it reveals nothing beyond one boolean about
+/// the caller's own pane, and records the caller's own context % when the
+/// probe rides it in as `?ctx=` (the response body is unchanged — the probe's
+/// parser must not care).
+async fn status_handler(
+    AxumState(app): AxumState<AppHandle>,
+    RawQuery(query): RawQuery,
+    headers: HeaderMap,
+) -> Response {
+    let Some(terminal_id) = live_caller(&app, &headers) else {
+        return StatusCode::UNAUTHORIZED.into_response();
+    };
+    publish_context(
+        &app,
+        &terminal_id,
+        context_usage::parse_ctx_query(query.as_deref()),
+    );
     let token = auth::bearer(bearer_header(&headers));
     let connected = app.state::<AppState>().mcp_clients.lock().unwrap().has_seen(token);
     (
@@ -296,11 +333,17 @@ async fn hook_handler(
     let _ = app.emit(
         "agent:hook",
         &crate::hook::AgentHookEvent {
-            terminal_id,
+            terminal_id: terminal_id.clone(),
             signal: body.signal,
             at_ms: crate::warroom::now_ms(),
         },
     );
+    // SessionEnd must drop the context chip NOW, not at the next launch's
+    // first status-line render; and since SessionStart also maps to `Forget`,
+    // a relaunched `claude` starts from "no data" even if that render is late.
+    if matches!(body.signal, crate::hook::Signal::Forget) {
+        publish_context(&app, &terminal_id, None);
+    }
     // The CLI reads to EOF with a 300 ms budget; `close` ends it promptly.
     (
         StatusCode::NO_CONTENT,
