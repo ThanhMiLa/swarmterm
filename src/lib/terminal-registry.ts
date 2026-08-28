@@ -24,6 +24,7 @@ import {
 import { parseFileUrl } from '@/lib/file-url'
 import { parseOsc52 } from '@/lib/osc52'
 import { parseShellMark } from '@/lib/shell-marks'
+import { isPlainShellPane } from '@/lib/templates'
 import { sanitizePromptText } from '@/lib/prompt-sanitize'
 import { detectPathCandidates, parsePathSuffix } from '@/lib/path-link-parse'
 import { classifyOscLink, openPathLocation } from '@/lib/terminal-link-actions'
@@ -373,10 +374,16 @@ function getOrCreate(id: string): Entry {
   // can switch this id between an agent and a plain shell, and an agent pane's
   // own shell prints the same marks around its hour-long `claude` run — the
   // agent state machine already owns that pane, so counting it here would
-  // double-report. Returning true keeps xterm from logging an unknown OSC.
+  // double-report. "Plain" means the template runs NO command
+  // (`isPlainShellPane`), NOT "has no detection manifest": `omp` is
+  // deliberately manifest-less (manifests/index.ts) yet runs `omp`, and any
+  // future agent shipped before its manifest is the same shape — keying on the
+  // manifest turned their run into a Git refresh + "Command finished" chime.
+  // `refreshDetector` keeps `manifestForAgent`: detector presence really is
+  // "has a manifest". Returning true keeps xterm from logging an unknown OSC.
   term.parser.registerOscHandler(133, (data) => {
     const entry = entries.get(id)
-    if (entry === undefined || manifestForAgent(entry.config.agentId) !== undefined) return true
+    if (entry === undefined || !isPlainShellPane(entry.config.agentId)) return true
     const mark = parseShellMark(data)
     if (mark !== null) useShellMarkStore.getState().applyMark(id, mark, Date.now())
     return true
@@ -1086,6 +1093,16 @@ export function respawnTerminal(id: string, config: AttachConfig): void {
   useShellMarkStore.getState().clear(id)
   // …and the context chip, same reason.
   useContextUsageStore.getState().clear(id)
+  // And to the link-resolution cwd. `attachTerminal` seeds it with `||` on
+  // purpose so a remount never clobbers an OSC 7 value — but a respawn is a
+  // NEW pty whose OSC 7 history starts empty, and a shell without the
+  // integration snippet (fish, pwsh, cmd.exe, Linux zsh) never reports one,
+  // so without this the dead pty's last directory keeps resolving path links,
+  // the Git-panel scope and War Room join (`getTerminalCwd` readers). The
+  // INCOMING cwd, not the merged `entry.config.cwd`: a respawn that omits it
+  // reads as "unknown" (⇒ `undefined` ⇒ leaf/workspace cwd, like a fresh
+  // pane), not "same as before". Don't unify with attach's `||`.
+  entry.cwd = config.cwd ?? ''
   // And to the detector: it holds evidence (title/progress/pending-idle) from
   // the dead pty, which the new one hasn't produced.
   entry.detector?.reset()

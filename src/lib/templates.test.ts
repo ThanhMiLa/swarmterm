@@ -4,6 +4,7 @@ import {
   DEFAULT_TEMPLATE_ID,
   templateById,
   agentCommand,
+  isPlainShellPane,
   isTemplateAvailable
 } from './templates'
 
@@ -70,6 +71,25 @@ describe('agentCommand', () => {
 
   it('exposes terminal as the default agent id', () => {
     expect(DEFAULT_TEMPLATE_ID).toBe('terminal')
+  })
+})
+
+describe('isPlainShellPane', () => {
+  it('is true only for the template that runs no command', () => {
+    expect(isPlainShellPane('terminal')).toBe(true)
+    for (const t of TEMPLATES) expect(isPlainShellPane(t.id)).toBe(t.command === null)
+  })
+
+  it('is false for omp, which runs a command but ships no detection manifest', () => {
+    // The whole reason this predicate exists: "no manifest" ≠ "plain shell".
+    // Keying the OSC 133 gate on the manifest let an omp pane's own shell
+    // report its hour-long `omp` run as a finished command.
+    expect(isPlainShellPane('omp')).toBe(false)
+  })
+
+  it('fails closed on an unknown or missing id (no templateById fallback)', () => {
+    expect(isPlainShellPane('nope')).toBe(false)
+    expect(isPlainShellPane(undefined)).toBe(false)
   })
 })
 

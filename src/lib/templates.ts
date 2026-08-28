@@ -197,6 +197,19 @@ export function agentCommand(agentId: string | undefined): string | undefined {
 }
 
 /**
+ * True only when the template runs NO command — the pane is the user's own
+ * shell. Deliberately NOT "has no detection manifest" (`manifestForAgent`):
+ * `omp` ships without a manifest yet runs `omp`, so a gate keyed on the
+ * manifest would treat its hour-long run as a plain-shell command (Git-panel
+ * refresh + "Command finished" chime for an agent session). Exact lookup on
+ * purpose — `templateById`'s unknown-id fallback to `terminal` would read a
+ * typo as a plain shell, the opposite of fail-closed.
+ */
+export function isPlainShellPane(agentId: string | undefined): boolean {
+  return TEMPLATES.find((t) => t.id === agentId)?.command === null
+}
+
+/**
  * Template id → installed?, from the backend probe (`list_available_agents`).
  * A missing id reads as installed — optimistic, so a pending or failed probe
  * never locks out a working CLI.
