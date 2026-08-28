@@ -22,6 +22,7 @@ import {
   type LinkKind
 } from '@/lib/terminal-links'
 import { parseFileUrl } from '@/lib/file-url'
+import { parseOsc52 } from '@/lib/osc52'
 import { sanitizePromptText } from '@/lib/prompt-sanitize'
 import { detectPathCandidates, parsePathSuffix } from '@/lib/path-link-parse'
 import { classifyOscLink, openPathLocation } from '@/lib/terminal-link-actions'
@@ -346,6 +347,20 @@ function getOrCreate(id: string): Entry {
     const dir = parseFileUrl(data)
     const entry = entries.get(id)
     if (dir && entry) entry.cwd = dir
+    return true
+  })
+  // OSC 52 ("ESC ] 52 ; Pc ; Pd BEL") is how nvim `"+y`, tmux `set-clipboard`,
+  // yazi and gh copy from inside a pane. xterm core has no handler and
+  // @xterm/addon-clipboard is not installed, so without this the yank is
+  // silently swallowed. WRITE-ONLY on purpose: a `?` read request is never
+  // answered (it would type the user's clipboard into whatever program asked,
+  // in whatever pane), and empty / malformed payloads never clear the
+  // clipboard. No focus or visibility gate — VS Code writes from background
+  // panes too, and a yank in an unfocused nvim must still land. Returning true
+  // for EVERY outcome so nothing downstream can answer a read either.
+  term.parser.registerOscHandler(52, (data) => {
+    const r = parseOsc52(data)
+    if (r.kind === 'write') writeClipboard(r.text).catch(console.warn)
     return true
   })
   // Fan out to the broadcast group when this terminal is an armed member;
