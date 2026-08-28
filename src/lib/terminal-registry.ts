@@ -23,6 +23,7 @@ import {
 } from '@/lib/terminal-links'
 import { parseFileUrl } from '@/lib/file-url'
 import { parseOsc52 } from '@/lib/osc52'
+import { parseShellMark } from '@/lib/shell-marks'
 import { sanitizePromptText } from '@/lib/prompt-sanitize'
 import { detectPathCandidates, parsePathSuffix } from '@/lib/path-link-parse'
 import { classifyOscLink, openPathLocation } from '@/lib/terminal-link-actions'
@@ -36,6 +37,7 @@ import {
 import { ActivityTracker } from '@/lib/activity-tracker'
 import { useTerminalActivityStore } from '@/store/terminal-activity-store'
 import { useTerminalTypingStore } from '@/store/terminal-typing-store'
+import { useShellMarkStore } from '@/store/shell-mark-store'
 import {
   breaksSegment,
   diffToEdit,
@@ -361,6 +363,21 @@ function getOrCreate(id: string): Entry {
   term.parser.registerOscHandler(52, (data) => {
     const r = parseOsc52(data)
     if (r.kind === 'write') writeClipboard(r.text).catch(console.warn)
+    return true
+  })
+  // OSC 133 ("ESC ] 133 ; A|B|C|D[;exit] BEL") — FinalTerm shell-integration
+  // marks, emitted only by shells the user wired up (guide §Shell integration;
+  // nothing is injected into the pty). xterm core has no semantics for them.
+  // Gated to plain Terminal panes PER MARK, not at registration: respawnTerminal
+  // can switch this id between an agent and a plain shell, and an agent pane's
+  // own shell prints the same marks around its hour-long `claude` run — the
+  // agent state machine already owns that pane, so counting it here would
+  // double-report. Returning true keeps xterm from logging an unknown OSC.
+  term.parser.registerOscHandler(133, (data) => {
+    const entry = entries.get(id)
+    if (entry === undefined || manifestForAgent(entry.config.agentId) !== undefined) return true
+    const mark = parseShellMark(data)
+    if (mark !== null) useShellMarkStore.getState().applyMark(id, mark, Date.now())
     return true
   })
   // Fan out to the broadcast group when this terminal is an armed member;
@@ -808,7 +825,12 @@ function getOrCreate(id: string): Entry {
   // exit/error, and the detector has no pty visibility of its own.
   session.subscribe(() => {
     const kind = session.getStatus().kind
-    if (kind === 'exited' || kind === 'error') entries.get(id)?.detector?.noteExit()
+    if (kind === 'exited' || kind === 'error') {
+      entries.get(id)?.detector?.noteExit()
+      // The pty behind the OSC 133 marks is gone: a `running` left here would
+      // never see its D, and the next shell's first `D;0` must not close it.
+      useShellMarkStore.getState().clear(id)
+    }
   })
 
   const entry: Entry = {
@@ -892,6 +914,7 @@ export function disposeTerminal(id: string): void {
   activityTracker.cancel(id)
   useTerminalActivityStore.getState().clear(id)
   useTerminalTypingStore.getState().clearTyping(id)
+  useShellMarkStore.getState().clear(id)
   // Same ordering concern as activityTracker above: dispose() clears the
   // detector's pending timer first so a late tick can't re-publish a state
   // for an id the store is about to drop.
@@ -1016,6 +1039,9 @@ export function retryTerminal(id: string): void {
   // (dirty survives until the user types and submits, or clicks Deliver now)
   // for a line that no longer exists anywhere.
   useTerminalTypingStore.getState().clearTyping(id)
+  // And to the OSC 133 state: a `running` left over from the dead pty would
+  // turn the new shell's first `D;0` into a finished command.
+  useShellMarkStore.getState().clear(id)
   // And to the detector: it holds evidence (title/progress/pending-idle) from
   // the dead pty, which the new one hasn't produced.
   entry.detector?.reset()
@@ -1045,6 +1071,9 @@ export function respawnTerminal(id: string, config: AttachConfig): void {
   // (dirty survives until the user types and submits, or clicks Deliver now)
   // for a line that no longer exists anywhere.
   useTerminalTypingStore.getState().clearTyping(id)
+  // And to the OSC 133 state: a `running` left over from the dead pty would
+  // turn the new shell's first `D;0` into a finished command.
+  useShellMarkStore.getState().clear(id)
   // And to the detector: it holds evidence (title/progress/pending-idle) from
   // the dead pty, which the new one hasn't produced.
   entry.detector?.reset()

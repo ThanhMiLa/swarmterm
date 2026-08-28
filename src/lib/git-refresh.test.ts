@@ -2,11 +2,14 @@ import { describe, expect, it, vi } from 'vitest'
 import type { AgentPaneState } from '@/lib/agent-state/rollup'
 import {
   GIT_REFRESH_DEBOUNCE_MS,
+  commandRefreshTrigger,
   gitRefreshTrigger,
   startGitRefreshWatch,
+  type CommandRefreshInput,
   type GitRefreshInput,
   type GitRefreshWatchDeps
 } from '@/lib/git-refresh'
+import type { CommandState, FinishedCommand } from '@/lib/shell-marks'
 
 type States = Record<string, AgentPaneState>
 const s = (state: AgentPaneState['state'], seen = true): AgentPaneState => ({ state, seen, sinceMs: 0 })
@@ -23,6 +26,22 @@ const cwds: Record<string, string | undefined> = {
 
 const trigger = (prev: States, next: States, over: Partial<GitRefreshInput> = {}): string[] =>
   gitRefreshTrigger({
+    prev,
+    next,
+    cwdOf: (id) => cwds[id],
+    worktrees,
+    selectedWorktreePath: ALPHA,
+    panelVisible: true,
+    ...over
+  })
+
+type Commands = Record<string, CommandState>
+const fin = (finishedAt: number): FinishedCommand => ({ startedAt: 0, finishedAt, durationMs: finishedAt })
+const cmd = (phase: CommandState['phase'], last?: FinishedCommand): CommandState =>
+  last === undefined ? { phase } : { phase, last }
+
+const ctrigger = (prev: Commands, next: Commands, over: Partial<CommandRefreshInput> = {}): string[] =>
+  commandRefreshTrigger({
     prev,
     next,
     cwdOf: (id) => cwds[id],
@@ -75,8 +94,37 @@ describe('gitRefreshTrigger', () => {
   })
 })
 
+describe('commandRefreshTrigger', () => {
+  it('fires once per finished command in the selected worktree — the record rides A/B/C by reference', () => {
+    const L = fin(50)
+    expect(ctrigger({ t1: cmd('running') }, { t1: cmd('finished', L) })).toEqual(['t1'])
+    expect(ctrigger({ t1: cmd('finished', L) }, { t1: cmd('prompt', L) })).toEqual([])
+    expect(ctrigger({ t1: cmd('prompt', L) }, { t1: cmd('running', L) })).toEqual([])
+    expect(ctrigger({ t1: cmd('running', L) }, { t1: cmd('finished', fin(90)) })).toEqual(['t1'])
+  })
+
+  it('ignores prompt/input/running hops and pane removal', () => {
+    expect(ctrigger({}, { t1: cmd('prompt') })).toEqual([])
+    expect(ctrigger({ t1: cmd('prompt') }, { t1: cmd('input') })).toEqual([])
+    expect(ctrigger({ t1: cmd('input') }, { t1: cmd('running') })).toEqual([])
+    expect(ctrigger({ t1: cmd('finished', fin(5)) }, {})).toEqual([])
+  })
+
+  it('applies the same strict ownership and visibility rules as the agent trigger', () => {
+    const p = { t1: cmd('running'), t3: cmd('running') }
+    const n = { t1: cmd('finished', fin(5)), t3: cmd('finished', fin(5)) }
+    expect(ctrigger(p, n)).toEqual(['t1'])
+    expect(ctrigger(p, n, { selectedWorktreePath: MAIN })).toEqual([])
+    expect(ctrigger(p, n, { panelVisible: false })).toEqual([])
+    expect(ctrigger(p, n, { selectedWorktreePath: '' })).toEqual([])
+    expect(ctrigger(p, n, { cwdOf: () => undefined })).toEqual([])
+    expect(ctrigger({ t2: cmd('running') }, { t2: cmd('finished', fin(5)) }, { selectedWorktreePath: MAIN })).toEqual(['t2'])
+  })
+})
+
 interface Harness {
   emit: (next: States, prev: States) => void
+  emitCommands: (next: Commands, prev: Commands) => void
   fireTimers: () => void
   refresh: ReturnType<typeof vi.fn>
   setTimer: ReturnType<typeof vi.fn>
@@ -88,6 +136,7 @@ interface Harness {
 
 function harness(): Harness {
   let listener: ((n: States, p: States) => void) | null = null
+  let cmdListener: ((n: Commands, p: Commands) => void) | null = null
   const timers = new Map<number, () => void>()
   let nextHandle = 1
   const refresh = vi.fn()
@@ -105,6 +154,10 @@ function harness(): Harness {
       listener = l
       return () => { listener = null }
     },
+    subscribeCommands: (l) => {
+      cmdListener = l
+      return () => { cmdListener = null }
+    },
     cwdOf: (id) => live[id],
     getGit: () => git,
     refreshSelected: refresh,
@@ -114,6 +167,7 @@ function harness(): Harness {
   const stop = startGitRefreshWatch(deps)
   return {
     emit: (next, prev) => listener?.(next, prev),
+    emitCommands: (next, prev) => cmdListener?.(next, prev),
     fireTimers: () => {
       const fns = [...timers.values()]
       timers.clear()
@@ -186,5 +240,40 @@ describe('startGitRefreshWatch', () => {
     expect(h.clearTimer).toHaveBeenCalledTimes(1)
     h.fireTimers()
     expect(h.refresh).not.toHaveBeenCalled()
+  })
+
+  it('a finished command and an agent transition in the same burst share one timer', () => {
+    const h = harness()
+    h.emitCommands({ t1: cmd('finished', fin(5)) }, { t1: cmd('running') })
+    h.emit({ t4: s('idle') }, { t4: s('working') })
+    expect(h.setTimer).toHaveBeenCalledTimes(1)
+    h.fireTimers()
+    expect(h.refresh).toHaveBeenCalledTimes(1)
+  })
+
+  it('prompt redraws after the finish do not re-arm; the next finish does', () => {
+    const h = harness()
+    const L = fin(5)
+    h.emitCommands({ t1: cmd('finished', L) }, { t1: cmd('running') })
+    h.fireTimers()
+    h.emitCommands({ t1: cmd('prompt', L) }, { t1: cmd('finished', L) })
+    h.emitCommands({ t1: cmd('running', L) }, { t1: cmd('prompt', L) })
+    expect(h.setTimer).toHaveBeenCalledTimes(1)
+    h.emitCommands({ t1: cmd('finished', fin(9)) }, { t1: cmd('running', L) })
+    expect(h.setTimer).toHaveBeenCalledTimes(2)
+  })
+
+  it('a plain pane in another repo never refreshes this one', () => {
+    const h = harness()
+    h.emitCommands({ t3: cmd('finished', fin(5)) }, { t3: cmd('running') })
+    expect(h.setTimer).not.toHaveBeenCalled()
+  })
+
+  it('stop() unsubscribes both sources', () => {
+    const h = harness()
+    h.stop()
+    h.emitCommands({ t1: cmd('finished', fin(5)) }, { t1: cmd('running') })
+    h.emit({ t1: s('idle') }, { t1: s('working') })
+    expect(h.setTimer).not.toHaveBeenCalled()
   })
 })

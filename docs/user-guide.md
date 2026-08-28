@@ -53,7 +53,7 @@ Two rules protect your work: closing a pane or workspace **never deletes a workt
 
 ## The Git panel
 
-The **Git** tab in the right panel shows, for the focused pane: its worktree and branch (and which agent owns each branch), changed files with an inline diff, and how many commits it is ahead of the main line. It follows your focus between panes and refreshes itself when an agent working in that worktree finishes, pauses for input, or exits (a commit typed by hand in a plain Terminal pane still needs the tab closed and reopened). For a worktree branch, a footer line also tells you whether it **merges cleanly into the main branch** or lists the conflicting files, plus how many commits it is behind — a dry run that never touches your files (needs git ≥ 2.38).
+The **Git** tab in the right panel shows, for the focused pane: its worktree and branch (and which agent owns each branch), changed files with an inline diff, and how many commits it is ahead of the main line. It follows your focus between panes and refreshes itself when an agent working in that worktree finishes, pauses for input, or exits (a command typed by hand in a plain Terminal pane counts too once that shell has **shell integration** set up — see below; otherwise use the ↻ button). For a worktree branch, a footer line also tells you whether it **merges cleanly into the main branch** or lists the conflicting files, plus how many commits it is behind — a dry run that never touches your files (needs git ≥ 2.38).
 
 ## Web preview
 
@@ -101,6 +101,65 @@ Toggle it in **Settings → Terminal**. Swarmterm merge-writes the entry into `~
 - **Click a URL** to open it in your browser; `⌘/Ctrl + click` a file path (`src/foo.ts:42:9`, `src/foo.ts(42,9)`, `File "x.py", line 42`) to open it in your editor at that line. Nothing is ever opened with the OS default app, so a mis-click on a `.sh` or `.exe` can never run it.
 - **Drop a file or folder** onto a pane to insert its path, quoted for that pane's shell.
 - **Choose your shell** — PowerShell, cmd, PowerShell 7, Git Bash on Windows; zsh, bash, fish on macOS/Linux — per pane, or as a default in Settings.
+
+## Shell integration
+
+A plain Terminal pane has no agent, so Swarmterm cannot tell when a command you typed has finished — unless your shell says so. If it emits the standard **OSC 133** prompt marks (the same ones VS Code, WezTerm, Ghostty, kitty and Windows Terminal read), Swarmterm follows each command from prompt to exit and uses that to refresh the **Git panel** when a command finishes inside the selected worktree — a hand-typed `git commit` shows up just like an agent's. Nothing is injected into your shell: add the snippet for yours, guarded so it only runs inside Swarmterm (`SWARMTERM_SESSION` is set in every pane). If you already use another terminal's shell integration that emits these marks, there is nothing to add.
+
+**zsh** (`~/.zshrc`)
+
+```zsh
+if [[ -n $SWARMTERM_SESSION ]]; then
+  __swarmterm_precmd()  { printf '\033]133;D;%s\a\033]133;A\a' "$?"; }
+  __swarmterm_preexec() { printf '\033]133;C\a'; }
+  precmd_functions+=(__swarmterm_precmd)
+  preexec_functions+=(__swarmterm_preexec)
+fi
+```
+
+**bash** (`~/.bashrc`; bash ≥ 4.4 for `PS0`)
+
+```bash
+if [[ -n $SWARMTERM_SESSION ]]; then
+  __swarmterm_prompt() { printf '\033]133;D;%s\a\033]133;A\a' "$?"; }
+  PROMPT_COMMAND="__swarmterm_prompt${PROMPT_COMMAND:+;$PROMPT_COMMAND}"
+  PS0='\[\e]133;C\a\]'"$PS0"
+fi
+```
+
+**fish** (`~/.config/fish/config.fish`)
+
+```fish
+if set -q SWARMTERM_SESSION
+    function __swarmterm_prompt --on-event fish_prompt
+        printf '\e]133;A\a'
+    end
+    function __swarmterm_preexec --on-event fish_preexec
+        printf '\e]133;C\a'
+    end
+    function __swarmterm_postexec --on-event fish_postexec
+        printf '\e]133;D;%s\a' $status
+    end
+end
+```
+
+**PowerShell 7** (`$PROFILE`; the least-tested of the four — `cmd.exe` has no equivalent)
+
+```powershell
+if ($env:SWARMTERM_SESSION) {
+  $global:__swarmtermPrompt = $function:prompt
+  function global:prompt {
+    $code = [int](-not $?)
+    "$([char]27)]133;D;$code`a$([char]27)]133;A`a" + (& $global:__swarmtermPrompt)
+  }
+  Set-PSReadLineKeyHandler -Key Enter -ScriptBlock {
+    [Console]::Write("$([char]27)]133;C`a")
+    [Microsoft.PowerShell.PSConsoleReadLine]::AcceptLine()
+  }
+}
+```
+
+The marks are `A` (prompt drawn), `C` (command started) and `D;<exit>` (command ended); `B` (end of prompt) is optional and omitted above. The very first prompt's `D` is ignored, and a machine you `ssh` into without the snippet simply sends nothing until you are back.
 
 ## Settings, tray and quitting
 
@@ -179,3 +238,4 @@ On macOS the modifier is `⌘`, which deliberately leaves `Ctrl + B` to the term
 - **After Esc (interrupt) a Claude Code pane can read "working" for up to 30 s** — Claude fires no Stop hook on an interrupt, so the working signal has to time out before screen reading takes over again.
 - **Find widget with regex on shows "Invalid regex" while you type** — a pattern that does not parse yet (for example `foo(`) reads **Invalid regex** in the counter and clears the previous highlights until the pattern is valid again. Toggle regex off to search it as literal text.
 - **Any program in any pane can overwrite the clipboard via OSC 52** — like VS Code, there is no per-pane gate. Reads are refused and empty writes never clear it; copies larger than 1 MiB are ignored.
+- **Shell integration is opt-in** — a hand-typed command in a plain Terminal pane is only noticed if that shell emits OSC 133 marks (§Shell integration). Nothing is injected, `cmd.exe` cannot do it, and an interrupted command that redraws the prompt without a `D` mark is simply forgotten.

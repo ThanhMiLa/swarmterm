@@ -16,6 +16,7 @@ import {
 import { useNavbarVisibilityStore } from '@/store/navbar-visibility-store'
 import { useStatuslineStore } from '@/store/statusline-store'
 import { useAgentStateStore } from '@/store/agent-state-store'
+import { useShellMarkStore } from '@/store/shell-mark-store'
 import { matchAppShortcut } from '@/lib/keybindings'
 import { jumpToAttention } from '@/lib/attention-jump'
 import { collectLeaves, findLeaf } from '@/lib/layout-tree'
@@ -626,7 +627,8 @@ export default function App(): ReactElement {
   }, [])
 
   // Git panel self-refresh: an agent pane leaving `working` (or exiting) inside
-  // the selected worktree re-fetches it in place. Same outside-the-render-path
+  // the selected worktree, or a plain pane finishing a command (OSC 133),
+  // re-fetches it in place. Same outside-the-render-path
   // subscription as the notification watch. The live registry cwd (OSC 7) is
   // preferred — `leaf.cwd` is only the spawn/picker value — and the watch
   // caches it for panes that have already been disposed.
@@ -634,6 +636,8 @@ export default function App(): ReactElement {
     return startGitRefreshWatch({
       subscribeAgentStates: (listener) =>
         useAgentStateStore.subscribe((cur, prev) => listener(cur.byId, prev.byId)),
+      subscribeCommands: (listener) =>
+        useShellMarkStore.subscribe((cur, prev) => listener(cur.byId, prev.byId)),
       cwdOf: (id) => {
         const live = getTerminalCwd(id)
         if (live !== undefined) return live
