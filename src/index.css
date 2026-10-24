@@ -43,29 +43,30 @@
 
   :root[data-style='terminal-black'],
   [data-style='terminal-black'] {
-    --background: 0 0% 4.7%;     /* #0c0c0c: soft terminal black, slightly lighter than pitch black */
-    --canvas: 0 0% 3.2%;         /* #080808: deep gutter between panes */
-    --foreground: 0 0% 86%;
-    --card: 0 0% 5.5%;           /* #0e0e0e: chrome for titlebar, navbar, pane header */
-    --card-foreground: 0 0% 86%;
-    --popover: 0 0% 9%;          /* Elevated surface for menus ~#171717 */
-    --popover-foreground: 0 0% 90%;
-    --primary: 206 100% 42%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 0 0% 7.5%;
-    --secondary-foreground: 0 0% 82%;
-    --muted: 0 0% 7.5%;
-    --muted-foreground: 0 0% 58%;
-    --accent: 0 0% 12%;          /* Hover states ~#1f1f1f */
-    --accent-foreground: 0 0% 90%;
-    --destructive: 0 86% 62%;
+    /* SpaceVibe Deck (DECK_DARK_THEME) palette */
+    --background: 0 0% 3.9%;     /* #0a0a0a: stage & terminal ground */
+    --canvas: 0 0% 3.9%;         /* #0a0a0a: stage gutter */
+    --foreground: 0 0% 90.6%;    /* #e7e7e7: text-primary */
+    --card: 0 0% 7.8%;           /* #141414: sidebar-bg / header chrome */
+    --card-foreground: 0 0% 90.6%;
+    --popover: 0 0% 13.3%;       /* #222222: chrome-2 elevated surface */
+    --popover-foreground: 0 0% 90.6%;
+    --primary: 221 100% 71.8%;   /* #6f9cff: Deck accent */
+    --primary-foreground: 0 0% 3.9%;
+    --secondary: 0 0% 5.9%;      /* #0f0f0f: input-bg */
+    --secondary-foreground: 0 0% 90.6%;
+    --muted: 0 0% 5.9%;          /* #0f0f0f: input-bg */
+    --muted-foreground: 0 0% 67.1%; /* #ababab: text-muted */
+    --accent: 0 0% 17.3%;        /* #2c2c2c: tabActiveBg */
+    --accent-foreground: 0 0% 90.6%;
+    --destructive: 356 80.5% 67.8%; /* #ef6b73: Deck red */
     --destructive-foreground: 0 0% 100%;
-    --border: 0 0% 13%;          /* Subtle division border ~#212121 */
-    --pane-border: 0 0% 17%;     /* Split pane border ~#2b2b2b */
-    --input: 0 0% 10%;
-    --ring: 206 100% 42%;
-    --broadcast: 174 62% 47%;
-    --activity: 48 96% 53%;
+    --border: 0 0% 15.3%;        /* #272727: hair / seam-divider */
+    --pane-border: 0 0% 23.1%;   /* #3b3b3b: seam-split */
+    --input: 0 0% 10.6%;         /* #1b1b1b: chrome-1 */
+    --ring: 221 100% 71.8%;      /* #6f9cff: Deck accent */
+    --broadcast: 191 61.7% 62.2%; /* #63c5da: Deck cyan */
+    --activity: 39 67.1% 69%;    /* #e5c07b: Deck yellow */
     --radius: 0.5rem;
   }
 }

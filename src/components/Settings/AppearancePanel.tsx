@@ -13,7 +13,7 @@ interface StyleOption {
 
 const STYLE_OPTIONS: StyleOption[] = [
   { id: 'vscode-dark', label: 'VS Code Dark', variant: 'Dark', surface: 'Modern' },
-  { id: 'terminal-black', label: 'Terminal Black', variant: 'Dark', surface: 'Charcoal' }
+  { id: 'terminal-black', label: 'Deck Dark', variant: 'Dark', surface: 'SpaceVibe' }
 ]
 
 /** The "Appearance" settings category — currently a single Style picker. */
@@ -105,13 +105,13 @@ function TerminalPreview({
     <div
       className={cn(
         'overflow-hidden rounded-md border',
-        isBlack ? 'border-[#242424] bg-[#0c0c0c]' : 'border-border bg-canvas'
+        isBlack ? 'border-[#272727] bg-[#0a0a0a]' : 'border-border bg-canvas'
       )}
     >
       <div
         className={cn(
           'flex items-center gap-1.5 border-b px-2.5 py-1.5',
-          isBlack ? 'border-[#242424] bg-[#0e0e0e]' : 'border-border bg-muted/40'
+          isBlack ? 'border-[#272727] bg-[#141414]' : 'border-border bg-muted/40'
         )}
       >
         <span className="h-2 w-2 rounded-full bg-muted-foreground/40" />
@@ -122,7 +122,7 @@ function TerminalPreview({
       <div
         className={cn(
           'flex flex-col gap-1 px-3 py-3 font-mono text-[10px] leading-tight',
-          isBlack ? 'bg-[#0c0c0c] text-[#e5e5e5]' : ''
+          isBlack ? 'bg-[#0a0a0a] text-[#e7e7e7]' : ''
         )}
       >
         <div>

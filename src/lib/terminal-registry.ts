@@ -95,29 +95,29 @@ export const VSCODE_DARK_THEME: ITheme = {
   brightWhite: '#E5E5E5'
 }
 
-/** Deep charcoal black palette for the "Terminal Black" style. */
+/** SpaceVibe Deck Dark (DECK_DARK_THEME) terminal palette. */
 export const TERMINAL_BLACK_THEME: ITheme = {
-  background: '#0C0C0C',
-  foreground: '#CCCCCC',
-  cursor: '#FFFFFF',
-  cursorAccent: '#0C0C0C',
-  selectionBackground: 'rgba(255, 255, 255, 0.25)',
-  black: '#000000',
-  brightBlack: '#666666',
-  red: '#CD3131',
-  brightRed: '#F14C4C',
-  green: '#0DBC79',
-  brightGreen: '#23D18B',
-  yellow: '#E5E510',
-  brightYellow: '#F5F543',
-  blue: '#2472C8',
-  brightBlue: '#3B8EEA',
-  magenta: '#BC3FBC',
-  brightMagenta: '#D670D6',
-  cyan: '#11A8CD',
-  brightCyan: '#29B8DB',
-  white: '#E5E5E5',
-  brightWhite: '#E5E5E5'
+  background: '#0a0a0a',
+  foreground: '#e7e7e7',
+  cursor: '#e7e7e7',
+  cursorAccent: '#0a0a0a',
+  selectionBackground: '#303030',
+  black: '#202228',
+  red: '#ef6b73',
+  green: '#8ccf7e',
+  yellow: '#e5c07b',
+  blue: '#6f9cff',
+  magenta: '#c792ea',
+  cyan: '#63c5da',
+  white: '#d8dee9',
+  brightBlack: '#5d6470',
+  brightRed: '#ff7a82',
+  brightGreen: '#9bdd8d',
+  brightYellow: '#f1d18a',
+  brightBlue: '#86adff',
+  brightMagenta: '#d5a3f3',
+  brightCyan: '#7bd7ea',
+  brightWhite: '#ffffff'
 }
 
 export function getTerminalTheme(style: Style): ITheme {
