@@ -1,4 +1,0 @@
-# File thử nghiệm tính năng Diff trên Swarmterm
-- Dòng 1: Đây là file mới được AI tạo ra để test.
-- Dòng 2: File này sẽ hiển thị ở mục "Untracked" với ký hiệu [?].
-- Dòng 3: Bấm vào tên file này ở panel Git bên phải để xem toàn bộ nội dung diff màu xanh!
