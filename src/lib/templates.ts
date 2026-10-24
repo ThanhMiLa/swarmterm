@@ -89,6 +89,15 @@ export const TEMPLATES: WorkspaceTemplate[] = [
     mcpAutoEnrolled: true
   },
   {
+    id: 'antigravity',
+    name: 'Antigravity',
+    description: "Google's Antigravity agent CLI.",
+    command: 'agy --dangerously-skip-permissions',
+    executable: 'agy',
+    icon: antigravityIcon,
+    resume: { idPattern: UUID_RE, buildCommand: (base, id) => `${base} --conversation ${id}` }
+  },
+  {
     id: 'opencode',
     name: 'OpenCode',
     description: 'Open-source terminal coding agent.',
@@ -153,15 +162,6 @@ export const TEMPLATES: WorkspaceTemplate[] = [
     executable: 'cursor-agent',
     icon: cursorIcon,
     resume: { idPattern: UUID_RE, buildCommand: (base, id) => `${base} --resume ${id}` }
-  },
-  {
-    id: 'antigravity',
-    name: 'Antigravity',
-    description: "Google's Antigravity agent CLI.",
-    command: 'agy --dangerously-skip-permissions',
-    executable: 'agy',
-    icon: antigravityIcon,
-    resume: { idPattern: UUID_RE, buildCommand: (base, id) => `${base} --conversation ${id}` }
   },
   {
     id: 'omp',

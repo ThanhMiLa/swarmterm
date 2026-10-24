@@ -40,6 +40,34 @@
     --sb-thumb-hover: 0.28;   /* revealed while scrolling or on region hover */
     --sb-thumb-active: 0.50;  /* darkened on direct thumb hover */
   }
+
+  :root[data-style='terminal-black'],
+  [data-style='terminal-black'] {
+    --background: 0 0% 0%;       /* Pure black #000000 */
+    --canvas: 0 0% 0%;           /* Pure black #000000 */
+    --foreground: 0 0% 88%;
+    --card: 0 0% 0%;             /* Pure black for navbar, titlebar, paneheader */
+    --card-foreground: 0 0% 88%;
+    --popover: 0 0% 8%;          /* Elevated surface for menus ~#141414 */
+    --popover-foreground: 0 0% 92%;
+    --primary: 206 100% 42%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 6%;
+    --secondary-foreground: 0 0% 85%;
+    --muted: 0 0% 6%;
+    --muted-foreground: 0 0% 55%;
+    --accent: 0 0% 12%;          /* Hover states ~#1f1f1f */
+    --accent-foreground: 0 0% 90%;
+    --destructive: 0 86% 62%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 14%;          /* Subtle division border ~#242424 */
+    --pane-border: 0 0% 18%;     /* Split pane border ~#2e2e2e */
+    --input: 0 0% 12%;
+    --ring: 206 100% 42%;
+    --broadcast: 174 62% 47%;
+    --activity: 48 96% 53%;
+    --radius: 0.5rem;
+  }
 }
 
 @layer base {

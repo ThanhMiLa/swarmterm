@@ -15,13 +15,13 @@ describe('TEMPLATES catalog', () => {
     expect(ids).toEqual([
       'claude-code',
       'codex',
+      'antigravity',
       'opencode',
       'copilot',
       'qwen',
       'amp',
       'gemini',
       'cursor',
-      'antigravity',
       'omp',
       'terminal'
     ])

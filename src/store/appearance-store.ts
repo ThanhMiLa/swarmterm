@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import {
   DEFAULT_STYLE,
+  applyStyleToDom,
   readStoredStyle,
   storeStyle,
   type Style
@@ -19,10 +20,18 @@ export interface AppearanceStore {
 export const useAppearanceStore = create<AppearanceStore>((set) => {
   const initial =
     typeof window === 'undefined' ? DEFAULT_STYLE : readStoredStyle(window.localStorage)
+
+  if (typeof document !== 'undefined') {
+    applyStyleToDom(initial)
+  }
+
   return {
     style: initial,
     setStyle: (style) => {
-      storeStyle(window.localStorage, style)
+      if (typeof window !== 'undefined') {
+        storeStyle(window.localStorage, style)
+      }
+      applyStyleToDom(style)
       set({ style })
     }
   }

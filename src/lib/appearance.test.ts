@@ -1,7 +1,9 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import {
   APPEARANCE_STORAGE_KEY,
   DEFAULT_STYLE,
+  KNOWN_STYLES,
+  applyStyleToDom,
   readStoredStyle,
   storeStyle,
   type AppearanceStorage
@@ -24,6 +26,13 @@ describe('DEFAULT_STYLE', () => {
   })
 })
 
+describe('KNOWN_STYLES', () => {
+  it('contains vscode-dark and terminal-black', () => {
+    expect(KNOWN_STYLES).toContain('vscode-dark')
+    expect(KNOWN_STYLES).toContain('terminal-black')
+  })
+})
+
 describe('readStoredStyle', () => {
   it('returns DEFAULT_STYLE when nothing is stored', () => {
     expect(readStoredStyle(fakeStorage())).toBe(DEFAULT_STYLE)
@@ -42,6 +51,12 @@ describe('readStoredStyle', () => {
       'vscode-dark'
     )
   })
+
+  it('returns the stored terminal-black style', () => {
+    expect(readStoredStyle(fakeStorage({ [APPEARANCE_STORAGE_KEY]: 'terminal-black' }))).toBe(
+      'terminal-black'
+    )
+  })
 })
 
 describe('storeStyle', () => {
@@ -49,5 +64,28 @@ describe('storeStyle', () => {
     const storage = fakeStorage()
     storeStyle(storage, 'vscode-dark')
     expect(storage.getItem(APPEARANCE_STORAGE_KEY)).toBe('vscode-dark')
+    storeStyle(storage, 'terminal-black')
+    expect(storage.getItem(APPEARANCE_STORAGE_KEY)).toBe('terminal-black')
+  })
+})
+
+describe('applyStyleToDom', () => {
+  it('does not throw when document is undefined', () => {
+    expect(() => applyStyleToDom('terminal-black')).not.toThrow()
+  })
+
+  it('sets data-style attribute when document is defined', () => {
+    const fakeDoc = {
+      documentElement: {
+        setAttribute: vi.fn()
+      }
+    }
+    vi.stubGlobal('document', fakeDoc)
+    try {
+      applyStyleToDom('terminal-black')
+      expect(fakeDoc.documentElement.setAttribute).toHaveBeenCalledWith('data-style', 'terminal-black')
+    } finally {
+      vi.unstubAllGlobals()
+    }
   })
 })

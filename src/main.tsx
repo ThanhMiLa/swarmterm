@@ -5,6 +5,12 @@ import ReactDOM from "react-dom/client";
 import App from "./App";
 import './index.css'
 import { installScrollbarActivity } from './lib/scrollbar-activity'
+import { applyStyleToDom, readStoredStyle } from './lib/appearance'
+
+// Apply the persisted appearance style immediately on startup to avoid any theme flash.
+if (typeof window !== 'undefined') {
+  applyStyleToDom(readStoredStyle(window.localStorage))
+}
 
 // Reveal the minimal-overlay scrollbars while any element is actively scrolling
 // (they are hidden at rest and otherwise only show on hover). One global

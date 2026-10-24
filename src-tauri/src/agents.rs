@@ -25,6 +25,7 @@ pub struct AgentEntry {
 pub const AGENTS: &[(&str, &str)] = &[
     ("claude-code", "claude"),
     ("codex", "codex"),
+    ("antigravity", "agy"),
     ("opencode", "opencode"),
     ("copilot", "copilot"),
     ("qwen", "qwen"),
@@ -33,7 +34,6 @@ pub const AGENTS: &[(&str, &str)] = &[
     // Windows ships a cursor-agent.cmd shim; the PATHEXT expansion in
     // `candidates` resolves it from this bare name.
     ("cursor", "cursor-agent"),
-    ("antigravity", "agy"),
     ("omp", "omp"),
 ];
 
@@ -217,13 +217,13 @@ mod tests {
             vec![
                 "claude-code",
                 "codex",
+                "antigravity",
                 "opencode",
                 "copilot",
                 "qwen",
                 "amp",
                 "gemini",
                 "cursor",
-                "antigravity",
                 "omp"
             ]
         );
