@@ -231,7 +231,7 @@ On macOS the modifier is `⌘`, which deliberately leaves `Ctrl + B` to the term
 ## Known limits
 
 - **Nothing is saved between launches** — workspaces, layouts and previews start fresh. Intentional for now.
-- **One visual style** — VS Code Dark Modern; a light theme is on the list.
+- **Visual styles** — VS Code Dark Modern and Terminal Black (pure black); a light theme is on the list.
 - **War Room membership doesn't survive a pane restart** — re-drag the pane.
 - **The preview column has no devtools, zoom, tabs, or per-terminal cookie isolation**, and a failed page shows the platform's own error view.
 - **Terminal search covers the visible scrollback only** — matches beyond xterm's own buffer, and search-and-replace, aren't available.

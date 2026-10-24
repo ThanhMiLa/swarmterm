@@ -12,7 +12,8 @@ interface StyleOption {
 }
 
 const STYLE_OPTIONS: StyleOption[] = [
-  { id: 'vscode-dark', label: 'VS Code Dark', variant: 'Dark', surface: 'Modern' }
+  { id: 'vscode-dark', label: 'VS Code Dark', variant: 'Dark', surface: 'Modern' },
+  { id: 'terminal-black', label: 'Terminal Black', variant: 'Dark', surface: 'Pure Black' }
 ]
 
 /** The "Appearance" settings category — currently a single Style picker. */
@@ -70,7 +71,7 @@ function ThemeCard({ option, active, onSelect }: ThemeCardProps): ReactElement {
       )}
     >
       <div className="relative">
-        <TerminalPreview active={active} />
+        <TerminalPreview active={active} styleId={option.id} />
         {active && (
           <span
             aria-hidden
@@ -91,22 +92,45 @@ function ThemeCard({ option, active, onSelect }: ThemeCardProps): ReactElement {
 }
 
 /** A miniature terminal pane showing what swarmterm looks like in this style. */
-function TerminalPreview({ active }: { active: boolean }): ReactElement {
+function TerminalPreview({
+  active,
+  styleId
+}: {
+  active: boolean
+  styleId: Style
+}): ReactElement {
+  const isBlack = styleId === 'terminal-black'
+
   return (
-    <div className="overflow-hidden rounded-md border border-border bg-canvas">
-      <div className="flex items-center gap-1.5 border-b border-border bg-muted/40 px-2.5 py-1.5">
+    <div
+      className={cn(
+        'overflow-hidden rounded-md border',
+        isBlack ? 'border-[#262626] bg-black' : 'border-border bg-canvas'
+      )}
+    >
+      <div
+        className={cn(
+          'flex items-center gap-1.5 border-b px-2.5 py-1.5',
+          isBlack ? 'border-[#262626] bg-black' : 'border-border bg-muted/40'
+        )}
+      >
         <span className="h-2 w-2 rounded-full bg-muted-foreground/40" />
         <span className="h-2 w-2 rounded-full bg-muted-foreground/40" />
         <span className="h-2 w-2 rounded-full bg-muted-foreground/40" />
         <span className="ml-1.5 font-mono text-[10px] text-muted-foreground/70">workspace 1</span>
       </div>
-      <div className="flex flex-col gap-1 px-3 py-3 font-mono text-[10px] leading-tight">
+      <div
+        className={cn(
+          'flex flex-col gap-1 px-3 py-3 font-mono text-[10px] leading-tight',
+          isBlack ? 'bg-black text-[#e5e5e5]' : ''
+        )}
+      >
         <div>
           <span className="text-muted-foreground/60">$</span>
-          <span className="ml-1.5 text-foreground/85">swarmterm</span>
+          <span className={cn('ml-1.5', isBlack ? 'text-white' : 'text-foreground/85')}>swarmterm</span>
         </div>
         <div className="text-muted-foreground">
-          <span className="text-foreground/70">●</span> session ready
+          <span className={cn(isBlack ? 'text-white/80' : 'text-foreground/70')}>●</span> session ready
         </div>
         <div className="text-muted-foreground">
           <span className="text-muted-foreground/70">→</span> 3 panes active
@@ -115,7 +139,8 @@ function TerminalPreview({ active }: { active: boolean }): ReactElement {
           <span className="text-muted-foreground/60">$</span>
           <span
             className={cn(
-              'ml-1.5 inline-block h-2.5 w-1.5 bg-foreground/80',
+              'ml-1.5 inline-block h-2.5 w-1.5',
+              isBlack ? 'bg-white' : 'bg-foreground/80',
               active && 'animate-pulse'
             )}
             aria-hidden
