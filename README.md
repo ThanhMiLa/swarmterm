@@ -44,7 +44,7 @@ Swarmterm is a native desktop app (Tauri 2 + Rust, real PTY terminals, a VS Code
   <img src="docs/images/war-room.png" alt="The War Room — agents debating a fix, with the user moderating and handing out tasks" width="49.5%">
 </p>
 
-Everything else hangs off those three ideas. The full tour — panes, broadcast, session resume, the web preview, the War Room, the status line, shortcuts, troubleshooting — lives in **[the user guide](docs/user-guide.md)**.
+Everything else hangs off those three ideas. The full tour — split panes, git diffs, broadcast typing, session resume, web preview, War Room, and themes — lives in **[the user guide](docs/user-guide.md)**.
 
 ---
 

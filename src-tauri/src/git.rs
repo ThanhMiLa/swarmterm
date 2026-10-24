@@ -228,7 +228,28 @@ pub fn get_file_diff(worktree_path: &Path, file: &str) -> Result<String, String>
     if !out.status.success() {
         return Err(String::from_utf8_lossy(&out.stderr).trim().to_string());
     }
-    Ok(String::from_utf8_lossy(&out.stdout).to_string())
+    let stdout = String::from_utf8_lossy(&out.stdout).to_string();
+    if !stdout.is_empty() {
+        return Ok(stdout);
+    }
+
+    // For untracked / newly created files, `git diff HEAD` produces no output.
+    // Fall back to `git diff --no-index -- /dev/null <file>` so newly created files
+    // display all their added lines as a diff.
+    let full_path = worktree_path.join(file);
+    if full_path.exists() && full_path.is_file() {
+        if let Ok(no_index_out) = git_command()
+            .args(["-C", p, "diff", "--no-index", "--", "/dev/null", file])
+            .output()
+        {
+            let no_index_stdout = String::from_utf8_lossy(&no_index_out.stdout).to_string();
+            if !no_index_stdout.is_empty() {
+                return Ok(no_index_stdout);
+            }
+        }
+    }
+
+    Ok(stdout)
 }
 
 pub fn get_commit_info(worktree_path: &Path) -> Result<CommitInfo, String> {
@@ -1297,5 +1318,17 @@ detached
             root.trim().ends_with("child-project"),
             "child should be its own repo root, got: {root}"
         );
+    }
+
+    #[test]
+    fn test_get_file_diff_untracked_file() {
+        let tmp = tempfile::tempdir().unwrap();
+        init_repo(tmp.path());
+        let new_file = tmp.path().join("new_file.txt");
+        std::fs::write(&new_file, "hello world\nline 2").unwrap();
+
+        let diff = get_file_diff(tmp.path(), "new_file.txt").unwrap();
+        assert!(diff.contains("+hello world"), "diff should contain added line: {diff}");
+        assert!(diff.contains("+line 2"), "diff should contain added line: {diff}");
     }
 }

@@ -21,18 +21,24 @@ export function parseDiff(raw: string): DiffLine[] {
   // Running counters, re-seeded from each hunk header as we walk the diff.
   let oldNo = 0
   let newNo = 0
+  let inHunk = false
   for (const line of raw.split('\n')) {
-    if (META_PREFIXES.some(p => line.startsWith(p))) continue
-    // "\ No newline at end of file" — a git marker, never real file content.
-    // Dropping it keeps the line counters from drifting on the lines that follow.
-    if (line.startsWith('\\')) continue
     if (line.startsWith('@@')) {
+      inHunk = true
       const m = HUNK_RE.exec(line)
       if (m) {
         oldNo = Number(m[1])
         newNo = Number(m[2])
       }
       lines.push({ type: 'hunk', content: line })
+    } else if (!inHunk) {
+      // Skip file headers and metadata before the first hunk (diff, index, new file mode, etc.)
+      continue
+    } else if (META_PREFIXES.some(p => line.startsWith(p))) {
+      continue
+    } else if (line.startsWith('\\')) {
+      // "\ No newline at end of file" — a git marker, never real file content.
+      continue
     } else if (line.startsWith('+')) {
       lines.push({ type: 'added', content: line.slice(1), newLineNo: newNo })
       newNo++

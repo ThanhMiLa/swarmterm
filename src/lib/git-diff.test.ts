@@ -133,4 +133,21 @@ index abc..def 100644
       { type: 'added', content: 'new', newLineNo: 1 },
     ])
   })
+
+  it('parses diff for newly created untracked file with new file mode header', () => {
+    const raw = `diff --git a/sample-test.txt b/sample-test.txt
+new file mode 100644
+index 0000000..f053054
+--- /dev/null
++++ b/sample-test.txt
+@@ -0,0 +1,2 @@
++hello
++world`
+    const lines = parseDiff(raw)
+    expect(lines).toEqual<DiffLine[]>([
+      { type: 'hunk', content: '@@ -0,0 +1,2 @@' },
+      { type: 'added', content: 'hello', newLineNo: 1 },
+      { type: 'added', content: 'world', newLineNo: 2 },
+    ])
+  })
 })
