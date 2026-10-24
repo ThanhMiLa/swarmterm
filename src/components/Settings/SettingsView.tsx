@@ -1,13 +1,19 @@
 import { useEffect, useState, type ReactElement } from 'react'
-import { Bell, Keyboard, Palette, Terminal, X } from 'lucide-react'
+import { BarChart3, Bell, Keyboard, Palette, Terminal, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { AppearancePanel } from './AppearancePanel'
 import { TerminalPanel } from './TerminalPanel'
 import { NotificationsPanel } from './NotificationsPanel'
 import { KeyboardShortcutsPanel } from './KeyboardShortcutsPanel'
+import { TokenUsagePanel } from './TokenUsagePanel'
 
-export type CategoryId = 'appearance' | 'terminal' | 'notifications' | 'shortcuts'
+export type CategoryId =
+  | 'appearance'
+  | 'terminal'
+  | 'notifications'
+  | 'shortcuts'
+  | 'token-usage'
 
 interface Category {
   id: CategoryId
@@ -20,6 +26,7 @@ const CATEGORIES: Category[] = [
   { id: 'terminal', label: 'Terminal', Icon: Terminal },
   { id: 'notifications', label: 'Notifications', Icon: Bell },
   { id: 'shortcuts', label: 'Keyboard Shortcuts', Icon: Keyboard },
+  { id: 'token-usage', label: 'Token Usage', Icon: BarChart3 },
 ]
 
 interface SettingsViewProps {
@@ -103,6 +110,7 @@ export function SettingsView({ onClose, initialCategory }: SettingsViewProps): R
               {activeCategory === 'terminal' && <TerminalPanel />}
               {activeCategory === 'notifications' && <NotificationsPanel />}
               {activeCategory === 'shortcuts' && <KeyboardShortcutsPanel />}
+              {activeCategory === 'token-usage' && <TokenUsagePanel />}
             </div>
           </div>
         </div>

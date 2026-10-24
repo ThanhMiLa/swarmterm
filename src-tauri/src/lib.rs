@@ -9,6 +9,7 @@ mod preview;
 mod pty;
 mod sessions;
 mod shell;
+pub mod token_usage;
 // Public so `main.rs` can reach `--statusline` without booting Tauri.
 pub mod statusline;
 // Public so `main.rs` can reach `--hook` without booting Tauri.
@@ -117,6 +118,7 @@ pub fn run() {
             commands::list_available_shells,
             commands::list_available_agents,
             commands::list_agent_sessions,
+            commands::get_token_usage_stats,
             commands::set_claude_statusline,
             commands::resolve_path_link,
             commands::find_available_editor,

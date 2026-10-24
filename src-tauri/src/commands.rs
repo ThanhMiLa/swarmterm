@@ -108,7 +108,12 @@ pub fn kill_terminal(app: AppHandle, state: State<'_, AppState>, id: String) {
 /// the renderer), and the M2 `war_room.wait_peer` / `read_peer` verbs must
 /// answer without a renderer round-trip — see `mcp::peer_state`.
 #[tauri::command]
-pub fn report_agent_state(state: State<'_, AppState>, id: String, display: String) {
+pub fn report_agent_state(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    id: String,
+    display: String,
+) {
     // Only live terminals may be written. A report can race a kill (the
     // store's diff fires after `kill_terminal` already ran `forget`), and
     // accepting it would resurrect a row for a dead pty that nothing will
@@ -126,6 +131,21 @@ pub fn report_agent_state(state: State<'_, AppState>, id: String, display: Strin
         .set_state(&id, &display, crate::warroom::now_ms());
     if changed {
         state.peer_wake.notify_waiters();
+    }
+
+    if display == "done" || display == "idle" {
+        let handle = app.clone();
+        tauri::async_runtime::spawn(async move {
+            tokio::time::sleep(std::time::Duration::from_millis(800)).await;
+            let cache_path = crate::token_usage::store::default_cache_path(&handle);
+            let res = tokio::task::spawn_blocking(move || {
+                crate::token_usage::store::sync_all_and_aggregate(&cache_path)
+            })
+            .await;
+            if let Ok(stats) = res {
+                let _ = handle.emit("token-usage:updated", stats);
+            }
+        });
     }
 }
 
@@ -482,4 +502,16 @@ pub fn war_room_moderator_send(
         let _ = app.emit("warroom:deliver", &d);
     }
     Ok(delivered)
+}
+
+#[tauri::command]
+pub async fn get_token_usage_stats(
+    app: AppHandle,
+) -> Result<crate::token_usage::TokenUsageResponse, String> {
+    let cache_path = crate::token_usage::store::default_cache_path(&app);
+    tokio::task::spawn_blocking(move || {
+        crate::token_usage::store::sync_all_and_aggregate(&cache_path)
+    })
+    .await
+    .map_err(|e| e.to_string())
 }

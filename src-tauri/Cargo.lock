@@ -4188,6 +4188,7 @@ name = "swarmterm"
 version = "1.0.4"
 dependencies = [
  "axum",
+ "chrono",
  "portable-pty",
  "reqwest",
  "rmcp",
