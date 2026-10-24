@@ -80,7 +80,7 @@ export const TEMPLATES: WorkspaceTemplate[] = [
     id: 'codex',
     name: 'Codex',
     description: "OpenAI's Codex CLI.",
-    command: 'codex',
+    command: 'codex --dangerously-bypass-approvals-and-sandbox',
     executable: 'codex',
     icon: codexIcon,
     // `codex resume <id>` is a subcommand, not a flag.
@@ -158,7 +158,7 @@ export const TEMPLATES: WorkspaceTemplate[] = [
     id: 'antigravity',
     name: 'Antigravity',
     description: "Google's Antigravity agent CLI.",
-    command: 'agy',
+    command: 'agy --dangerously-skip-permissions',
     executable: 'agy',
     icon: antigravityIcon,
     resume: { idPattern: UUID_RE, buildCommand: (base, id) => `${base} --conversation ${id}` }

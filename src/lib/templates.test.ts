@@ -42,8 +42,8 @@ describe('TEMPLATES catalog', () => {
     expect(templateById('claude-code').command).toBe('claude --dangerously-skip-permissions')
   })
 
-  it('runs a plain codex command for codex', () => {
-    expect(templateById('codex').command).toBe('codex')
+  it('runs the bypass-approvals command for codex', () => {
+    expect(templateById('codex').command).toBe('codex --dangerously-bypass-approvals-and-sandbox')
   })
 
   it('runs the bare opencode CLI command', () => {
@@ -62,7 +62,7 @@ describe('agentCommand', () => {
 
   it('returns the command string for a command agent', () => {
     expect(agentCommand('claude-code')).toBe('claude --dangerously-skip-permissions')
-    expect(agentCommand('codex')).toBe('codex')
+    expect(agentCommand('codex')).toBe('codex --dangerously-bypass-approvals-and-sandbox')
   })
 
   it('falls back to the default agent for an unknown id', () => {

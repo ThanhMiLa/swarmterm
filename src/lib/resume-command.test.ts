@@ -29,7 +29,9 @@ describe('buildResumeCommand', () => {
     )
   })
   it('codex: resume subcommand (not a flag)', () => {
-    expect(buildResumeCommand('codex', CODEX_ID)).toBe(`codex resume ${CODEX_ID}`)
+    expect(buildResumeCommand('codex', CODEX_ID)).toBe(
+      `codex --dangerously-bypass-approvals-and-sandbox resume ${CODEX_ID}`
+    )
   })
   it('opencode: --session flag', () => {
     expect(buildResumeCommand('opencode', OPENCODE_ID)).toBe(
@@ -45,7 +47,9 @@ describe('buildResumeCommand', () => {
   it('wave-2 resume commands follow the herdr table', () => {
     const id = 'fe845bc6-6932-4459-8fb6-cdd0e7c6cc84'
     expect(buildResumeCommand('cursor', id)).toBe(`cursor-agent --resume ${id}`)
-    expect(buildResumeCommand('antigravity', id)).toBe(`agy --conversation ${id}`)
+    expect(buildResumeCommand('antigravity', id)).toBe(
+      `agy --dangerously-skip-permissions --conversation ${id}`
+    )
     expect(buildResumeCommand('omp', 'ses.abc-123')).toBe('omp --resume=ses.abc-123')
     expect(buildResumeCommand('omp', 'a b; rm -rf /')).toBeUndefined()
     expect(buildResumeCommand('gemini', id)).toBeUndefined()
