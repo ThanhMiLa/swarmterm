@@ -6,6 +6,8 @@ import { SearchAddon, type ISearchOptions } from '@xterm/addon-search'
 import '@xterm/xterm/css/xterm.css'
 import { createTerminal, killTerminal, resizeTerminal, writeTerminal } from '@/tauri/terminal'
 import { TerminalSession, type TerminalStatus } from '@/lib/terminal-session'
+import { useAppearanceStore } from '@/store/appearance-store'
+import type { Style } from '@/lib/appearance'
 import { useTerminalTextStore } from '@/store/terminal-text-store'
 import { useTerminalTitleStore } from '@/store/terminal-title-store'
 import { resolveBroadcastTargets } from '@/lib/broadcast-input'
@@ -69,7 +71,7 @@ export type { TerminalStatus }
  * workbench.colorCustomizations terminal.ansi* defaults for the Dark Modern
  * theme.
  */
-const VSCODE_DARK_THEME: ITheme = {
+export const VSCODE_DARK_THEME: ITheme = {
   background: '#1F1F1F',
   foreground: '#CCCCCC',
   cursor: '#CCCCCC',
@@ -91,6 +93,41 @@ const VSCODE_DARK_THEME: ITheme = {
   brightCyan: '#29B8DB',
   white: '#E5E5E5',
   brightWhite: '#E5E5E5'
+}
+
+/** Pure black palette for the "Terminal Black" style. */
+export const TERMINAL_BLACK_THEME: ITheme = {
+  background: '#000000',
+  foreground: '#CCCCCC',
+  cursor: '#FFFFFF',
+  cursorAccent: '#000000',
+  selectionBackground: 'rgba(255, 255, 255, 0.25)',
+  black: '#000000',
+  brightBlack: '#666666',
+  red: '#CD3131',
+  brightRed: '#F14C4C',
+  green: '#0DBC79',
+  brightGreen: '#23D18B',
+  yellow: '#E5E510',
+  brightYellow: '#F5F543',
+  blue: '#2472C8',
+  brightBlue: '#3B8EEA',
+  magenta: '#BC3FBC',
+  brightMagenta: '#D670D6',
+  cyan: '#11A8CD',
+  brightCyan: '#29B8DB',
+  white: '#E5E5E5',
+  brightWhite: '#E5E5E5'
+}
+
+export function getTerminalTheme(style: Style): ITheme {
+  switch (style) {
+    case 'terminal-black':
+      return TERMINAL_BLACK_THEME
+    case 'vscode-dark':
+    default:
+      return VSCODE_DARK_THEME
+  }
 }
 
 /** CSS font-feature-settings value enabling programming ligatures, or off. */
@@ -294,9 +331,12 @@ function getOrCreate(id: string): Entry {
   // the pane edges — only the rows are pushed inward. box-sizing keeps the host
   // filling the container despite the padding. The FitAddon reads the host's
   // content-box size, so cols/rows already exclude this padding.
+  const style = useAppearanceStore.getState().style
+  const theme = getTerminalTheme(style)
+
   host.style.boxSizing = 'border-box'
   host.style.padding = '6px 8px'
-  host.style.background = VSCODE_DARK_THEME.background as string
+  host.style.background = theme.background as string
 
   const text = useTerminalTextStore.getState().text
   host.style.fontFeatureSettings = ligatureFeatureSettings(text.ligatures)
@@ -312,7 +352,7 @@ function getOrCreate(id: string): Entry {
     fontSize: text.fontSize,
     lineHeight: text.lineHeight,
     scrollback: 5000,
-    theme: VSCODE_DARK_THEME
+    theme
   })
   const fit = new FitAddon()
   term.loadAddon(fit)
@@ -1296,3 +1336,17 @@ export function applyTerminalText(pref: TerminalTextPref): void {
 // Push text-preference changes to every live terminal. Subscribing here (rather
 // than the store importing the registry) keeps the dependency one-directional.
 useTerminalTextStore.subscribe((state) => applyTerminalText(state.text))
+
+/**
+ * Push the visual style/theme onto every live terminal.
+ */
+export function applyTerminalStyle(style: Style): void {
+  const theme = getTerminalTheme(style)
+  for (const [, entry] of entries) {
+    entry.term.options.theme = theme
+    entry.host.style.background = theme.background as string
+  }
+}
+
+// Push style changes to every live terminal.
+useAppearanceStore.subscribe((state) => applyTerminalStyle(state.style))
