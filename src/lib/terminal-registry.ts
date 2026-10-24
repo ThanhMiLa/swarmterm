@@ -95,12 +95,12 @@ export const VSCODE_DARK_THEME: ITheme = {
   brightWhite: '#E5E5E5'
 }
 
-/** Pure black palette for the "Terminal Black" style. */
+/** Deep charcoal black palette for the "Terminal Black" style. */
 export const TERMINAL_BLACK_THEME: ITheme = {
-  background: '#000000',
+  background: '#0C0C0C',
   foreground: '#CCCCCC',
   cursor: '#FFFFFF',
-  cursorAccent: '#000000',
+  cursorAccent: '#0C0C0C',
   selectionBackground: 'rgba(255, 255, 255, 0.25)',
   black: '#000000',
   brightBlack: '#666666',

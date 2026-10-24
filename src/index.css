@@ -43,26 +43,26 @@
 
   :root[data-style='terminal-black'],
   [data-style='terminal-black'] {
-    --background: 0 0% 0%;       /* Pure black #000000 */
-    --canvas: 0 0% 0%;           /* Pure black #000000 */
-    --foreground: 0 0% 88%;
-    --card: 0 0% 0%;             /* Pure black for navbar, titlebar, paneheader */
-    --card-foreground: 0 0% 88%;
-    --popover: 0 0% 8%;          /* Elevated surface for menus ~#141414 */
-    --popover-foreground: 0 0% 92%;
+    --background: 0 0% 4.7%;     /* #0c0c0c: soft terminal black, slightly lighter than pitch black */
+    --canvas: 0 0% 3.2%;         /* #080808: deep gutter between panes */
+    --foreground: 0 0% 86%;
+    --card: 0 0% 5.5%;           /* #0e0e0e: chrome for titlebar, navbar, pane header */
+    --card-foreground: 0 0% 86%;
+    --popover: 0 0% 9%;          /* Elevated surface for menus ~#171717 */
+    --popover-foreground: 0 0% 90%;
     --primary: 206 100% 42%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 0 0% 6%;
-    --secondary-foreground: 0 0% 85%;
-    --muted: 0 0% 6%;
-    --muted-foreground: 0 0% 55%;
+    --secondary: 0 0% 7.5%;
+    --secondary-foreground: 0 0% 82%;
+    --muted: 0 0% 7.5%;
+    --muted-foreground: 0 0% 58%;
     --accent: 0 0% 12%;          /* Hover states ~#1f1f1f */
     --accent-foreground: 0 0% 90%;
     --destructive: 0 86% 62%;
     --destructive-foreground: 0 0% 100%;
-    --border: 0 0% 14%;          /* Subtle division border ~#242424 */
-    --pane-border: 0 0% 18%;     /* Split pane border ~#2e2e2e */
-    --input: 0 0% 12%;
+    --border: 0 0% 13%;          /* Subtle division border ~#212121 */
+    --pane-border: 0 0% 17%;     /* Split pane border ~#2b2b2b */
+    --input: 0 0% 10%;
     --ring: 206 100% 42%;
     --broadcast: 174 62% 47%;
     --activity: 48 96% 53%;
