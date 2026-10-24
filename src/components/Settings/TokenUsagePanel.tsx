@@ -213,15 +213,10 @@ export function TokenUsagePanel(): ReactElement {
 
           {/* Daily Breakdown by Model */}
           <section className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                <Calendar className="h-4 w-4 text-primary" />
-                <span>Daily Breakdown by Model</span>
-              </h2>
-              <span className="text-xs text-muted-foreground">
-                Total Project Tokens: <strong className="text-foreground">{formatTokens(currentProject.totalTokens)}</strong>
-              </span>
-            </div>
+            <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground">
+              <Calendar className="h-4 w-4 text-primary" />
+              <span>Daily Breakdown by Model</span>
+            </h2>
 
             {currentProject.dailyStats.length === 0 ? (
               <p className="text-xs text-muted-foreground">No daily data available.</p>
