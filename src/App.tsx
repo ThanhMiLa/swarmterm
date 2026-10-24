@@ -51,7 +51,6 @@ import { SettingsView } from '@/components/Settings/SettingsView'
 import { TitleBar } from '@/components/TitleBar/TitleBar'
 import { Workspace, PaneDragGhost } from '@/components/Workspace/Workspace'
 import { Welcome } from '@/components/Welcome/Welcome'
-import { WorkspaceTabs } from '@/components/WorkspaceTabs/WorkspaceTabs'
 import { useBrowserStore } from '@/store/browser-store'
 import { useUpdaterStore } from '@/store/updater-store'
 import { PERIODIC_CHECK_INTERVAL_MS, STARTUP_CHECK_DELAY_MS } from '@/lib/updater-flow'
@@ -764,10 +763,7 @@ export default function App(): ReactElement {
           {/* Workspaces stay mounted and visible whether Settings is open or
               not — the Settings modal dims them behind its backdrop, and their
               terminals (and PTYs) survive a Settings detour. */}
-          <div className="flex min-h-0 flex-1 flex-col">
-            <WorkspaceTabs onNewWorkspace={openWelcome} />
-
-            <div className="relative min-h-0 flex-1 bg-canvas">
+          <div className="relative min-h-0 flex-1 bg-canvas">
               {/* Workspace(s) left, right panel (Preview/Git/War Room) when
                   toggled on. DndContext lives here, above both, so a pane
                   dragged out of the workspace can be dropped on the War Room
@@ -822,7 +818,6 @@ export default function App(): ReactElement {
                 </div>
               )}
             </div>
-          </div>
 
         </main>
 

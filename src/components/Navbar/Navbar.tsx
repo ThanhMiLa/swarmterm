@@ -21,6 +21,11 @@ import { GuardedPointerSensor } from '@/lib/dnd-sensors'
 import { collectLeaves } from '@/lib/layout-tree'
 import { useAppStore, type Workspace } from '@/store/app-store'
 import { useNavbarVisibilityStore } from '@/store/navbar-visibility-store'
+import { useTerminalActivityStore } from '@/store/terminal-activity-store'
+import { useAgentStateStore } from '@/store/agent-state-store'
+import { displayState, workspaceDot, type DotState } from '@/lib/agent-state/rollup'
+import { ActivityDot } from '@/components/ActivityDot'
+import { StateDot } from '@/components/StateDot'
 import { AttentionBadge } from '@/components/Navbar/AttentionBadge'
 import { Button } from '@/components/ui/button'
 import {
@@ -55,7 +60,10 @@ export function Navbar({ onNewWorkspace, settingsOpen, onToggleSettings }: Navba
   const setActiveWorkspace = useAppStore((s) => s.setActiveWorkspace)
   const renameWorkspace = useAppStore((s) => s.renameWorkspace)
   const closeWorkspace = useAppStore((s) => s.closeWorkspace)
+  const closeWelcome = useAppStore((s) => s.closeWelcome)
   const moveWorkspace = useAppStore((s) => s.moveWorkspace)
+  const activity = useTerminalActivityStore((s) => s.active)
+  const agentStates = useAgentStateStore((s) => s.byId)
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const [draggingId, setDraggingId] = useState<string | null>(null)
 
@@ -124,22 +132,34 @@ export function Navbar({ onNewWorkspace, settingsOpen, onToggleSettings }: Navba
               strategy={verticalListSortingStrategy}
             >
               <ul className="space-y-0.5">
-                {workspaces.map((ws) => (
-                  <WorkspaceItem
-                    key={ws.id}
-                    workspace={ws}
-                    active={!welcomeFocused && ws.id === activeWorkspaceId}
-                    renaming={renamingId === ws.id}
-                    onSelect={() => setActiveWorkspace(ws.id)}
-                    onStartRename={() => setRenamingId(ws.id)}
-                    onCommitRename={(name) => {
-                      renameWorkspace(ws.id, name)
-                      setRenamingId(null)
-                    }}
-                    onCancelRename={() => setRenamingId(null)}
-                    onClose={() => closeWorkspace(ws.id)}
-                  />
-                ))}
+                {workspaces.map((ws) => {
+                  const isActive = !welcomeFocused && ws.id === activeWorkspaceId
+                  const dot = isActive
+                    ? null
+                    : workspaceDot(
+                        collectLeaves(ws.layout).map((l) => ({
+                          display: displayState(agentStates[l.terminalId]),
+                          outputActive: activity[l.terminalId] === true
+                        }))
+                      )
+                  return (
+                    <WorkspaceItem
+                      key={ws.id}
+                      workspace={ws}
+                      active={isActive}
+                      dot={dot}
+                      renaming={renamingId === ws.id}
+                      onSelect={() => setActiveWorkspace(ws.id)}
+                      onStartRename={() => setRenamingId(ws.id)}
+                      onCommitRename={(name) => {
+                        renameWorkspace(ws.id, name)
+                        setRenamingId(null)
+                      }}
+                      onCancelRename={() => setRenamingId(null)}
+                      onClose={() => closeWorkspace(ws.id)}
+                    />
+                  )
+                })}
               </ul>
             </SortableContext>
             <DragOverlay>
@@ -153,15 +173,30 @@ export function Navbar({ onNewWorkspace, settingsOpen, onToggleSettings }: Navba
               ) : null}
             </DragOverlay>
           </DndContext>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="mt-1 w-full justify-start text-muted-foreground"
-            onClick={onNewWorkspace}
-          >
-            <Plus className="h-4 w-4" />
-            New workspace
-          </Button>
+          <div className="mt-1 flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              className={cn(
+                'flex-1 justify-start text-muted-foreground',
+                welcomeFocused && 'bg-accent text-accent-foreground'
+              )}
+              onClick={onNewWorkspace}
+            >
+              <Plus className="h-4 w-4" />
+              New workspace
+            </Button>
+            {welcomeFocused && workspaces.length > 0 && (
+              <button
+                type="button"
+                title="Close Welcome"
+                onClick={closeWelcome}
+                className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
           </div>
         </div>
 
@@ -198,6 +233,7 @@ export function Navbar({ onNewWorkspace, settingsOpen, onToggleSettings }: Navba
 interface WorkspaceItemProps {
   workspace: Workspace
   active: boolean
+  dot: DotState | null
   renaming: boolean
   onSelect: () => void
   onStartRename: () => void
@@ -209,6 +245,7 @@ interface WorkspaceItemProps {
 function WorkspaceItem({
   workspace,
   active,
+  dot,
   renaming,
   onSelect,
   onStartRename,
@@ -248,6 +285,7 @@ function WorkspaceItem({
     >
       <div
         onClick={onSelect}
+        onDoubleClick={onStartRename}
         className={cn(
           'group flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-1.5 text-sm',
           active
@@ -255,7 +293,8 @@ function WorkspaceItem({
             : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
         )}
       >
-        <span className="flex-1 truncate">{workspace.name}</span>
+        {dot !== null && (dot === 'activity' ? <ActivityDot /> : <StateDot state={dot} />)}
+        <span className="flex-1 truncate" title="Double-click to rename">{workspace.name}</span>
         <span className="text-xs tabular-nums text-muted-foreground">{paneCount}</span>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
