@@ -1,13 +1,16 @@
 // src-tauri/src/token_usage/codex.rs
 //! Codex CLI rollout token parser.
 //!
-//! Scans `<CODEX_HOME>/sessions/YYYY/MM/DD/rollout-*.jsonl`.
-//! Reads `turn_context` for model and reasoning effort, and `token_usage_record`
-//! for input/cached/output tokens.
+//! Scans `<CODEX_HOME>/sessions` and `<CODEX_HOME>/archived_sessions` for both
+//! uncompressed `rollout-*.jsonl` and Zstandard-compressed `rollout-*.jsonl.zst` files.
+//! Reads `turn_context` for model and reasoning effort, `token_usage_record` for
+//! cumulative per-turn usage, and falls back to `event_msg` (`token_count`) for
+//! older rollout formats.
 
 use super::{home_dir, mtime_ms, normalize_path, parse_iso_timestamp, PromptTurnRecord};
 use serde_json::Value;
 use std::collections::HashMap;
+use std::io::Read;
 use std::path::{Path, PathBuf};
 
 pub fn default_codex_sessions_root() -> Option<PathBuf> {
@@ -18,32 +21,72 @@ pub fn default_codex_sessions_root() -> Option<PathBuf> {
     Some(base.join("sessions"))
 }
 
-/// Recursively locate all rollout-*.jsonl under YYYY/MM/DD.
-pub fn rollout_files(root: &Path) -> Vec<PathBuf> {
-    let mut files = Vec::new();
-    let years = std::fs::read_dir(root).map(|r| r.flatten().collect::<Vec<_>>());
-    for year in years.unwrap_or_default() {
-        let months = std::fs::read_dir(year.path()).map(|r| r.flatten().collect::<Vec<_>>());
-        for month in months.unwrap_or_default() {
-            let days = std::fs::read_dir(month.path()).map(|r| r.flatten().collect::<Vec<_>>());
-            for day in days.unwrap_or_default() {
-                let leaves = std::fs::read_dir(day.path()).map(|r| r.flatten().collect::<Vec<_>>());
-                for f in leaves.unwrap_or_default() {
-                    let p = f.path();
-                    let name = p.file_name().and_then(|n| n.to_str()).unwrap_or("");
-                    if name.starts_with("rollout-") && name.ends_with(".jsonl") {
-                        files.push(p);
-                    }
-                }
+pub fn default_codex_roots() -> Vec<PathBuf> {
+    let Some(base) = std::env::var("CODEX_HOME")
+        .ok()
+        .map(PathBuf::from)
+        .or_else(|| home_dir().map(|h| h.join(".codex")))
+    else {
+        return Vec::new();
+    };
+    let mut roots = Vec::new();
+    for sub in ["sessions", "archived_sessions"] {
+        let p = base.join(sub);
+        if p.exists() {
+            roots.push(p);
+        }
+    }
+    roots
+}
+
+fn collect_rollout_files_recursive(dir: &Path, out: &mut Vec<PathBuf>) {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            collect_rollout_files_recursive(&path, out);
+        } else {
+            let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+            if name.starts_with("rollout-")
+                && (name.ends_with(".jsonl") || name.ends_with(".jsonl.zst"))
+            {
+                out.push(path);
             }
         }
     }
+}
+
+/// Recursively locate all `rollout-*.jsonl` and `rollout-*.jsonl.zst` under `root`.
+pub fn rollout_files(root: &Path) -> Vec<PathBuf> {
+    let mut files = Vec::new();
+    collect_rollout_files_recursive(root, &mut files);
     files
 }
 
-/// Parse one Codex rollout file into a list of prompt turns.
+/// Read a rollout file, transparently decompressing `.jsonl.zst` files in memory.
+fn read_rollout_content(path: &Path) -> Option<String> {
+    let is_zst = path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .map(|n| n.ends_with(".zst"))
+        .unwrap_or(false);
+
+    if is_zst {
+        let mut file = std::fs::File::open(path).ok()?;
+        let mut decoder = ruzstd::StreamingDecoder::new(&mut file).ok()?;
+        let mut bytes = Vec::new();
+        decoder.read_to_end(&mut bytes).ok()?;
+        Some(String::from_utf8_lossy(&bytes).into_owned())
+    } else {
+        std::fs::read_to_string(path).ok()
+    }
+}
+
+/// Parse one Codex rollout file (`.jsonl` or `.jsonl.zst`) into a list of prompt turns.
 pub fn parse_rollout_file(path: &Path) -> Vec<PromptTurnRecord> {
-    let Ok(content) = std::fs::read_to_string(path) else {
+    let Some(content) = read_rollout_content(path) else {
         return Vec::new();
     };
     let mut lines = content.lines();
@@ -60,15 +103,16 @@ pub fn parse_rollout_file(path: &Path) -> Vec<PromptTurnRecord> {
     let Some(payload) = meta.get("payload") else {
         return Vec::new();
     };
-    let Some(session_id) = payload.get("id").and_then(Value::as_str) else {
+    let Some(session_id) = payload
+        .get("id")
+        .or_else(|| payload.get("session_id"))
+        .and_then(Value::as_str)
+    else {
         return Vec::new();
     };
     let Some(cwd) = payload.get("cwd").and_then(Value::as_str) else {
         return Vec::new();
     };
-    if payload.get("source").and_then(Value::as_str) == Some("exec") {
-        return Vec::new();
-    }
 
     let project_path = normalize_path(cwd);
 
@@ -82,6 +126,9 @@ pub fn parse_rollout_file(path: &Path) -> Vec<PromptTurnRecord> {
         total_tokens: u64,
     }
     let mut turns_by_id: HashMap<String, IntermediateTurn> = HashMap::new();
+    let mut fallback_turns_by_id: HashMap<String, IntermediateTurn> = HashMap::new();
+    let mut active_turn_id: Option<String> = None;
+    let mut last_session_total: u64 = 0;
 
     for line in lines {
         if line.trim().is_empty() {
@@ -99,6 +146,7 @@ pub fn parse_rollout_file(path: &Path) -> Vec<PromptTurnRecord> {
             let Some(turn_id) = p.get("turn_id").and_then(Value::as_str) else {
                 continue;
             };
+            active_turn_id = Some(turn_id.to_string());
             let mut model = p
                 .get("model")
                 .and_then(Value::as_str)
@@ -109,6 +157,7 @@ pub fn parse_rollout_file(path: &Path) -> Vec<PromptTurnRecord> {
                 .and_then(|cm| cm.get("settings"))
                 .and_then(|s| s.get("reasoning_effort"))
                 .and_then(Value::as_str)
+                .or_else(|| p.get("effort").and_then(Value::as_str))
                 .unwrap_or("");
             if !effort.is_empty() && effort != "default" {
                 model = format!("{model} ({effort})");
@@ -154,7 +203,67 @@ pub fn parse_rollout_file(path: &Path) -> Vec<PromptTurnRecord> {
                     total_tokens,
                 },
             );
+        } else if t == "event_msg" && p.get("type").and_then(Value::as_str) == Some("token_count") {
+            let Some(ref turn_id) = active_turn_id else {
+                continue;
+            };
+            let Some(info) = p.get("info") else {
+                continue;
+            };
+            let session_total = info
+                .get("total_token_usage")
+                .and_then(|u| u.get("total_tokens"))
+                .and_then(Value::as_u64)
+                .unwrap_or(0);
+            if session_total == 0 || session_total <= last_session_total {
+                continue;
+            }
+            let Some(usage) = info.get("last_token_usage") else {
+                continue;
+            };
+            last_session_total = session_total;
+
+            let raw_input = usage.get("input_tokens").and_then(Value::as_u64).unwrap_or(0);
+            let cached_in = usage
+                .get("cached_input_tokens")
+                .and_then(Value::as_u64)
+                .unwrap_or(0);
+            let cache_write = usage
+                .get("cache_write_input_tokens")
+                .and_then(Value::as_u64)
+                .unwrap_or(0);
+            let cache_tokens = cached_in + cache_write;
+            let input_tokens = raw_input.saturating_sub(cache_tokens);
+            let output_tokens = usage.get("output_tokens").and_then(Value::as_u64).unwrap_or(0);
+            let step_total = input_tokens + cache_tokens + output_tokens;
+
+            let ts_str = obj.get("timestamp").and_then(Value::as_str).unwrap_or("");
+            let (timestamp_ms, date) = parse_iso_timestamp(ts_str).unwrap_or_else(|| {
+                let ms = mtime_ms(path);
+                (ms, super::ms_to_local_date(ms))
+            });
+
+            let entry = fallback_turns_by_id
+                .entry(turn_id.clone())
+                .or_insert(IntermediateTurn {
+                    timestamp_ms,
+                    date: date.clone(),
+                    input_tokens: 0,
+                    cache_tokens: 0,
+                    output_tokens: 0,
+                    total_tokens: 0,
+                });
+            entry.timestamp_ms = timestamp_ms;
+            entry.date = date;
+            entry.input_tokens += input_tokens;
+            entry.cache_tokens += cache_tokens;
+            entry.output_tokens += output_tokens;
+            entry.total_tokens += step_total;
         }
+    }
+
+    for (turn_id, fallback_turn) in fallback_turns_by_id {
+        turns_by_id.entry(turn_id).or_insert(fallback_turn);
     }
 
     let mut out = Vec::new();
@@ -185,20 +294,30 @@ pub fn scan_codex(
     root: &Path,
     file_mtimes: &HashMap<String, u64>,
 ) -> (Vec<PromptTurnRecord>, HashMap<String, u64>) {
+    scan_codex_roots(&[root.to_path_buf()], file_mtimes)
+}
+
+/// Scan multiple Codex session roots (`sessions` and `archived_sessions`).
+pub fn scan_codex_roots(
+    roots: &[PathBuf],
+    file_mtimes: &HashMap<String, u64>,
+) -> (Vec<PromptTurnRecord>, HashMap<String, u64>) {
     let mut new_records = Vec::new();
     let mut updated_mtimes = HashMap::new();
 
-    for file in rollout_files(root) {
-        let path_str = file.to_string_lossy().to_string();
-        let cur_mtime = mtime_ms(&file);
-        if let Some(&prev_mtime) = file_mtimes.get(&path_str) {
-            if cur_mtime <= prev_mtime && cur_mtime > 0 {
-                continue;
+    for root in roots {
+        for file in rollout_files(root) {
+            let path_str = file.to_string_lossy().to_string();
+            let cur_mtime = mtime_ms(&file);
+            if let Some(&prev_mtime) = file_mtimes.get(&path_str) {
+                if cur_mtime <= prev_mtime && cur_mtime > 0 {
+                    continue;
+                }
             }
+            let records = parse_rollout_file(&file);
+            new_records.extend(records);
+            updated_mtimes.insert(path_str, cur_mtime);
         }
-        let records = parse_rollout_file(&file);
-        new_records.extend(records);
-        updated_mtimes.insert(path_str, cur_mtime);
     }
 
     (new_records, updated_mtimes)
@@ -233,5 +352,29 @@ mod tests {
         assert_eq!(t.output_tokens, 220);
         assert_eq!(t.total_tokens, 17507);
         assert_eq!(t.input_tokens + t.cache_tokens + t.output_tokens, t.total_tokens);
+    }
+
+    #[test]
+    fn parse_rollout_supports_legacy_token_count_events() {
+        let tmp = tempfile::tempdir().unwrap();
+        let rollout_path = tmp.path().join("rollout-2026-09-03.jsonl");
+
+        let content = concat!(
+            "{\"timestamp\":\"2026-09-03T01:00:00.000Z\",\"type\":\"session_meta\",\"payload\":{\"id\":\"sess-legacy\",\"cwd\":\"/Users/test/reallive\",\"source\":\"vscode\"}}\n",
+            "{\"timestamp\":\"2026-09-03T01:00:01.000Z\",\"type\":\"turn_context\",\"payload\":{\"turn_id\":\"turn-legacy-1\",\"model\":\"gpt-5.3-codex\",\"effort\":\"high\"}}\n",
+            "{\"timestamp\":\"2026-09-03T01:00:03.000Z\",\"type\":\"event_msg\",\"payload\":{\"type\":\"token_count\",\"info\":{\"total_token_usage\":{\"input_tokens\":10000,\"cached_input_tokens\":8000,\"cache_write_input_tokens\":0,\"output_tokens\":100,\"total_tokens\":10100},\"last_token_usage\":{\"input_tokens\":10000,\"cached_input_tokens\":8000,\"cache_write_input_tokens\":0,\"output_tokens\":100,\"total_tokens\":10100}}}}\n",
+            "{\"timestamp\":\"2026-09-03T01:00:06.000Z\",\"type\":\"event_msg\",\"payload\":{\"type\":\"token_count\",\"info\":{\"total_token_usage\":{\"input_tokens\":25000,\"cached_input_tokens\":20000,\"cache_write_input_tokens\":0,\"output_tokens\":300,\"total_tokens\":25300},\"last_token_usage\":{\"input_tokens\":15000,\"cached_input_tokens\":12000,\"cache_write_input_tokens\":0,\"output_tokens\":200,\"total_tokens\":15200}}}}\n",
+        );
+        fs::write(&rollout_path, content).unwrap();
+
+        let turns = parse_rollout_file(&rollout_path);
+        assert_eq!(turns.len(), 1);
+        let t = &turns[0];
+        assert_eq!(t.turn_key, "codex:sess-legacy:turn-legacy-1");
+        assert_eq!(t.model, "gpt-5.3-codex (high)");
+        assert_eq!(t.input_tokens, 5000); // (10000 - 8000) + (15000 - 12000)
+        assert_eq!(t.cache_tokens, 20000); // 8000 + 12000
+        assert_eq!(t.output_tokens, 300); // 100 + 200
+        assert_eq!(t.total_tokens, 25300);
     }
 }

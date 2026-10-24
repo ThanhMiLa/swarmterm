@@ -6,7 +6,7 @@
 //! and aggregates stats by Project -> Date -> Model.
 
 use super::{
-    antigravity::scan_antigravity_roots, claude::scan_claude, codex::scan_codex,
+    antigravity::scan_antigravity_roots, claude::scan_claude, codex::scan_codex_roots,
     project_name_from_path, DailyUsageStats, ModelUsageStats, ProjectTokenStats, PromptTurnRecord,
     TokenUsageResponse,
 };
@@ -15,9 +15,12 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 const CACHE_FILE_NAME: &str = "token-usage-cache.json";
+const CACHE_SCHEMA_VERSION: u32 = 2;
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct DiskCache {
+    #[serde(default)]
+    pub version: u32,
     #[serde(default)]
     pub turns: HashMap<String, PromptTurnRecord>,
     #[serde(default)]
@@ -26,9 +29,16 @@ pub struct DiskCache {
 
 pub fn load_cache(path: &Path) -> DiskCache {
     let Ok(data) = std::fs::read_to_string(path) else {
-        return DiskCache::default();
+        return DiskCache {
+            version: CACHE_SCHEMA_VERSION,
+            ..Default::default()
+        };
     };
     let mut cache: DiskCache = serde_json::from_str(&data).unwrap_or_default();
+    if cache.version < CACHE_SCHEMA_VERSION {
+        cache.version = CACHE_SCHEMA_VERSION;
+        cache.file_mtimes.clear();
+    }
     let initial_len = cache.turns.len();
     cache.turns.retain(|_, turn| {
         turn.project_path != "Unknown Workspace"
@@ -187,17 +197,16 @@ pub fn sync_all_and_aggregate(cache_file_path: &Path) -> TokenUsageResponse {
     let mut cache = load_cache(cache_file_path);
     let mut changed = false;
 
-    // 1. Codex
-    if let Some(codex_root) = super::codex::default_codex_sessions_root() {
-        if codex_root.exists() {
-            let (new_turns, updated_mtimes) = scan_codex(&codex_root, &cache.file_mtimes);
-            if !new_turns.is_empty() || !updated_mtimes.is_empty() {
-                for t in new_turns {
-                    cache.turns.insert(t.turn_key.clone(), t);
-                }
-                cache.file_mtimes.extend(updated_mtimes);
-                changed = true;
+    // 1. Codex (sessions + archived_sessions, .jsonl + .jsonl.zst)
+    let codex_roots = super::codex::default_codex_roots();
+    if !codex_roots.is_empty() {
+        let (new_turns, updated_mtimes) = scan_codex_roots(&codex_roots, &cache.file_mtimes);
+        if !new_turns.is_empty() || !updated_mtimes.is_empty() {
+            for t in new_turns {
+                cache.turns.insert(t.turn_key.clone(), t);
             }
+            cache.file_mtimes.extend(updated_mtimes);
+            changed = true;
         }
     }
 

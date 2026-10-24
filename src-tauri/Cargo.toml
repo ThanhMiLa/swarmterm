@@ -49,6 +49,7 @@ axum = "0.8"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "signal", "process", "sync", "time"] }
 toml_edit = "0.22"
 chrono = { version = "0.4", default-features = false, features = ["clock", "serde"] }
+ruzstd = "0.7"
 
 [target.'cfg(windows)'.dependencies]
 # Job Objects so killing a terminal tears down the shell's whole process tree
