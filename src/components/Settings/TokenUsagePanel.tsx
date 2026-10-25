@@ -36,23 +36,30 @@ function getAgentInfo(agentId: string): { label: string; icon: string } {
   }
 }
 
-export function TokenUsagePanel(): ReactElement {
+function normalizePath(p: string): string {
+  return p.replace(/\\/g, '/').replace(/\/+$/, '')
+}
+
+export interface SelectedWorkspaceInfo {
+  id: string
+  name: string
+  cwd: string
+}
+
+interface TokenUsagePanelProps {
+  selectedWorkspace?: SelectedWorkspaceInfo | null
+}
+
+export function TokenUsagePanel({ selectedWorkspace }: TokenUsagePanelProps): ReactElement {
   const [stats, setStats] = useState<TokenUsageResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
-  const [selectedProject, setSelectedProject] = useState<string>('')
 
   const loadData = async (isManual = false) => {
     if (isManual) setRefreshing(true)
     try {
       const res = await getTokenUsageStats()
       setStats(res)
-      setSelectedProject((prev) => {
-        if (prev && res.projects.some((p) => p.projectPath === prev)) {
-          return prev
-        }
-        return res.projects[0]?.projectPath ?? ''
-      })
     } catch (err) {
       console.error('Failed to load token usage stats:', err)
     } finally {
@@ -65,12 +72,6 @@ export function TokenUsagePanel(): ReactElement {
     loadData()
     const unlistenPromise = onTokenUsageUpdated((updated) => {
       setStats(updated)
-      setSelectedProject((prev) => {
-        if (prev && updated.projects.some((p) => p.projectPath === prev)) {
-          return prev
-        }
-        return updated.projects[0]?.projectPath ?? ''
-      })
     })
     return () => {
       unlistenPromise.then((unlisten) => unlisten())
@@ -79,50 +80,53 @@ export function TokenUsagePanel(): ReactElement {
 
   const currentProject = useMemo<ProjectTokenStats | null>(() => {
     if (!stats || stats.projects.length === 0) return null
-    return (
-      stats.projects.find((p) => p.projectPath === selectedProject) ??
-      stats.projects[0] ??
-      null
-    )
-  }, [stats, selectedProject])
+
+    if (selectedWorkspace) {
+      const normCwd = selectedWorkspace.cwd ? normalizePath(selectedWorkspace.cwd).toLowerCase() : ''
+      const normName = selectedWorkspace.name.toLowerCase()
+
+      const matched = stats.projects.find((p) => {
+        const pNorm = normalizePath(p.projectPath).toLowerCase()
+        if (normCwd && pNorm === normCwd) return true
+        if (normName && p.projectName.toLowerCase() === normName) return true
+        if (normName && pNorm.endsWith('/' + normName)) return true
+        return false
+      })
+      if (matched) return matched
+      return null
+    }
+
+    return stats.projects[0] ?? null
+  }, [stats, selectedWorkspace])
+
+  const displayName = selectedWorkspace?.name || currentProject?.projectName || 'Project'
 
   return (
     <div className="space-y-6">
-      {/* Title & Filter Bar */}
-      <section className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-          Token Usage
-        </h1>
-
-        <div className="flex items-center gap-2.5">
-          {/* Project selector (Single project only) */}
-          <div className="relative">
-            <select
-              value={selectedProject}
-              onChange={(e) => setSelectedProject(e.target.value)}
-              disabled={loading || !stats || stats.projects.length === 0}
-              className="h-8 rounded-md border border-border bg-card px-2.5 py-1 text-xs font-medium text-foreground shadow-sm transition-colors hover:bg-accent/50 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
-            >
-              {stats?.projects.map((p) => (
-                <option key={p.projectPath} value={p.projectPath}>
-                  {p.projectName} ({formatTokens(p.totalTokens)})
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => loadData(true)}
-            disabled={refreshing}
-            className="h-8 gap-1.5 text-xs text-muted-foreground hover:text-foreground"
-            title="Refresh token data"
-          >
-            <RefreshCw className={cn('h-3.5 w-3.5', refreshing && 'animate-spin')} />
-            <span>Refresh</span>
-          </Button>
+      {/* Title & Actions Bar */}
+      <section className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+            Token Usage
+          </h1>
+          {selectedWorkspace && (
+            <span className="rounded-full border border-border/60 bg-accent/60 px-2.5 py-0.5 text-xs font-medium text-foreground">
+              {displayName}
+            </span>
+          )}
         </div>
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => loadData(true)}
+          disabled={refreshing}
+          className="h-8 gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+          title="Refresh token data"
+        >
+          <RefreshCw className={cn('h-3.5 w-3.5', refreshing && 'animate-spin')} />
+          <span>Refresh</span>
+        </Button>
       </section>
 
       {/* Loading state */}
@@ -135,17 +139,18 @@ export function TokenUsagePanel(): ReactElement {
         </div>
       )}
 
-      {/* Empty state */}
-      {!loading && (!stats || stats.projects.length === 0) && (
+      {/* Empty state when no stats exist for this workspace */}
+      {!loading && !currentProject && (
         <div className="rounded-xl border border-dashed border-border bg-card/30 p-8 text-center">
           <Sparkles className="mx-auto h-8 w-8 text-muted-foreground" />
           <h3 className="mt-3 text-sm font-semibold text-foreground">
-            No token activity recorded yet
+            No token activity recorded yet for{' '}
+            <span className="font-mono text-foreground font-semibold">{displayName}</span>
           </h3>
           <p className="mt-1.5 text-xs text-muted-foreground max-w-md mx-auto">
             When you run prompts in <strong>Claude Code</strong>, <strong>Codex</strong>, or{' '}
-            <strong>Antigravity</strong>, token usage will automatically be tracked,
-            persisted, and summarized here by Project and Date.
+            <strong>Antigravity</strong> in this workspace, token usage will automatically be tracked,
+            persisted, and summarized here by Date and Model.
           </p>
         </div>
       )}
@@ -158,11 +163,10 @@ export function TokenUsagePanel(): ReactElement {
               <span className="block text-xs font-medium text-muted-foreground">
                 Total Prompts
               </span>
-              <div className="mt-1 flex items-baseline justify-between">
+              <div className="mt-1">
                 <span className="font-mono text-xl font-semibold text-foreground">
                   {currentProject.totalPrompts.toLocaleString()}
                 </span>
-                <span className="text-[11px] text-muted-foreground">prompts</span>
               </div>
             </div>
 
@@ -189,7 +193,7 @@ export function TokenUsagePanel(): ReactElement {
             </div>
 
             <div className="rounded-xl border border-border bg-card p-3.5">
-              <span className="block text-xs font-medium text-emerald-400">
+              <span className="block text-xs font-medium text-emerald-400/90">
                 Cache Tokens
               </span>
               <div className="mt-1">
@@ -211,122 +215,130 @@ export function TokenUsagePanel(): ReactElement {
             </div>
           </section>
 
-          {/* Daily Breakdown by Model */}
+          {/* Daily Breakdown */}
           <section className="space-y-4">
-            <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground">
+            <div className="flex items-center gap-2">
               <Calendar className="h-4 w-4 text-primary" />
-              <span>Daily Breakdown by Model</span>
-            </h2>
+              <h2 className="text-sm font-semibold text-foreground">
+                Daily Breakdown by Model
+              </h2>
+            </div>
 
-            {currentProject.dailyStats.length === 0 ? (
-              <p className="text-xs text-muted-foreground">No daily data available.</p>
-            ) : (
-              <div className="space-y-4">
-                {currentProject.dailyStats.map((day) => (
-                  <div
-                    key={day.date}
-                    className="overflow-hidden rounded-xl border border-border bg-card"
-                  >
-                    {/* Day header */}
-                    <div className="flex flex-wrap items-center justify-between border-b border-border bg-accent/30 px-4 py-2.5">
-                      <div className="flex items-center gap-2 font-mono text-xs font-semibold text-foreground">
-                        <Calendar className="h-3.5 w-3.5 text-primary" />
-                        <span>{day.date}</span>
-                        <span className="rounded bg-accent/80 px-1.5 py-0.2 text-[11px] font-normal text-muted-foreground">
-                          {day.promptCount} {day.promptCount === 1 ? 'prompt' : 'prompts'}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-3 font-mono text-xs">
-                        <span className="text-muted-foreground">
-                          Day Total:{' '}
-                          <strong className="text-foreground">{formatTokens(day.totalTokens)}</strong>
-                        </span>
-                      </div>
+            <div className="space-y-4">
+              {currentProject.dailyStats.map((day) => (
+                <div
+                  key={day.date}
+                  className="rounded-xl border border-border bg-card/60 overflow-hidden"
+                >
+                  {/* Day header banner */}
+                  <div className="flex items-center justify-between border-b border-border/80 bg-accent/30 px-4 py-2.5">
+                    <div className="flex items-center gap-2.5">
+                      <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="font-mono text-xs font-semibold text-foreground">
+                        {day.date}
+                      </span>
+                      <span className="rounded bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">
+                        {day.promptCount} {day.promptCount === 1 ? 'prompt' : 'prompts'}
+                      </span>
                     </div>
 
-                    {/* Table of Models */}
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left text-xs">
-                        <thead>
-                          <tr className="border-b border-border/40 text-[11px] font-medium text-muted-foreground">
-                            <th className="px-4 py-2">Agent & Model</th>
-                            <th className="px-3 py-2 text-right">Prompts</th>
-                            <th className="px-3 py-2 text-right">Input</th>
-                            <th className="px-3 py-2 text-right">Output</th>
-                            <th className="px-3 py-2 text-right">Cache</th>
-                            <th className="px-4 py-2 text-right">Total</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-border/20 font-mono">
-                          {day.models.map((m: ModelUsageStats) => {
-                            const agent = getAgentInfo(m.agentId)
-                            return (
-                              <tr
-                                key={`${m.agentId}-${m.model}`}
-                                className="transition-colors hover:bg-accent/20"
-                              >
-                                <td className="flex items-center gap-2 px-4 py-2.5 font-sans">
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className="text-muted-foreground">Day Total:</span>
+                      <span className="font-mono font-semibold text-foreground">
+                        {formatTokens(day.totalTokens)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Models breakdown table */}
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead>
+                        <tr className="border-b border-border/50 text-[11px] text-muted-foreground">
+                          <th className="px-4 py-2 font-medium">Agent &amp; Model</th>
+                          <th className="px-3 py-2 text-right font-medium">Prompts</th>
+                          <th className="px-3 py-2 text-right font-medium">Input</th>
+                          <th className="px-3 py-2 text-right font-medium">Output</th>
+                          <th className="px-3 py-2 text-right font-medium text-emerald-400/90">
+                            Cache
+                          </th>
+                          <th className="px-4 py-2 text-right font-medium text-primary">
+                            Total
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border/40 font-mono">
+                        {day.models.map((m: ModelUsageStats) => {
+                          const agent = getAgentInfo(m.agentId)
+                          return (
+                            <tr
+                              key={`${m.agentId}:${m.model}`}
+                              className="hover:bg-accent/20 transition-colors"
+                            >
+                              <td className="px-4 py-2.5 font-sans">
+                                <div className="flex items-center gap-2">
                                   <img
                                     src={agent.icon}
                                     alt=""
-                                    className="h-4 w-4 shrink-0 object-contain"
+                                    className="h-4 w-4 shrink-0 rounded"
                                   />
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="font-medium text-foreground">
-                                      {agent.label}
-                                    </span>
-                                    <span className="text-muted-foreground">•</span>
-                                    <span className="rounded bg-accent/40 px-1.5 py-0.5 text-[11px] font-semibold text-foreground">
-                                      {m.model}
-                                    </span>
-                                  </div>
-                                </td>
-                                <td className="px-3 py-2.5 text-right font-sans text-muted-foreground">
-                                  {m.promptCount}
-                                </td>
-                                <td className="px-3 py-2.5 text-right text-foreground">
-                                  {formatTokens(m.inputTokens)}
-                                </td>
-                                <td className="px-3 py-2.5 text-right text-foreground">
-                                  {formatTokens(m.outputTokens)}
-                                </td>
-                                <td className="px-3 py-2.5 text-right text-emerald-400">
-                                  {formatTokens(m.cacheTokens)}
-                                </td>
-                                <td className="px-4 py-2.5 text-right font-semibold text-primary">
-                                  {formatTokens(m.totalTokens)}
-                                </td>
-                              </tr>
-                            )
-                          })}
-                        </tbody>
-                        <tfoot>
-                          <tr className="border-t border-border bg-accent/10 font-mono text-[11px] font-semibold text-foreground">
-                            <td className="px-4 py-2 font-sans">Daily Subtotal</td>
-                            <td className="px-3 py-2 text-right font-sans text-muted-foreground">
-                              {day.promptCount}
-                            </td>
-                            <td className="px-3 py-2 text-right">
-                              {formatTokens(day.inputTokens)}
-                            </td>
-                            <td className="px-3 py-2 text-right">
-                              {formatTokens(day.outputTokens)}
-                            </td>
-                            <td className="px-3 py-2 text-right text-emerald-400">
-                              {formatTokens(day.cacheTokens)}
-                            </td>
-                            <td className="px-4 py-2 text-right text-primary">
-                              {formatTokens(day.totalTokens)}
-                            </td>
-                          </tr>
-                        </tfoot>
-                      </table>
-                    </div>
+                                  <span className="text-xs font-medium text-foreground">
+                                    {agent.label}
+                                  </span>
+                                  <span className="text-[11px] text-muted-foreground">
+                                    •
+                                  </span>
+                                  <span className="font-mono text-[11px] text-muted-foreground">
+                                    {m.model}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="px-3 py-2.5 text-right text-muted-foreground">
+                                {m.promptCount}
+                              </td>
+                              <td className="px-3 py-2.5 text-right text-foreground">
+                                {formatTokens(m.inputTokens)}
+                              </td>
+                              <td className="px-3 py-2.5 text-right text-foreground">
+                                {formatTokens(m.outputTokens)}
+                              </td>
+                              <td className="px-3 py-2.5 text-right text-emerald-400">
+                                {formatTokens(m.cacheTokens)}
+                              </td>
+                              <td className="px-4 py-2.5 text-right font-semibold text-primary">
+                                {formatTokens(m.totalTokens)}
+                              </td>
+                            </tr>
+                          )
+                        })}
+
+                        {/* Day subtotal row */}
+                        <tr className="bg-accent/10 font-semibold text-foreground">
+                          <td className="px-4 py-2 font-sans text-[11px] text-muted-foreground">
+                            Daily Subtotal
+                          </td>
+                          <td className="px-3 py-2 text-right text-muted-foreground">
+                            {day.promptCount}
+                          </td>
+                          <td className="px-3 py-2 text-right">
+                            {formatTokens(day.inputTokens)}
+                          </td>
+                          <td className="px-3 py-2 text-right">
+                            {formatTokens(day.outputTokens)}
+                          </td>
+                          <td className="px-3 py-2 text-right text-emerald-400">
+                            {formatTokens(day.cacheTokens)}
+                          </td>
+                          <td className="px-4 py-2 text-right text-primary">
+                            {formatTokens(day.totalTokens)}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
                   </div>
-                ))}
-              </div>
-            )}
+                </div>
+              ))}
+            </div>
           </section>
         </>
       )}
