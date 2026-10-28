@@ -11,6 +11,13 @@ import {
   type ProjectTokenStats,
   type TokenUsageResponse,
 } from '@/tauri/token-usage'
+import {
+  calculateDailyCost,
+  calculateModelUsageCost,
+  calculateProjectAgentCosts,
+  calculateProjectCost,
+  formatCurrency,
+} from '@/lib/token-pricing'
 import { cn } from '@/lib/utils'
 
 function formatTokens(count: number): string {
@@ -99,6 +106,20 @@ export function TokenUsagePanel({ selectedWorkspace }: TokenUsagePanelProps): Re
     return stats.projects[0] ?? null
   }, [stats, selectedWorkspace])
 
+  const projectCost = useMemo(() => {
+    if (!currentProject) return 0
+    return calculateProjectCost(currentProject)
+  }, [currentProject])
+
+  const projectAgentCosts = useMemo(() => {
+    if (!currentProject) return {}
+    return calculateProjectAgentCosts(currentProject)
+  }, [currentProject])
+
+  const agentCostEntries = useMemo(() => {
+    return Object.entries(projectAgentCosts).filter(([, cost]) => cost > 0)
+  }, [projectAgentCosts])
+
   const displayName = selectedWorkspace?.name || currentProject?.projectName || 'Project'
 
   return (
@@ -157,7 +178,7 @@ export function TokenUsagePanel({ selectedWorkspace }: TokenUsagePanelProps): Re
 
       {!loading && currentProject && (
         <>
-          {/* Project Summary Overview */}
+          {/* Project Summary Overview - Tokens */}
           <section className="grid grid-cols-2 gap-3 sm:grid-cols-5">
             <div className="rounded-xl border border-border bg-card p-3.5">
               <span className="block text-xs font-medium text-muted-foreground">
@@ -193,11 +214,11 @@ export function TokenUsagePanel({ selectedWorkspace }: TokenUsagePanelProps): Re
             </div>
 
             <div className="rounded-xl border border-border bg-card p-3.5">
-              <span className="block text-xs font-medium text-emerald-400/90">
+              <span className="block text-xs font-medium text-muted-foreground">
                 Cache Tokens
               </span>
               <div className="mt-1">
-                <span className="font-mono text-xl font-semibold text-emerald-400">
+                <span className="font-mono text-xl font-semibold text-foreground">
                   {formatTokens(currentProject.totalCacheTokens)}
                 </span>
               </div>
@@ -215,6 +236,47 @@ export function TokenUsagePanel({ selectedWorkspace }: TokenUsagePanelProps): Re
             </div>
           </section>
 
+          {/* Project Cost Breakdown by Provider (Vertical Stack) */}
+          <section className="rounded-xl border border-border bg-card/60 p-4">
+            <div className="flex items-center justify-between border-b border-border/80 pb-3">
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Cost Breakdown by Provider
+              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">Total Estimated Cost:</span>
+                <span className="font-mono text-base font-bold text-emerald-400">
+                  {formatCurrency(projectCost)}
+                </span>
+              </div>
+            </div>
+
+            <div className="mt-2 divide-y divide-border/40">
+              {agentCostEntries.map(([agentId, cost]) => {
+                const info = getAgentInfo(agentId)
+                const pct = projectCost > 0 ? ((cost / projectCost) * 100).toFixed(1) : '0'
+                return (
+                  <div
+                    key={agentId}
+                    className="flex items-center justify-between py-2.5 px-2 rounded hover:bg-accent/20 transition-colors first:pt-1 last:pb-1"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <img src={info.icon} alt="" className="h-4 w-4 shrink-0 rounded" />
+                      <span className="text-xs font-medium text-foreground">
+                        {info.label} Cost
+                      </span>
+                      <span className="text-[11px] text-muted-foreground">
+                        ({pct}%)
+                      </span>
+                    </div>
+                    <span className="font-mono text-sm font-semibold text-foreground">
+                      {formatCurrency(cost)}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          </section>
+
           {/* Daily Breakdown */}
           <section className="space-y-4">
             <div className="flex items-center gap-2">
@@ -225,119 +287,141 @@ export function TokenUsagePanel({ selectedWorkspace }: TokenUsagePanelProps): Re
             </div>
 
             <div className="space-y-4">
-              {currentProject.dailyStats.map((day) => (
-                <div
-                  key={day.date}
-                  className="rounded-xl border border-border bg-card/60 overflow-hidden"
-                >
-                  {/* Day header banner */}
-                  <div className="flex items-center justify-between border-b border-border/80 bg-accent/30 px-4 py-2.5">
-                    <div className="flex items-center gap-2.5">
-                      <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span className="font-mono text-xs font-semibold text-foreground">
-                        {day.date}
-                      </span>
-                      <span className="rounded bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">
-                        {day.promptCount} {day.promptCount === 1 ? 'prompt' : 'prompts'}
-                      </span>
-                    </div>
+              {currentProject.dailyStats.map((day) => {
+                const dayCost = calculateDailyCost(day)
+                return (
+                  <div
+                    key={day.date}
+                    className="rounded-xl border border-border bg-card/60 overflow-hidden"
+                  >
+                    {/* Day header banner */}
+                    <div className="flex items-center justify-between border-b border-border/80 bg-accent/30 px-4 py-2.5">
+                      <div className="flex items-center gap-2.5">
+                        <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className="font-mono text-xs font-semibold text-foreground">
+                          {day.date}
+                        </span>
+                        <span className="rounded bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">
+                          {day.promptCount} {day.promptCount === 1 ? 'prompt' : 'prompts'}
+                        </span>
+                      </div>
 
-                    <div className="flex items-center gap-2 text-xs">
-                      <span className="text-muted-foreground">Day Total:</span>
-                      <span className="font-mono font-semibold text-foreground">
-                        {formatTokens(day.totalTokens)}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Models breakdown table */}
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs">
-                      <thead>
-                        <tr className="border-b border-border/50 text-[11px] text-muted-foreground">
-                          <th className="px-4 py-2 font-medium">Agent &amp; Model</th>
-                          <th className="px-3 py-2 text-right font-medium">Prompts</th>
-                          <th className="px-3 py-2 text-right font-medium">Input</th>
-                          <th className="px-3 py-2 text-right font-medium">Output</th>
-                          <th className="px-3 py-2 text-right font-medium text-emerald-400/90">
-                            Cache
-                          </th>
-                          <th className="px-4 py-2 text-right font-medium text-primary">
-                            Total
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border/40 font-mono">
-                        {day.models.map((m: ModelUsageStats) => {
-                          const agent = getAgentInfo(m.agentId)
-                          return (
-                            <tr
-                              key={`${m.agentId}:${m.model}`}
-                              className="hover:bg-accent/20 transition-colors"
-                            >
-                              <td className="px-4 py-2.5 font-sans">
-                                <div className="flex items-center gap-2">
-                                  <img
-                                    src={agent.icon}
-                                    alt=""
-                                    className="h-4 w-4 shrink-0 rounded"
-                                  />
-                                  <span className="text-xs font-medium text-foreground">
-                                    {agent.label}
-                                  </span>
-                                  <span className="text-[11px] text-muted-foreground">
-                                    •
-                                  </span>
-                                  <span className="font-mono text-[11px] text-muted-foreground">
-                                    {m.model}
-                                  </span>
-                                </div>
-                              </td>
-                              <td className="px-3 py-2.5 text-right text-muted-foreground">
-                                {m.promptCount}
-                              </td>
-                              <td className="px-3 py-2.5 text-right text-foreground">
-                                {formatTokens(m.inputTokens)}
-                              </td>
-                              <td className="px-3 py-2.5 text-right text-foreground">
-                                {formatTokens(m.outputTokens)}
-                              </td>
-                              <td className="px-3 py-2.5 text-right text-emerald-400">
-                                {formatTokens(m.cacheTokens)}
-                              </td>
-                              <td className="px-4 py-2.5 text-right font-semibold text-primary">
-                                {formatTokens(m.totalTokens)}
-                              </td>
-                            </tr>
-                          )
-                        })}
-
-                        {/* Day subtotal row */}
-                        <tr className="bg-accent/10 font-semibold text-foreground">
-                          <td className="px-4 py-2 font-sans text-[11px] text-muted-foreground">
-                            Daily Subtotal
-                          </td>
-                          <td className="px-3 py-2 text-right text-muted-foreground">
-                            {day.promptCount}
-                          </td>
-                          <td className="px-3 py-2 text-right">
-                            {formatTokens(day.inputTokens)}
-                          </td>
-                          <td className="px-3 py-2 text-right">
-                            {formatTokens(day.outputTokens)}
-                          </td>
-                          <td className="px-3 py-2 text-right text-emerald-400">
-                            {formatTokens(day.cacheTokens)}
-                          </td>
-                          <td className="px-4 py-2 text-right text-primary">
+                      <div className="flex items-center gap-3 text-xs">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-muted-foreground">Day Total:</span>
+                          <span className="font-mono font-semibold text-orange-400">
                             {formatTokens(day.totalTokens)}
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
+                          </span>
+                        </div>
+                        <span className="text-muted-foreground/40">•</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-muted-foreground">Cost:</span>
+                          <span className="font-mono font-semibold text-emerald-400">
+                            {formatCurrency(dayCost)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Models breakdown table */}
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs">
+                        <thead>
+                          <tr className="border-b border-border/50 text-[11px] text-muted-foreground">
+                            <th className="px-4 py-2 font-medium">Agent &amp; Model</th>
+                            <th className="px-3 py-2 text-right font-medium">Prompts</th>
+                            <th className="px-3 py-2 text-right font-medium">Input</th>
+                            <th className="px-3 py-2 text-right font-medium">Output</th>
+                            <th className="px-3 py-2 text-right font-medium">
+                              Cache
+                            </th>
+                            <th className="px-3 py-2 text-right font-medium text-primary">
+                              Total
+                            </th>
+                            <th className="px-4 py-2 text-right font-medium text-emerald-400">
+                              Cost
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border/40 font-mono">
+                          {day.models.map((m: ModelUsageStats) => {
+                            const agent = getAgentInfo(m.agentId)
+                            const modelCost = calculateModelUsageCost(m, day.date)
+                            return (
+                              <tr
+                                key={`${m.agentId}:${m.model}`}
+                                className="hover:bg-accent/20 transition-colors"
+                              >
+                                <td className="px-4 py-2.5 font-sans">
+                                  <div className="flex items-center gap-2">
+                                    <img
+                                      src={agent.icon}
+                                      alt=""
+                                      className="h-4 w-4 shrink-0 rounded"
+                                    />
+                                    <span className="text-xs font-medium text-foreground">
+                                      {agent.label}
+                                    </span>
+                                    <span className="text-[11px] text-muted-foreground">
+                                      •
+                                    </span>
+                                    <span className="font-mono text-[11px] text-muted-foreground">
+                                      {m.model}
+                                    </span>
+                                  </div>
+                                </td>
+                                <td className="px-3 py-2.5 text-right text-muted-foreground">
+                                  {m.promptCount}
+                                </td>
+                                <td className="px-3 py-2.5 text-right text-foreground">
+                                  {formatTokens(m.inputTokens)}
+                                </td>
+                                <td className="px-3 py-2.5 text-right text-foreground">
+                                  {formatTokens(m.outputTokens)}
+                                </td>
+                                <td className="px-3 py-2.5 text-right text-foreground">
+                                  {formatTokens(m.cacheTokens)}
+                                </td>
+                                <td className="px-3 py-2.5 text-right font-semibold text-primary">
+                                  {formatTokens(m.totalTokens)}
+                                </td>
+                                <td className="px-4 py-2.5 text-right font-semibold text-emerald-400">
+                                  {formatCurrency(modelCost)}
+                                </td>
+                              </tr>
+                            )
+                          })}
+
+                          {/* Day subtotal row */}
+                          <tr className="bg-accent/10 font-semibold text-foreground">
+                            <td className="px-4 py-2 font-sans text-[11px] text-muted-foreground">
+                              Daily Subtotal
+                            </td>
+                            <td className="px-3 py-2 text-right text-muted-foreground">
+                              {day.promptCount}
+                            </td>
+                            <td className="px-3 py-2 text-right">
+                              {formatTokens(day.inputTokens)}
+                            </td>
+                            <td className="px-3 py-2 text-right">
+                              {formatTokens(day.outputTokens)}
+                            </td>
+                            <td className="px-3 py-2 text-right">
+                              {formatTokens(day.cacheTokens)}
+                            </td>
+                            <td className="px-3 py-2 text-right text-primary">
+                              {formatTokens(day.totalTokens)}
+                            </td>
+                            <td className="px-4 py-2 text-right text-emerald-400">
+                              {formatCurrency(dayCost)}
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </section>
         </>

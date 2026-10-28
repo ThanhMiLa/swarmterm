@@ -72,7 +72,7 @@ export function SettingsView({ onClose, initialCategory }: SettingsViewProps): R
         aria-modal="true"
         aria-label="Settings"
         onMouseDown={(e) => e.stopPropagation()}
-        className="flex h-[85vh] w-full max-w-6xl overflow-hidden rounded-xl border border-border bg-card shadow-2xl"
+        className="flex h-[90vh] w-full max-w-6xl 2xl:max-w-7xl overflow-hidden rounded-xl border border-border bg-card shadow-2xl"
       >
         <nav className="flex w-56 shrink-0 flex-col border-r border-border">
           <div className="border-b border-border px-3 py-3">
@@ -190,7 +190,12 @@ export function SettingsView({ onClose, initialCategory }: SettingsViewProps): R
           </Button>
 
           <div className="flex-1 overflow-y-auto">
-            <div className="mx-auto max-w-3xl px-8 py-8">
+            <div
+              className={cn(
+                'mx-auto px-6 py-8 sm:px-8',
+                activeCategory === 'token-usage' ? 'max-w-5xl 2xl:max-w-6xl' : 'max-w-3xl'
+              )}
+            >
               {activeCategory === 'appearance' && <AppearancePanel />}
               {activeCategory === 'terminal' && <TerminalPanel />}
               {activeCategory === 'notifications' && <NotificationsPanel />}
