@@ -111,7 +111,7 @@ export const TEMPLATES: WorkspaceTemplate[] = [
     id: 'copilot',
     name: 'GitHub Copilot',
     description: "GitHub's Copilot CLI.",
-    command: 'copilot',
+    command: 'copilot --yolo',
     executable: 'copilot',
     icon: copilotIcon,
     // Resume flag from herdr's table (--resume=<id>, equals form); ids are

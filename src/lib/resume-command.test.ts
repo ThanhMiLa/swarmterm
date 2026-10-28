@@ -40,7 +40,7 @@ describe('buildResumeCommand', () => {
   })
   it('wave-1 resume commands follow the herdr table', () => {
     const id = 'fe845bc6-6932-4459-8fb6-cdd0e7c6cc84'
-    expect(buildResumeCommand('copilot', id)).toBe(`copilot --resume=${id}`)
+    expect(buildResumeCommand('copilot', id)).toBe(`copilot --yolo --resume=${id}`)
     expect(buildResumeCommand('qwen', id)).toBe(`qwen --resume ${id}`)
     expect(buildResumeCommand('amp', id)).toBeUndefined()
   })

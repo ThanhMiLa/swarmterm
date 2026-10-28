@@ -49,6 +49,10 @@ describe('TEMPLATES catalog', () => {
   it('runs the bare opencode CLI command', () => {
     expect(templateById('opencode').command).toBe('opencode')
   })
+
+  it('runs the yolo command for copilot', () => {
+    expect(templateById('copilot').command).toBe('copilot --yolo')
+  })
 })
 
 describe('agentCommand', () => {
