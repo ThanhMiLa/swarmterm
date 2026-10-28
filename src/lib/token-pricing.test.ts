@@ -42,6 +42,13 @@ describe('token-pricing', () => {
       expect(p.cachePerMillion).toBe(0.1)
     })
 
+    it('matches gpt-6.1-terra', () => {
+      const p = getModelPricing('gpt-6.1-terra (high)')
+      expect(p.inputPerMillion).toBe(1.0)
+      expect(p.outputPerMillion).toBe(5.0)
+      expect(p.cachePerMillion).toBe(0.05)
+    })
+
     it('matches gpt-6-sol', () => {
       const p = getModelPricing('gpt-6-sol (medium)')
       expect(p.inputPerMillion).toBe(2.0)
@@ -82,6 +89,29 @@ describe('token-pricing', () => {
       expect(p.inputPerMillion).toBe(0.1)
       expect(p.outputPerMillion).toBe(0.5)
       expect(p.cachePerMillion).toBe(0.01)
+    })
+  })
+
+  describe('getModelPricing for DeepSeek', () => {
+    it('matches DeepSeek V4.1 Flash', () => {
+      const p = getModelPricing('DeepSeek V4.1 Flash (High)')
+      expect(p.inputPerMillion).toBe(0.3)
+      expect(p.outputPerMillion).toBe(1.2)
+      expect(p.cachePerMillion).toBe(0.003)
+    })
+
+    it('matches the hyphenated model id', () => {
+      const p = getModelPricing('deepseek-v4.1-flash')
+      expect(p.inputPerMillion).toBe(0.3)
+      expect(p.outputPerMillion).toBe(1.2)
+      expect(p.cachePerMillion).toBe(0.003)
+    })
+
+    it('matches the OpenCode free variant id', () => {
+      const p = getModelPricing('deepseek-v4.1-flash-free (max)')
+      expect(p.inputPerMillion).toBe(0.3)
+      expect(p.outputPerMillion).toBe(1.2)
+      expect(p.cachePerMillion).toBe(0.003)
     })
   })
 
@@ -154,6 +184,18 @@ describe('token-pricing', () => {
     it('computes exact cost for Gemini 3.8 Flash turn', () => {
       const cost = calculateTokenCost('Gemini 3.8 Flash (High)', 32432, 2155, 97022, '2026-10-17')
       expect(cost).toBeCloseTo(0.0396819, 6)
+    })
+
+    it('computes exact cost for gpt-6.1-terra turn', () => {
+      const cost = calculateTokenCost('gpt-6.1-terra (high)', 1_000_000, 100_000, 500_000)
+      // 1.00 input + 0.50 output + 0.025 cache
+      expect(cost).toBeCloseTo(1.525, 6)
+    })
+
+    it('computes exact cost for DeepSeek V4.1 Flash turn', () => {
+      const cost = calculateTokenCost('DeepSeek V4.1 Flash', 1_000_000, 100_000, 500_000)
+      // 0.30 input + 0.12 output + 0.0015 cache
+      expect(cost).toBeCloseTo(0.4215, 6)
     })
   })
 

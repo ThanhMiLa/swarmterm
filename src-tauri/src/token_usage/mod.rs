@@ -1,5 +1,5 @@
 // src-tauri/src/token_usage/mod.rs
-//! Token usage tracking across AI coding agents (Claude Code, Codex, Antigravity).
+//! Token usage tracking across AI coding agents (Claude Code, Codex, OpenCode, Antigravity).
 //!
 //! Collects per-prompt token usage (uncached input, cache, output), attributes
 //! each prompt to its executing model, aggregates by Project and Date, and
@@ -8,6 +8,7 @@
 pub mod antigravity;
 pub mod claude;
 pub mod codex;
+pub mod opencode;
 pub mod store;
 
 use serde::{Deserialize, Serialize};

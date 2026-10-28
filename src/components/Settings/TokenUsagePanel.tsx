@@ -3,6 +3,7 @@ import { Calendar, RefreshCw, Sparkles } from 'lucide-react'
 import antigravityIcon from '@/assets/agents/antigravity.svg'
 import claudeIcon from '@/assets/agents/claude-code.svg'
 import codexIcon from '@/assets/agents/codex.svg'
+import opencodeIcon from '@/assets/agents/opencode.svg'
 import { Button } from '@/components/ui/button'
 import {
   getTokenUsageStats,
@@ -38,6 +39,8 @@ function getAgentInfo(agentId: string): { label: string; icon: string } {
       return { label: 'Claude Code', icon: claudeIcon }
     case 'antigravity':
       return { label: 'Antigravity', icon: antigravityIcon }
+    case 'opencode':
+      return { label: 'OpenCode', icon: opencodeIcon }
     default:
       return { label: agentId, icon: codexIcon }
   }

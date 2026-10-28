@@ -7,8 +7,8 @@
 
 use super::{
     antigravity::scan_antigravity_roots, claude::scan_claude, codex::scan_codex_roots,
-    project_name_from_path, DailyUsageStats, ModelUsageStats, ProjectTokenStats, PromptTurnRecord,
-    TokenUsageResponse,
+    opencode::scan_opencode, project_name_from_path, DailyUsageStats, ModelUsageStats,
+    ProjectTokenStats, PromptTurnRecord, TokenUsageResponse,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -47,7 +47,9 @@ pub fn load_cache(path: &Path) -> DiskCache {
             && !turn.model.contains('<')
     });
     if cache.turns.len() < initial_len {
-        cache.file_mtimes.retain(|fpath, _| !fpath.contains("antigravity"));
+        cache
+            .file_mtimes
+            .retain(|fpath, _| !fpath.contains("antigravity"));
     }
     cache
 }
@@ -234,6 +236,20 @@ pub fn sync_all_and_aggregate(cache_file_path: &Path) -> TokenUsageResponse {
             }
             cache.file_mtimes.extend(updated_mtimes);
             changed = true;
+        }
+    }
+
+    // 4. OpenCode (SQLite session database)
+    if let Some(opencode_db) = super::opencode::default_opencode_db_path() {
+        if opencode_db.exists() {
+            let (new_turns, updated_mtimes) = scan_opencode(&opencode_db, &cache.file_mtimes);
+            if !new_turns.is_empty() || !updated_mtimes.is_empty() {
+                for t in new_turns {
+                    cache.turns.insert(t.turn_key.clone(), t);
+                }
+                cache.file_mtimes.extend(updated_mtimes);
+                changed = true;
+            }
         }
     }
 
