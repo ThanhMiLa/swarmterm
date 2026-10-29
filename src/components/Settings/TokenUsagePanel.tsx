@@ -16,6 +16,7 @@ import {
   calculateDailyCost,
   calculateModelUsageCost,
   calculateProjectAgentCosts,
+  calculateProjectAgentUsage,
   calculateProjectCost,
   formatCurrency,
 } from '@/lib/token-pricing'
@@ -119,9 +120,20 @@ export function TokenUsagePanel({ selectedWorkspace }: TokenUsagePanelProps): Re
     return calculateProjectAgentCosts(currentProject)
   }, [currentProject])
 
-  const agentCostEntries = useMemo(() => {
-    return Object.entries(projectAgentCosts).filter(([, cost]) => cost > 0)
-  }, [projectAgentCosts])
+  const projectAgentUsage = useMemo(() => {
+    if (!currentProject) return {}
+    return calculateProjectAgentUsage(currentProject)
+  }, [currentProject])
+
+  const providerRows = useMemo(() => {
+    return Object.entries(projectAgentUsage)
+      .map(([agentId, usage]) => ({
+        agentId,
+        usage,
+        cost: projectAgentCosts[agentId] ?? 0,
+      }))
+      .sort((a, b) => b.cost - a.cost)
+  }, [projectAgentUsage, projectAgentCosts])
 
   const displayName = selectedWorkspace?.name || currentProject?.projectName || 'Project'
 
@@ -181,103 +193,120 @@ export function TokenUsagePanel({ selectedWorkspace }: TokenUsagePanelProps): Re
 
       {!loading && currentProject && (
         <>
-          {/* Project Summary Overview - Tokens */}
-          <section className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-            <div className="rounded-xl border border-border bg-card p-3.5">
-              <span className="block text-xs font-medium text-muted-foreground">
-                Total Prompts
-              </span>
-              <div className="mt-1">
-                <span className="font-mono text-xl font-semibold text-foreground">
-                  {currentProject.totalPrompts.toLocaleString()}
-                </span>
-              </div>
-            </div>
-
-            <div className="rounded-xl border border-border bg-card p-3.5">
-              <span className="block text-xs font-medium text-muted-foreground">
-                Input Tokens
-              </span>
-              <div className="mt-1">
-                <span className="font-mono text-xl font-semibold text-foreground">
-                  {formatTokens(currentProject.totalInputTokens)}
-                </span>
-              </div>
-            </div>
-
-            <div className="rounded-xl border border-border bg-card p-3.5">
-              <span className="block text-xs font-medium text-muted-foreground">
-                Output Tokens
-              </span>
-              <div className="mt-1">
-                <span className="font-mono text-xl font-semibold text-foreground">
-                  {formatTokens(currentProject.totalOutputTokens)}
-                </span>
-              </div>
-            </div>
-
-            <div className="rounded-xl border border-border bg-card p-3.5">
-              <span className="block text-xs font-medium text-muted-foreground">
-                Cache Tokens
-              </span>
-              <div className="mt-1">
-                <span className="font-mono text-xl font-semibold text-foreground">
-                  {formatTokens(currentProject.totalCacheTokens)}
-                </span>
-              </div>
-            </div>
-
-            <div className="col-span-2 rounded-xl border border-border bg-card p-3.5 sm:col-span-1">
-              <span className="block text-xs font-medium text-primary">
-                Total Tokens
-              </span>
-              <div className="mt-1">
-                <span className="font-mono text-xl font-semibold text-primary">
-                  {formatTokens(currentProject.totalTokens)}
-                </span>
-              </div>
-            </div>
-          </section>
-
-          {/* Project Cost Breakdown by Provider (Vertical Stack) */}
-          <section className="rounded-xl border border-border bg-card/60 p-4">
-            <div className="flex items-center justify-between border-b border-border/80 pb-3">
+          {/* Unified Token Usage & Cost Summary */}
+          <section className="overflow-hidden rounded-xl border border-border bg-card/60">
+            <div className="border-b border-border/80 bg-accent/30 px-4 py-3">
               <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Cost Breakdown by Provider
+                Token Usage &amp; Cost Breakdown
               </span>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground">Total Estimated Cost:</span>
-                <span className="font-mono text-base font-bold text-emerald-400">
-                  {formatCurrency(projectCost)}
-                </span>
-              </div>
             </div>
 
-            <div className="mt-2 divide-y divide-border/40">
-              {agentCostEntries.map(([agentId, cost]) => {
-                const info = getAgentInfo(agentId)
-                const pct = projectCost > 0 ? ((cost / projectCost) * 100).toFixed(1) : '0'
-                return (
-                  <div
-                    key={agentId}
-                    className="flex items-center justify-between py-2.5 px-2 rounded hover:bg-accent/20 transition-colors first:pt-1 last:pb-1"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <img src={info.icon} alt="" className="h-4 w-4 shrink-0 rounded" />
-                      <span className="text-xs font-medium text-foreground">
-                        {info.label} Cost
-                      </span>
-                      <span className="text-[11px] text-muted-foreground">
-                        ({pct}%)
-                      </span>
-                    </div>
-                    <span className="font-mono text-sm font-semibold text-foreground">
-                      {formatCurrency(cost)}
+            <table className="w-full table-fixed text-left text-[11px] sm:text-xs">
+              <colgroup>
+                <col className="w-[24%]" />
+                <col className="w-[11%]" />
+                <col className="w-[14%]" />
+                <col className="w-[14%]" />
+                <col className="w-[13%]" />
+                <col className="w-[12%]" />
+                <col className="w-[12%]" />
+              </colgroup>
+              <thead>
+                <tr className="border-b border-border/50 text-[10px] text-muted-foreground sm:text-[11px]">
+                  <th className="px-3 py-2.5 text-left font-medium sm:px-4 sm:py-3">
+                    Provider
+                  </th>
+                  <th className="px-2 py-2.5 text-right font-medium sm:px-3 sm:py-3">
+                    Prompts
+                  </th>
+                  <th className="px-2 py-2.5 text-right font-medium sm:px-3 sm:py-3">
+                    Input
+                  </th>
+                  <th className="px-2 py-2.5 text-right font-medium sm:px-3 sm:py-3">
+                    Output
+                  </th>
+                  <th className="px-2 py-2.5 text-right font-medium sm:px-3 sm:py-3">
+                    Cache
+                  </th>
+                  <th className="px-2 py-2.5 text-right font-medium text-primary sm:px-3 sm:py-3">
+                    Total
+                  </th>
+                  <th className="px-2 py-2.5 text-right font-medium text-emerald-400 sm:px-4 sm:py-3">
+                    Cost
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/40 font-mono">
+                {providerRows.map(({ agentId, usage, cost }) => {
+                  const info = getAgentInfo(agentId)
+                  const pct = projectCost > 0 ? ((cost / projectCost) * 100).toFixed(1) : '0'
+                  return (
+                    <tr key={agentId} className="hover:bg-accent/20 transition-colors">
+                      <td className="px-3 py-2.5 font-sans sm:px-4 sm:py-3">
+                        <div className="flex min-w-0 items-center gap-2 sm:gap-2.5">
+                          <img
+                            src={info.icon}
+                            alt=""
+                            className="h-4 w-4 shrink-0 rounded"
+                          />
+                          <span className="truncate text-xs font-medium text-foreground">
+                            {info.label}
+                          </span>
+                          <span className="hidden shrink-0 text-[11px] font-normal text-muted-foreground md:inline">
+                            ({pct}%)
+                          </span>
+                        </div>
+                      </td>
+                      <td className="whitespace-nowrap px-2 py-2.5 text-right text-muted-foreground sm:px-3 sm:py-3">
+                        {usage.promptCount.toLocaleString()}
+                      </td>
+                      <td className="whitespace-nowrap px-2 py-2.5 text-right text-foreground sm:px-3 sm:py-3">
+                        {formatTokens(usage.inputTokens)}
+                      </td>
+                      <td className="whitespace-nowrap px-2 py-2.5 text-right text-foreground sm:px-3 sm:py-3">
+                        {formatTokens(usage.outputTokens)}
+                      </td>
+                      <td className="whitespace-nowrap px-2 py-2.5 text-right text-foreground sm:px-3 sm:py-3">
+                        {formatTokens(usage.cacheTokens)}
+                      </td>
+                      <td className="whitespace-nowrap px-2 py-2.5 text-right font-semibold text-primary sm:px-3 sm:py-3">
+                        {formatTokens(usage.totalTokens)}
+                      </td>
+                      <td className="whitespace-nowrap px-2 py-2.5 text-right font-semibold text-emerald-400 sm:px-4 sm:py-3">
+                        {formatCurrency(cost)}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+              <tfoot>
+                <tr className="bg-accent/20 font-semibold text-foreground [&>td]:border-t-2 [&>td]:border-border">
+                  <td className="px-3 py-3 font-sans sm:px-4 sm:py-3.5">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-orange-400">
+                      Total
                     </span>
-                  </div>
-                )
-              })}
-            </div>
+                  </td>
+                  <td className="whitespace-nowrap px-2 py-3 text-right text-orange-400 sm:px-3 sm:py-3.5">
+                    {currentProject.totalPrompts.toLocaleString()}
+                  </td>
+                  <td className="whitespace-nowrap px-2 py-3 text-right text-orange-400 sm:px-3 sm:py-3.5">
+                    {formatTokens(currentProject.totalInputTokens)}
+                  </td>
+                  <td className="whitespace-nowrap px-2 py-3 text-right text-orange-400 sm:px-3 sm:py-3.5">
+                    {formatTokens(currentProject.totalOutputTokens)}
+                  </td>
+                  <td className="whitespace-nowrap px-2 py-3 text-right text-orange-400 sm:px-3 sm:py-3.5">
+                    {formatTokens(currentProject.totalCacheTokens)}
+                  </td>
+                  <td className="whitespace-nowrap px-2 py-3 text-right text-orange-400 sm:px-3 sm:py-3.5">
+                    {formatTokens(currentProject.totalTokens)}
+                  </td>
+                  <td className="whitespace-nowrap px-2 py-3 text-right text-orange-400 sm:px-4 sm:py-3.5">
+                    {formatCurrency(projectCost)}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
           </section>
 
           {/* Daily Breakdown */}

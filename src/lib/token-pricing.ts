@@ -388,6 +388,49 @@ export function calculateProjectAgentCosts(project: {
   return result
 }
 
+export interface AgentUsageSummary {
+  promptCount: number
+  inputTokens: number
+  outputTokens: number
+  cacheTokens: number
+  totalTokens: number
+}
+
+/**
+ * Aggregate token usage by agent across an entire project.
+ */
+export function calculateProjectAgentUsage(project: {
+  dailyStats: Array<{
+    models: Array<{
+      agentId: string
+      promptCount: number
+      inputTokens: number
+      outputTokens: number
+      cacheTokens: number
+      totalTokens: number
+    }>
+  }>
+}): Record<string, AgentUsageSummary> {
+  const result: Record<string, AgentUsageSummary> = {}
+  for (const day of project.dailyStats) {
+    for (const m of day.models) {
+      const usage = (result[m.agentId] ??= {
+        promptCount: 0,
+        inputTokens: 0,
+        outputTokens: 0,
+        cacheTokens: 0,
+        totalTokens: 0,
+      })
+      usage.promptCount += m.promptCount
+      usage.inputTokens += m.inputTokens
+      usage.outputTokens += m.outputTokens
+      usage.cacheTokens += m.cacheTokens
+      usage.totalTokens += m.totalTokens
+    }
+  }
+  return result
+}
+
 /**
  * Calculate cost breakdown by agent for a single day.
  */

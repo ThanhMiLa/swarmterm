@@ -4,6 +4,7 @@ import {
   calculateDailyCost,
   calculateModelUsageCost,
   calculateProjectAgentCosts,
+  calculateProjectAgentUsage,
   calculateProjectCost,
   calculateTokenCost,
   formatCurrency,
@@ -239,6 +240,66 @@ describe('token-pricing', () => {
       const dailyAgentCosts = calculateDailyAgentCosts(day)
       expect(dailyAgentCosts['codex']).toBeCloseTo(3.05, 4)
       expect(dailyAgentCosts['antigravity']).toBeCloseTo(1.52, 4)
+    })
+
+    it('aggregates token usage by agent across days', () => {
+      const project = {
+        dailyStats: [
+          {
+            date: '2026-10-26',
+            models: [
+              {
+                agentId: 'codex',
+                model: 'gpt-6.1-sol (high)',
+                promptCount: 2,
+                inputTokens: 100,
+                outputTokens: 20,
+                cacheTokens: 1_000,
+                totalTokens: 1_120,
+              },
+            ],
+          },
+          {
+            date: '2026-10-27',
+            models: [
+              {
+                agentId: 'codex',
+                model: 'gpt-6.1-sol (max)',
+                promptCount: 3,
+                inputTokens: 200,
+                outputTokens: 40,
+                cacheTokens: 2_000,
+                totalTokens: 2_240,
+              },
+              {
+                agentId: 'antigravity',
+                model: 'Gemini 3.8 Flash (High)',
+                promptCount: 1,
+                inputTokens: 50,
+                outputTokens: 10,
+                cacheTokens: 500,
+                totalTokens: 560,
+              },
+            ],
+          },
+        ],
+      }
+
+      const usage = calculateProjectAgentUsage(project)
+      expect(usage['codex']).toEqual({
+        promptCount: 5,
+        inputTokens: 300,
+        outputTokens: 60,
+        cacheTokens: 3_000,
+        totalTokens: 3_360,
+      })
+      expect(usage['antigravity']).toEqual({
+        promptCount: 1,
+        inputTokens: 50,
+        outputTokens: 10,
+        cacheTokens: 500,
+        totalTokens: 560,
+      })
     })
   })
 
