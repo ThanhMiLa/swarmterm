@@ -21,19 +21,7 @@ import {
   formatCurrency,
 } from '@/lib/token-pricing'
 import { cn } from '@/lib/utils'
-
-function formatTokens(count: number): string {
-  if (count >= 1_000_000_000) {
-    return (count / 1_000_000_000).toFixed(2) + 'B'
-  }
-  if (count >= 1_000_000) {
-    return (count / 1_000_000).toFixed(2) + 'M'
-  }
-  if (count >= 1_000) {
-    return (count / 1_000).toFixed(1) + 'k'
-  }
-  return count.toLocaleString()
-}
+import { TokenCount } from './TokenCount'
 
 function getAgentInfo(agentId: string): { label: string; icon: string } {
   switch (agentId) {
@@ -264,16 +252,16 @@ export function TokenUsagePanel({ selectedWorkspace }: TokenUsagePanelProps): Re
                         {usage.promptCount.toLocaleString()}
                       </td>
                       <td className="whitespace-nowrap px-2 py-2.5 text-right text-foreground sm:px-3 sm:py-3">
-                        {formatTokens(usage.inputTokens)}
+                        <TokenCount count={usage.inputTokens} />
                       </td>
                       <td className="whitespace-nowrap px-2 py-2.5 text-right text-foreground sm:px-3 sm:py-3">
-                        {formatTokens(usage.outputTokens)}
+                        <TokenCount count={usage.outputTokens} />
                       </td>
                       <td className="whitespace-nowrap px-2 py-2.5 text-right text-foreground sm:px-3 sm:py-3">
-                        {formatTokens(usage.cacheTokens)}
+                        <TokenCount count={usage.cacheTokens} />
                       </td>
                       <td className="whitespace-nowrap px-2 py-2.5 text-right font-semibold text-primary sm:px-3 sm:py-3">
-                        {formatTokens(usage.totalTokens)}
+                        <TokenCount count={usage.totalTokens} />
                       </td>
                       <td className="whitespace-nowrap px-2 py-2.5 text-right font-semibold text-emerald-400 sm:px-4 sm:py-3">
                         {formatCurrency(cost)}
@@ -293,16 +281,16 @@ export function TokenUsagePanel({ selectedWorkspace }: TokenUsagePanelProps): Re
                     {currentProject.totalPrompts.toLocaleString()}
                   </td>
                   <td className="whitespace-nowrap px-2 py-3 text-right text-orange-400 sm:px-3 sm:py-3.5">
-                    {formatTokens(currentProject.totalInputTokens)}
+                    <TokenCount count={currentProject.totalInputTokens} />
                   </td>
                   <td className="whitespace-nowrap px-2 py-3 text-right text-orange-400 sm:px-3 sm:py-3.5">
-                    {formatTokens(currentProject.totalOutputTokens)}
+                    <TokenCount count={currentProject.totalOutputTokens} />
                   </td>
                   <td className="whitespace-nowrap px-2 py-3 text-right text-orange-400 sm:px-3 sm:py-3.5">
-                    {formatTokens(currentProject.totalCacheTokens)}
+                    <TokenCount count={currentProject.totalCacheTokens} />
                   </td>
                   <td className="whitespace-nowrap px-2 py-3 text-right text-orange-400 sm:px-3 sm:py-3.5">
-                    {formatTokens(currentProject.totalTokens)}
+                    <TokenCount count={currentProject.totalTokens} />
                   </td>
                   <td className="whitespace-nowrap px-2 py-3 text-right text-orange-400 sm:px-4 sm:py-3.5">
                     {formatCurrency(projectCost)}
@@ -345,7 +333,7 @@ export function TokenUsagePanel({ selectedWorkspace }: TokenUsagePanelProps): Re
                         <div className="flex items-center gap-1.5">
                           <span className="text-muted-foreground">Day Total:</span>
                           <span className="font-mono font-semibold text-orange-400">
-                            {formatTokens(day.totalTokens)}
+                            <TokenCount count={day.totalTokens} />
                           </span>
                         </div>
                         <span className="text-muted-foreground/40">•</span>
@@ -409,16 +397,16 @@ export function TokenUsagePanel({ selectedWorkspace }: TokenUsagePanelProps): Re
                                   {m.promptCount}
                                 </td>
                                 <td className="px-3 py-2.5 text-right text-foreground">
-                                  {formatTokens(m.inputTokens)}
+                                  <TokenCount count={m.inputTokens} />
                                 </td>
                                 <td className="px-3 py-2.5 text-right text-foreground">
-                                  {formatTokens(m.outputTokens)}
+                                  <TokenCount count={m.outputTokens} />
                                 </td>
                                 <td className="px-3 py-2.5 text-right text-foreground">
-                                  {formatTokens(m.cacheTokens)}
+                                  <TokenCount count={m.cacheTokens} />
                                 </td>
                                 <td className="px-3 py-2.5 text-right font-semibold text-primary">
-                                  {formatTokens(m.totalTokens)}
+                                  <TokenCount count={m.totalTokens} />
                                 </td>
                                 <td className="px-4 py-2.5 text-right font-semibold text-emerald-400">
                                   {formatCurrency(modelCost)}
@@ -436,16 +424,16 @@ export function TokenUsagePanel({ selectedWorkspace }: TokenUsagePanelProps): Re
                               {day.promptCount}
                             </td>
                             <td className="px-3 py-2 text-right">
-                              {formatTokens(day.inputTokens)}
+                              <TokenCount count={day.inputTokens} />
                             </td>
                             <td className="px-3 py-2 text-right">
-                              {formatTokens(day.outputTokens)}
+                              <TokenCount count={day.outputTokens} />
                             </td>
                             <td className="px-3 py-2 text-right">
-                              {formatTokens(day.cacheTokens)}
+                              <TokenCount count={day.cacheTokens} />
                             </td>
                             <td className="px-3 py-2 text-right text-primary">
-                              {formatTokens(day.totalTokens)}
+                              <TokenCount count={day.totalTokens} />
                             </td>
                             <td className="px-4 py-2 text-right text-emerald-400">
                               {formatCurrency(dayCost)}
