@@ -1,6 +1,7 @@
-import { useEffect, useRef, type ReactElement } from 'react'
+import { useEffect, useLayoutEffect, useRef, type ReactElement } from 'react'
 import { useAppStore } from '@/store/app-store'
 import { useBrowserStore } from '@/store/browser-store'
+import { useGitStore } from '@/store/git-store'
 import { findLeaf } from '@/lib/layout-tree'
 import { watchOverlays } from '@/lib/overlay-watch'
 import { setPreviewVisible, syncPreviewBounds } from '@/lib/preview-registry'
@@ -15,6 +16,7 @@ import { AddressBar } from './AddressBar'
  * placeholder is mounted AND no overlay (menu/dialog) is open above it.
  */
 export function BrowserColumn(): ReactElement {
+  const panelOpen = useGitStore((s) => s.panelOpen)
   const focusedTerminalId = useAppStore((s) => {
     const ws = s.workspaces.find((w) => w.id === s.activeWorkspaceId)
     if (!ws) return null
@@ -31,7 +33,7 @@ export function BrowserColumn(): ReactElement {
   // does for every other "nothing to show" case.
   const showWelcome = useAppStore((s) => s.welcomeFocused || s.workspaces.length === 0)
   const placeholderRef = useRef<HTMLDivElement | null>(null)
-  const previewTerminalId = preview && focusedTerminalId && !showWelcome ? focusedTerminalId : null
+  const previewTerminalId = preview && focusedTerminalId && !showWelcome && panelOpen ? focusedTerminalId : null
 
   // Bounds: keep the native webview glued to the placeholder. ResizeObserver
   // misses position-only shifts (e.g. the macOS fullscreen chrome dodge
@@ -42,20 +44,25 @@ export function BrowserColumn(): ReactElement {
     const el = placeholderRef.current
     if (!el) return
     let raf = 0
+    const readyAt = performance.now() + 220
     const sync = (): void => {
+      // The fixed-width placeholder also translates during opening; native
+      // webviews cannot be clipped/composited with that CSS animation.
+      if (performance.now() < readyAt) return
       cancelAnimationFrame(raf)
       raf = requestAnimationFrame(() => {
         const rect = el.getBoundingClientRect()
         syncPreviewBounds(previewTerminalId, rect)
       })
     }
-    sync()
+    const settled = window.setTimeout(sync, 220)
     const ro = new ResizeObserver(sync)
     ro.observe(el)
     window.addEventListener('resize', sync)
     const backstop = window.setInterval(sync, 500)
     return () => {
       cancelAnimationFrame(raf)
+      window.clearTimeout(settled)
       ro.disconnect()
       window.removeEventListener('resize', sync)
       window.clearInterval(backstop)
@@ -65,19 +72,20 @@ export function BrowserColumn(): ReactElement {
   // Visibility invariant: shown while mounted with no overlay open; hidden the
   // moment this effect tears down (panel tab switch, pane drag flipping the
   // panel to War Room, focus moving to a pane without a preview, unmount).
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!previewTerminalId) return
-    // watchOverlays fires its callback synchronously on subscribe, which can
-    // be the first-ever show-IPC for this terminal (a fresh MCP-driven open
-    // has no cached bounds, or the bounds effect above simply hasn't run
-    // yet). Sync bounds once, synchronously, right here so show-IPC never
-    // precedes the first bounds-IPC — otherwise the webview paints at
-    // whatever stale/fallback 1×1 rect it was created with for one frame.
-    const rect = placeholderRef.current?.getBoundingClientRect()
-    if (rect) syncPreviewBounds(previewTerminalId, rect)
-    const unwatch = watchOverlays((open) => setPreviewVisible(previewTerminalId, !open))
+    let unwatch: (() => void) | undefined
+    const settled = window.setTimeout(() => {
+      // watchOverlays fires synchronously. Send final bounds BEFORE show-IPC
+      // so the native view never flashes at its old or fallback coordinates.
+      const rect = placeholderRef.current?.getBoundingClientRect()
+      if (rect) syncPreviewBounds(previewTerminalId, rect)
+      unwatch = watchOverlays((open) => setPreviewVisible(previewTerminalId, !open))
+    }, 220)
     return () => {
-      unwatch()
+      window.clearTimeout(settled)
+      unwatch?.()
+      // Layout cleanup runs before paint on the first frame of closing.
       setPreviewVisible(previewTerminalId, false)
     }
   }, [previewTerminalId])

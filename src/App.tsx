@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react'
-import { Group, Panel, Separator } from 'react-resizable-panels'
 import {
   DndContext,
   DragOverlay,
@@ -107,10 +106,6 @@ export default function App(): ReactElement {
   // Native full-screen state, owned here because both the header's traffic-light
   // inset and the system-chrome dodge below are driven by it.
   const [isFullscreen, setIsFullscreen] = useState(false)
-
-  const gitPanelOpen = useGitStore((s) => s.panelOpen)
-
-  const rightPanelVisible = gitPanelOpen
 
   // --- pane drag-and-drop: hoisted here (from Workspace.tsx) so the right
   // panel — a sibling of the workspace, not a descendant — can host the War
@@ -778,13 +773,8 @@ export default function App(): ReactElement {
                   restorePanelIfNoDrop()
                 }}
               >
-                <Group
-                  key={rightPanelVisible ? 'split' : 'solo'}
-                  orientation="horizontal"
-                  className="h-full w-full"
-                  defaultLayout={rightPanelVisible ? { 'app-workspace': 70, 'app-browser': 30 } : { 'app-workspace': 100 }}
-                >
-                  <Panel id="app-workspace" minSize="30%" className="relative h-full w-full overflow-hidden">
+                <div className="flex h-full w-full overflow-hidden">
+                  <div className="relative h-full min-w-0 flex-1 overflow-hidden">
                     {workspaces.map((ws) => (
                       <div
                         key={ws.id}
@@ -794,19 +784,9 @@ export default function App(): ReactElement {
                         <Workspace workspace={ws} />
                       </div>
                     ))}
-                  </Panel>
-
-                  {rightPanelVisible && (
-                    <>
-                      <Separator
-                        className="w-1 shrink-0 cursor-col-resize bg-canvas transition-colors hover:bg-ring data-[separator]:bg-canvas"
-                      />
-                      <Panel id="app-browser" minSize="20%" maxSize="50%" className="h-full w-full overflow-hidden">
-                        <RightPanel />
-                      </Panel>
-                    </>
-                  )}
-                </Group>
+                  </div>
+                  <RightPanel />
+                </div>
                 <DragOverlay>
                   {draggingLeaf ? <PaneDragGhost leaf={draggingLeaf} /> : null}
                 </DragOverlay>

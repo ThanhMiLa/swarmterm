@@ -8,7 +8,7 @@ vi.mock('@/tauri/git', () => ({
   mergeReadiness: vi.fn()
 }))
 
-import { getChangedFiles, getCommitInfo, getFileDiff, mergeReadiness } from '@/tauri/git'
+import { getChangedFiles, getCommitInfo, getFileDiff, listWorktrees, mergeReadiness } from '@/tauri/git'
 import type { ChangedFile, CommitInfo, MergeReadiness, WorktreeInfo } from '@/tauri/git'
 import { useGitStore } from './git-store'
 
@@ -150,5 +150,55 @@ describe('fetchFileDiff', () => {
     await flush()
     expect(useGitStore.getState().fileDiffs.get('a.ts')).toBe('+a')
     expect(useGitStore.getState().fileDiffs.get('b.ts')).toBe('+b')
+  })
+})
+
+describe('opening the Git panel', () => {
+  it.each(['togglePanel', 'setMode'] as const)('%s refreshes cached worktrees without clearing the list or selection', async (action) => {
+    useGitStore.setState({ panelOpen: false })
+    const before = useGitStore.getState()
+    const files = deferred<ChangedFile[]>()
+    mocked.files.mockReturnValue(files.promise)
+    mocked.info.mockResolvedValue(info)
+
+    if (action === 'setMode') before.setMode('git')
+    else before.togglePanel()
+
+    const after = useGitStore.getState()
+    expect(after.panelOpen).toBe(true)
+    expect(after.worktrees).toBe(before.worktrees)
+    expect(after.changedFiles).toBe(before.changedFiles)
+    expect(after.selectedWorktreePath).toBe(ALPHA)
+    expect(after.expandedFiles).toBe(before.expandedFiles)
+    expect(after.fileDiffs).toBe(before.fileDiffs)
+    expect(after.loading).toBe(false)
+    expect(listWorktrees).not.toHaveBeenCalled()
+    expect(mocked.files).toHaveBeenCalledTimes(1)
+    expect(mocked.files).toHaveBeenCalledWith(ALPHA)
+
+    files.resolve([file('a.ts')])
+    await flush()
+    expect(useGitStore.getState().changedFiles).toEqual([file('a.ts')])
+  })
+
+  it.each(['togglePanel', 'setMode'] as const)('%s fetches worktrees when no cached list exists', async (action) => {
+    useGitStore.setState({ panelOpen: false, worktrees: [] })
+    vi.mocked(listWorktrees).mockResolvedValue([])
+
+    if (action === 'setMode') useGitStore.getState().setMode('git')
+    else useGitStore.getState().togglePanel()
+
+    expect(listWorktrees).toHaveBeenCalledExactlyOnceWith(ALPHA)
+    expect(useGitStore.getState().loading).toBe(true)
+    await flush()
+    expect(useGitStore.getState().loading).toBe(false)
+  })
+
+  it('does not fetch on close or when opening a different mode', () => {
+    useGitStore.getState().togglePanel()
+    useGitStore.getState().setMode('browser')
+    useGitStore.getState().setMode('warroom')
+    expect(listWorktrees).not.toHaveBeenCalled()
+    expect(mocked.files).not.toHaveBeenCalled()
   })
 })

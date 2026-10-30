@@ -88,8 +88,11 @@ export const useGitStore = create<GitStore>((set, get) => {
       // Picking a tab always reveals the panel (the tabs live inside it).
       set({ mode, panelOpen: true })
       if (mode === 'git') {
-        const { currentCwd } = get()
-        if (currentCwd) void get().fetchWorktrees(currentCwd)
+        const { currentCwd, worktrees } = get()
+        if (currentCwd) {
+          if (worktrees.length > 0) get().refreshSelected()
+          else void get().fetchWorktrees(currentCwd)
+        }
       }
     },
 
@@ -98,10 +101,13 @@ export const useGitStore = create<GitStore>((set, get) => {
     togglePanel: () => {
       const open = !get().panelOpen
       set({ panelOpen: open })
-      // Opening into Git mode triggers a fresh fetch for the focused terminal.
+      // Preserve the cached list while refreshing the selected worktree in place.
       if (open && get().mode === 'git') {
-        const { currentCwd } = get()
-        if (currentCwd) void get().fetchWorktrees(currentCwd)
+        const { currentCwd, worktrees } = get()
+        if (currentCwd) {
+          if (worktrees.length > 0) get().refreshSelected()
+          else void get().fetchWorktrees(currentCwd)
+        }
       }
     },
 

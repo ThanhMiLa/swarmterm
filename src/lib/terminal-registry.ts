@@ -165,6 +165,7 @@ interface Entry {
   lastMouseDown?: ClickPoint
   opened: boolean
   observer?: ResizeObserver
+  refitRaf?: number
   /**
    * The running detection loop for this pane's agent, if any — absent for
    * plain `terminal` panes (`manifestForAgent` returns undefined for those)
@@ -196,6 +197,52 @@ interface Entry {
 
 /** Live terminals keyed by terminalId, owned outside React's render tree. */
 const entries = new Map<string, Entry>()
+
+let layoutTransitionTimer: ReturnType<typeof setTimeout> | null = null
+let layoutRefitRaf: number | null = null
+let layoutTransitionGeneration = 0
+
+function cancelEntryRefit(entry: Entry): void {
+  if (entry.refitRaf === undefined) return
+  cancelAnimationFrame(entry.refitRaf)
+  entry.refitRaf = undefined
+}
+
+function scheduleLayoutRefit(): void {
+  if (layoutRefitRaf !== null) return
+  // A final layout fit supersedes any observer callbacks queued this frame.
+  for (const entry of entries.values()) cancelEntryRefit(entry)
+  layoutRefitRaf = requestAnimationFrame(() => {
+    layoutRefitRaf = null
+    refitAttachedTerminals()
+  })
+}
+
+/** Freeze terminal reflow while chrome animates; fit only the settled layout. */
+export function beginLayoutTransition(durationMs = 220): number {
+  const generation = ++layoutTransitionGeneration
+  if (layoutTransitionTimer !== null) clearTimeout(layoutTransitionTimer)
+  if (layoutRefitRaf !== null) {
+    cancelAnimationFrame(layoutRefitRaf)
+    layoutRefitRaf = null
+  }
+  for (const entry of entries.values()) cancelEntryRefit(entry)
+  // Backstop for interrupted transitions and prefers-reduced-motion (no event).
+  layoutTransitionTimer = setTimeout(() => {
+    layoutTransitionTimer = null
+    scheduleLayoutRefit()
+  }, durationMs)
+  return generation
+}
+
+export function endLayoutTransition(generation = layoutTransitionGeneration): void {
+  // A sidebar finishing first must not unlock a newer transition on the other side.
+  if (generation !== layoutTransitionGeneration) return
+  if (layoutTransitionTimer === null) return
+  clearTimeout(layoutTransitionTimer)
+  layoutTransitionTimer = null
+  scheduleLayoutRefit()
+}
 
 /**
  * One activity tracker for every terminal. `notify(id)` fires on each decoded
@@ -255,6 +302,7 @@ function safeFit(entry: Entry): boolean {
 
 /** Re-fit one terminal and push the new size to its pty only when it changed. */
 function refitEntry(id: string, entry: Entry): void {
+  if (layoutTransitionTimer !== null) return
   // Never fit against a hidden/occluded layout: the dims measured there are
   // garbage (FitAddon's 2×1 floor) and would be pushed to the pty, making a
   // running TUI redraw at 2 columns. The focus/visibility refit in App.tsx
@@ -278,6 +326,7 @@ function refitEntry(id: string, entry: Entry): void {
  */
 export function refitAttachedTerminals(): void {
   for (const [id, entry] of entries) {
+    cancelEntryRefit(entry)
     if (entry.opened && entry.observer !== undefined) refitEntry(id, entry)
   }
 }
@@ -946,8 +995,13 @@ export function attachTerminal(id: string, container: HTMLElement, config: Attac
   if (safeFit(entry)) resizeTerminal(id, entry.term.cols, entry.term.rows)
 
   entry.observer?.disconnect()
+  cancelEntryRefit(entry)
   entry.observer = new ResizeObserver(() => {
-    refitEntry(id, entry)
+    if (layoutTransitionTimer !== null || layoutRefitRaf !== null || entry.refitRaf !== undefined) return
+    entry.refitRaf = requestAnimationFrame(() => {
+      entry.refitRaf = undefined
+      refitEntry(id, entry)
+    })
   })
   entry.observer.observe(container)
 
@@ -960,6 +1014,7 @@ export function detachTerminal(id: string): void {
   if (!entry) return
   entry.observer?.disconnect()
   entry.observer = undefined
+  cancelEntryRefit(entry)
   entry.host.remove()
 }
 
@@ -968,6 +1023,7 @@ export function disposeTerminal(id: string): void {
   const entry = entries.get(id)
   if (!entry) return
   entry.observer?.disconnect()
+  cancelEntryRefit(entry)
   entry.session.dispose()
   entry.term.dispose()
   entry.host.remove()

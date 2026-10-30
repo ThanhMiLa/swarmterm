@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactElement } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ReactElement } from 'react'
 import { MoreVertical, Pencil, Plus, Settings, X } from 'lucide-react'
 import {
   DndContext,
@@ -38,6 +38,7 @@ import { cn } from '@/lib/utils'
 import { TerminalList } from '@/components/Navbar/TerminalList'
 import { UpdateButton } from '@/components/Navbar/UpdateButton'
 import { getAppVersion } from '@/tauri/app'
+import { beginLayoutTransition, endLayoutTransition } from '@/lib/terminal-registry'
 
 interface NavbarProps {
   /** Open the setup wizard to create a new workspace. */
@@ -54,6 +55,13 @@ interface NavbarProps {
  */
 export function Navbar({ onNewWorkspace, settingsOpen, onToggleSettings }: NavbarProps): ReactElement {
   const visible = useNavbarVisibilityStore((s) => s.visible)
+  const previousVisible = useRef(visible)
+  const layoutTransition = useRef(0)
+  useLayoutEffect(() => {
+    if (previousVisible.current === visible) return
+    previousVisible.current = visible
+    layoutTransition.current = beginLayoutTransition(220)
+  }, [visible])
   const workspaces = useAppStore((s) => s.workspaces)
   const activeWorkspaceId = useAppStore((s) => s.activeWorkspaceId)
   const welcomeFocused = useAppStore((s) => s.welcomeFocused)
@@ -111,9 +119,18 @@ export function Navbar({ onNewWorkspace, settingsOpen, onToggleSettings }: Navba
       // the Settings dialog) is exempt by lib/terminal-focus.ts's own check.
       data-focus-return
       style={{ width: visible ? 224 : 0 }}
-      className="h-full shrink-0 overflow-hidden border-r border-border bg-card transition-[width] duration-200 ease-in-out motion-reduce:transition-none"
+      onTransitionEnd={(e) => {
+        if (e.target === e.currentTarget && e.propertyName === 'width') endLayoutTransition(layoutTransition.current)
+      }}
+      className={cn(
+        'h-full shrink-0 overflow-hidden border-r bg-card transition-[width,border-color] duration-200 [transition-timing-function:cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none',
+        visible ? 'border-border' : 'border-transparent'
+      )}
     >
-      <div className="flex h-full w-56 flex-col">
+      <div className={cn(
+        'flex h-full w-56 flex-col transition-[transform,opacity] duration-200 [transition-timing-function:cubic-bezier(0.22,1,0.36,1)] will-change-[transform,opacity] motion-reduce:transition-none',
+        visible ? 'translate-x-0 opacity-100' : '-translate-x-4 opacity-0'
+      )}>
         <div className="flex min-h-0 flex-1 flex-col">
           <div className="flex shrink-0 items-center justify-between border-b border-border bg-muted/40 px-3 py-2">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-foreground/80">Workspaces</p>

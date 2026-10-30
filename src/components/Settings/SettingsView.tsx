@@ -64,7 +64,7 @@ export function SettingsView({ onClose, initialCategory }: SettingsViewProps): R
 
   return (
     <div
-      className="absolute inset-0 z-50 flex items-center justify-center bg-black/70 p-6"
+      className="absolute inset-0 z-50 flex items-center justify-center bg-black/70 p-6 animate-in fade-in duration-150 motion-reduce:animate-none"
       onMouseDown={onClose}
     >
       <div
@@ -72,7 +72,7 @@ export function SettingsView({ onClose, initialCategory }: SettingsViewProps): R
         aria-modal="true"
         aria-label="Settings"
         onMouseDown={(e) => e.stopPropagation()}
-        className="flex h-[90vh] w-full max-w-6xl 2xl:max-w-7xl overflow-hidden rounded-xl border border-border bg-card shadow-2xl"
+        className="flex h-[90vh] w-full max-w-6xl 2xl:max-w-7xl overflow-hidden rounded-xl border border-border bg-card shadow-2xl animate-in fade-in zoom-in-95 duration-150 ease-out motion-reduce:animate-none"
       >
         <nav className="flex w-56 shrink-0 flex-col border-r border-border">
           <div className="border-b border-border px-3 py-3">

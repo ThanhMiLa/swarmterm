@@ -23,6 +23,8 @@ const TONE_CLASS: Record<MergeTone, string> = {
 }
 
 export function GitPanel(): ReactElement {
+  const panelOpen = useGitStore((s) => s.panelOpen)
+  const mode = useGitStore((s) => s.mode)
   const loading = useGitStore((s) => s.loading)
   const error = useGitStore((s) => s.error)
   const worktrees = useGitStore((s) => s.worktrees)
@@ -50,7 +52,8 @@ export function GitPanel(): ReactElement {
 
   // Subscribe to the focused terminal's CWD and re-fetch when it changes.
   useEffect(() => {
-    const unsubscribe = useAppStore.subscribe((state) => {
+    if (!panelOpen || mode !== 'git') return
+    const syncCwd = (state: ReturnType<typeof useAppStore.getState>): void => {
       const ws = selectActiveWorkspace(state)
       if (!ws) return
       const leaf = findLeaf(ws.layout, ws.focusedLeafId)
@@ -59,16 +62,12 @@ export function GitPanel(): ReactElement {
       if (cwd !== useGitStore.getState().currentCwd) {
         void fetchWorktrees(cwd)
       }
-    })
-    // Initial fetch on mount.
-    const ws = selectActiveWorkspace(useAppStore.getState())
-    if (ws) {
-      const leaf = findLeaf(ws.layout, ws.focusedLeafId)
-      const cwd = leaf?.cwd ?? ws.cwd
-      if (cwd) void fetchWorktrees(cwd)
     }
+    const unsubscribe = useAppStore.subscribe(syncCwd)
+    // Keep cached worktrees on reopen. Store actions handle the in-place refresh.
+    syncCwd(useAppStore.getState())
     return unsubscribe
-  }, [fetchWorktrees])
+  }, [fetchWorktrees, panelOpen, mode])
 
   return (
     <div className="flex h-full w-full min-w-0 flex-col overflow-hidden">
