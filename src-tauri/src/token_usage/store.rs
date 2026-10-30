@@ -7,8 +7,8 @@
 
 use super::{
     antigravity::scan_antigravity_roots, claude::scan_claude, codex::scan_codex_roots,
-    opencode::scan_opencode, project_name_from_path, DailyUsageStats, ModelUsageStats,
-    ProjectTokenStats, PromptTurnRecord, TokenUsageResponse,
+    normalize_model_name, opencode::scan_opencode, project_name_from_path, DailyUsageStats,
+    ModelUsageStats, ProjectTokenStats, PromptTurnRecord, TokenUsageResponse,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -124,7 +124,7 @@ pub fn aggregate_cache(cache: &DiskCache) -> TokenUsageResponse {
             let mut date_cache = 0u64;
             let mut date_total = 0u64;
 
-            // Group by (agent_id, model)
+            // Group by (agent_id, model), ignoring reasoning-effort suffixes.
             let mut by_model: HashMap<(String, String), ModelUsageStats> = HashMap::new();
             for dt in date_turns {
                 date_prompts += 1;
@@ -133,11 +133,12 @@ pub fn aggregate_cache(cache: &DiskCache) -> TokenUsageResponse {
                 date_cache += dt.cache_tokens;
                 date_total += dt.total_tokens;
 
+                let model = normalize_model_name(&dt.model);
                 let entry = by_model
-                    .entry((dt.agent_id.clone(), dt.model.clone()))
+                    .entry((dt.agent_id.clone(), model.clone()))
                     .or_insert_with(|| ModelUsageStats {
                         agent_id: dt.agent_id.clone(),
-                        model: dt.model.clone(),
+                        model,
                         prompt_count: 0,
                         input_tokens: 0,
                         output_tokens: 0,
@@ -300,7 +301,7 @@ mod tests {
             PromptTurnRecord {
                 turn_key: "t2".into(),
                 agent_id: "codex".into(),
-                model: "gpt-6.1-sol (high)".into(),
+                model: "gpt-6.1-sol (max)".into(),
                 project_path: "/repo".into(),
                 date: "2026-10-25".into(),
                 timestamp_ms: 2000,
@@ -343,7 +344,7 @@ mod tests {
         assert_eq!(p.daily_stats[0].date, "2026-10-25");
         assert_eq!(p.daily_stats[0].prompt_count, 2);
         assert_eq!(p.daily_stats[0].models.len(), 1);
-        assert_eq!(p.daily_stats[0].models[0].model, "gpt-6.1-sol (high)");
+        assert_eq!(p.daily_stats[0].models[0].model, "gpt-6.1-sol");
         assert_eq!(p.daily_stats[0].models[0].prompt_count, 2);
         assert_eq!(p.daily_stats[0].models[0].total_tokens, 500);
 

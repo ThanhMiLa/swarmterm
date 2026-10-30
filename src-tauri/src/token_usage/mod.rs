@@ -96,6 +96,17 @@ pub fn parse_iso_timestamp(iso: &str) -> Option<(u64, String)> {
     Some((ms, date))
 }
 
+/// Strip reasoning-effort suffixes from a model name so usage is aggregated per
+/// model regardless of reasoning level, e.g. `gpt-6.1-sol (high)` -> `gpt-6.1-sol`.
+pub fn normalize_model_name(model: &str) -> String {
+    let mut name = model.trim();
+    while name.ends_with(')') {
+        let Some(open) = name.rfind('(') else { break };
+        name = name[..open].trim_end();
+    }
+    name.to_string()
+}
+
 /// Normalize path for consistent comparison across operating systems.
 pub fn normalize_path(path: &str) -> String {
     let p = path.replace('\\', "/");
@@ -132,4 +143,23 @@ pub(crate) fn mtime_ms(path: &std::path::Path) -> u64 {
         .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
         .map(|d| d.as_millis() as u64)
         .unwrap_or(0)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn normalize_model_name_strips_reasoning_suffix() {
+        assert_eq!(normalize_model_name("gpt-6.1-sol (high)"), "gpt-6.1-sol");
+        assert_eq!(
+            normalize_model_name("Claude Opus 4.6 (Thinking)"),
+            "Claude Opus 4.6"
+        );
+        assert_eq!(
+            normalize_model_name("deepseek-v4.1-flash-free (max)"),
+            "deepseek-v4.1-flash-free"
+        );
+        assert_eq!(normalize_model_name("gemini-2.5-pro"), "gemini-2.5-pro");
+    }
 }
