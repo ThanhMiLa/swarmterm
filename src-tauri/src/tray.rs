@@ -40,7 +40,7 @@ fn quit(app: &tauri::AppHandle) {
     // terminals lock was somehow poisoned.
     if let Ok(mut map) = state.terminals.lock() {
         for t in map.values_mut() {
-            let _ = t.killer.kill();
+            t.kill();
         }
     }
     app.exit(0);

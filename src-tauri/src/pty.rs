@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::io::{Read, Write};
-use std::sync::atomic::AtomicBool;
-use std::sync::{Arc, Mutex, OnceLock};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::{Arc, Condvar, Mutex, OnceLock};
 
 use portable_pty::{native_pty_system, ChildKiller, CommandBuilder, MasterPty, PtySize};
 use serde::{Deserialize, Serialize};
@@ -92,21 +92,127 @@ mod job {
     }
 }
 
+static NEXT_FLOW_ID: AtomicU64 = AtomicU64::new(1);
+
+pub fn next_flow_id() -> u64 {
+    NEXT_FLOW_ID.fetch_add(1, Ordering::Relaxed)
+}
+
+/// Flow control window: maximum 256 KiB unconfirmed UTF-8 bytes per session.
+pub const MAX_UNACKED_BYTES: usize = 256 * 1024;
+
+pub struct FlowState {
+    pub flow_id: u64,
+    pub total_sent_bytes: u64,
+    pub total_acked_bytes: u64,
+    pub closed: bool,
+}
+
+#[derive(Clone)]
+pub struct FlowController {
+    pub inner: Arc<(Mutex<FlowState>, Condvar)>,
+}
+
+impl FlowController {
+    pub fn new(flow_id: u64) -> Self {
+        Self {
+            inner: Arc::new((
+                Mutex::new(FlowState {
+                    flow_id,
+                    total_sent_bytes: 0,
+                    total_acked_bytes: 0,
+                    closed: false,
+                }),
+                Condvar::new(),
+            )),
+        }
+    }
+
+    pub fn flow_id(&self) -> u64 {
+        self.inner.0.lock().unwrap().flow_id
+    }
+
+    /// Wait until total_sent_bytes - total_acked_bytes + chunk_len <= MAX_UNACKED_BYTES.
+    /// Returns true if credit granted, false if closed.
+    pub fn wait_for_credit(&self, chunk_len: usize) -> bool {
+        if chunk_len > MAX_UNACKED_BYTES {
+            return false;
+        }
+        let (lock, cvar) = &*self.inner;
+        let mut state = lock.lock().unwrap();
+        loop {
+            if state.closed {
+                return false;
+            }
+            let unacked = state
+                .total_sent_bytes
+                .saturating_sub(state.total_acked_bytes) as usize;
+            if unacked + chunk_len <= MAX_UNACKED_BYTES {
+                state.total_sent_bytes += chunk_len as u64;
+                return true;
+            }
+            state = cvar.wait(state).unwrap();
+        }
+    }
+
+    /// Acknowledge parsed output bytes.
+    pub fn ack(&self, flow_id: u64, processed_bytes: u64) -> bool {
+        let (lock, cvar) = &*self.inner;
+        let mut state = lock.lock().unwrap();
+        if state.flow_id != flow_id || state.closed || processed_bytes > state.total_sent_bytes {
+            return false;
+        }
+        if processed_bytes > state.total_acked_bytes {
+            state.total_acked_bytes = processed_bytes;
+            cvar.notify_all();
+            return true;
+        }
+        false
+    }
+
+    /// Mark closed and wake up all waiting threads.
+    pub fn close(&self) {
+        let (lock, cvar) = &*self.inner;
+        let mut state = lock.lock().unwrap();
+        state.closed = true;
+        cvar.notify_all();
+    }
+}
+
+/// Data chunk payload with flow control metadata
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct PtyDataPayload {
+    pub flow_id: u64,
+    pub data: String,
+    pub byte_len: usize,
+}
+
+/// Exit payload with flow control metadata
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct PtyExitPayload {
+    pub flow_id: u64,
+    #[serde(rename = "exitCode")]
+    pub exit_code: i32,
+}
+
 /// Output streamed to the renderer over a per-terminal channel.
-#[derive(Clone, Serialize)]
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase", tag = "type", content = "payload")]
 pub enum PtyOut {
-    Data(String),
-    Exit {
-        #[serde(rename = "exitCode")]
-        exit_code: i32,
-    },
+    Data(PtyDataPayload),
+    Exit(PtyExitPayload),
 }
 
 /// Options the renderer passes when asking the backend to spawn a pty.
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateTerminalOptions {
+    #[serde(default)]
+    pub input_token: Option<String>,
+    #[serde(default)]
+    pub benchmark_fixture: Option<String>,
     pub cwd: Option<String>,
     pub shell_id: Option<String>,
     pub initial_command: Option<String>,
@@ -145,13 +251,15 @@ impl CreateTerminalResult {
 /// (when set) owns the shell's whole process tree so closing the terminal frees
 /// every descendant, not just the shell.
 pub struct ManagedTerminal {
-    pub writer: Box<dyn Write + Send>,
+    pub input_token: Option<String>,
+    pub writer: Arc<Mutex<Box<dyn Write + Send>>>,
     pub master: Box<dyn MasterPty + Send>,
     pub killer: Box<dyn ChildKiller + Send + Sync>,
     #[cfg(windows)]
     pub job: Option<job::JobHandle>,
     pub worktree_mode: bool,
     pub repo_root: Option<String>,
+    pub flow: FlowController,
 }
 
 impl ManagedTerminal {
@@ -159,6 +267,7 @@ impl ManagedTerminal {
     /// (shell + every descendant); the `killer` call is a fallback for when the
     /// job could not be created and on non-Windows platforms.
     pub fn kill(&mut self) {
+        self.flow.close();
         #[cfg(windows)]
         if let Some(job) = &self.job {
             job.terminate();
@@ -375,6 +484,26 @@ pub fn spawn_terminal(
     for a in &args {
         cmd.arg(a);
     }
+    if let Some(fixture) = &options.benchmark_fixture {
+        #[cfg(debug_assertions)]
+        {
+            if std::env::var_os("SWARMTERM_BENCHMARK").is_some()
+                && ["static", "stream", "tui", "tui-stream"].contains(&fixture.as_str())
+            {
+                cmd = CommandBuilder::new(std::env::current_exe().expect("benchmark executable"));
+                cmd.args(["--terminal-fixture", fixture]);
+            } else {
+                return CreateTerminalResult::err(
+                    "Benchmark fixtures require the isolated debug runner",
+                );
+            }
+        }
+        #[cfg(not(debug_assertions))]
+        {
+            let _ = fixture;
+            return CreateTerminalResult::err("Benchmark fixtures are disabled in release builds");
+        }
+    }
     // Inherit the parent environment, then advertise truecolor so CLIs emit
     // 24-bit color sequences that ConPTY forwards and xterm renders verbatim.
     for (k, v) in std::env::vars() {
@@ -454,6 +583,7 @@ pub fn spawn_terminal(
             return CreateTerminalResult::err(e.to_string());
         }
     };
+    let reader = crate::pty_output::PtyOutputReader::new(reader, &*pair.master);
 
     // Capture the shell in a job BEFORE running any command, so every process the
     // command tree spawns is born inside the job and dies with it.
@@ -473,22 +603,27 @@ pub fn spawn_terminal(
         let _ = writer.flush();
     }
 
+    let flow_id = next_flow_id();
+    let flow = FlowController::new(flow_id);
+
     state.terminals.lock().unwrap().insert(
         id.clone(),
         ManagedTerminal {
-            writer,
+            input_token: options.input_token.clone(),
+            writer: Arc::new(Mutex::new(writer)),
             master: pair.master,
             killer,
             #[cfg(windows)]
             job,
             worktree_mode,
             repo_root,
+            flow: flow.clone(),
         },
     );
 
     let app = app.clone();
     std::thread::spawn(move || {
-        read_loop(app, id, reader, child, on_data);
+        read_loop(app, id, flow, reader, child, on_data);
     });
 
     CreateTerminalResult {
@@ -503,44 +638,70 @@ pub fn spawn_terminal(
 fn read_loop(
     app: AppHandle,
     id: String,
-    mut reader: Box<dyn Read + Send>,
+    flow: FlowController,
+    mut reader: crate::pty_output::PtyOutputReader,
     mut child: Box<dyn portable_pty::Child + Send + Sync>,
     on_data: Channel<PtyOut>,
 ) {
+    let flow_id = flow.flow_id();
     let mut pending: Vec<u8> = Vec::new();
     let mut chunk = vec![0u8; READ_BUF_BYTES];
     // Resolved once: `try_state` walks Tauri's type map, and this loop runs
     // per pty chunk. `None` only during teardown, when there is nobody left
     // to read the tail anyway.
     let peer_state = app.try_state::<AppState>();
-    loop {
+    'output: loop {
         match reader.read(&mut chunk) {
             Ok(0) => break,
             Err(e) if e.kind() == std::io::ErrorKind::Interrupted => continue,
             Err(_) => break,
             Ok(n) => {
                 pending.extend_from_slice(&chunk[..n]);
-                if let Some(text) = take_valid_utf8(&mut pending) {
+                while let Some(text) = take_valid_utf8(&mut pending) {
+                    let byte_len = text.len();
+                    if !flow.wait_for_credit(byte_len) {
+                        let _ = child.kill();
+                        break 'output;
+                    }
                     // Tee the chunk into the Rust-side screen tail BEFORE the
                     // renderer sees it, so a `read_peer` racing this chunk
                     // never reads less than xterm shows. Lock scope is the
                     // one statement — never held across the channel send.
                     if let Some(state) = &peer_state {
-                        state
-                            .peer_states
-                            .lock()
-                            .unwrap()
-                            .push_output(&id, &text, crate::warroom::now_ms());
+                        state.peer_states.lock().unwrap().push_output(
+                            &id,
+                            &text,
+                            crate::warroom::now_ms(),
+                        );
                         state.peer_wake.notify_waiters();
                     }
-                    let _ = on_data.send(PtyOut::Data(text));
+                    if on_data
+                        .send(PtyOut::Data(PtyDataPayload {
+                            flow_id,
+                            data: text,
+                            byte_len,
+                        }))
+                        .is_err()
+                    {
+                        flow.close();
+                        let _ = child.kill();
+                        break 'output;
+                    }
                 }
             }
         }
     }
     // Flush any trailing bytes (lossily) so nothing is lost.
     if !pending.is_empty() {
-        let _ = on_data.send(PtyOut::Data(String::from_utf8_lossy(&pending).into_owned()));
+        let trailing = String::from_utf8_lossy(&pending).into_owned();
+        let byte_len = trailing.len();
+        if flow.wait_for_credit(byte_len) {
+            let _ = on_data.send(PtyOut::Data(PtyDataPayload {
+                flow_id,
+                data: trailing,
+                byte_len,
+            }));
+        }
     }
     let exit_code = child.wait().map(|s| s.exit_code() as i32).unwrap_or(-1);
 
@@ -582,7 +743,18 @@ fn read_loop(
             );
         }
     }
-    let _ = on_data.send(PtyOut::Exit { exit_code });
+    let _ = on_data.send(PtyOut::Exit(PtyExitPayload { flow_id, exit_code }));
+}
+
+/// Acknowledge parsed terminal output bytes from frontend flow control.
+pub fn ack_terminal_output(state: &AppState, id: &str, flow_id: u64, processed_bytes: u64) {
+    let flow = {
+        let terminals = state.terminals.lock().unwrap();
+        terminals.get(id).map(|t| t.flow.clone())
+    };
+    if let Some(flow) = flow {
+        flow.ack(flow_id, processed_bytes);
+    }
 }
 
 #[cfg(test)]
@@ -694,5 +866,97 @@ mod tests {
         assert!(utf8_lang_fallback(Some("C"), None, None).is_none());
         assert!(utf8_lang_fallback(None, Some("C"), None).is_none());
         assert!(utf8_lang_fallback(None, None, Some("vi_VN.UTF-8")).is_none());
+    }
+
+    #[test]
+    fn flow_controller_grants_credit_within_window() {
+        let flow = FlowController::new(42);
+        assert_eq!(flow.flow_id(), 42);
+
+        // Window is 256 KiB; request 128 KiB
+        assert!(flow.wait_for_credit(128 * 1024));
+        // Request another 64 KiB (total 192 KiB <= 256 KiB)
+        assert!(flow.wait_for_credit(64 * 1024));
+    }
+
+    #[test]
+    fn flow_controller_rejects_ack_for_bytes_not_sent() {
+        let flow = FlowController::new(42);
+        assert!(flow.wait_for_credit(8192));
+        assert!(!flow.ack(42, 16384));
+        assert_eq!(flow.inner.0.lock().unwrap().total_acked_bytes, 0);
+        assert!(!flow.wait_for_credit(MAX_UNACKED_BYTES + 1));
+    }
+
+    #[test]
+    fn flow_controller_blocks_and_resumes_on_ack() {
+        let flow = FlowController::new(10);
+        // Fill up to the limit
+        assert!(flow.wait_for_credit(MAX_UNACKED_BYTES));
+
+        let flow_clone = flow.clone();
+        let handle = std::thread::spawn(move || {
+            // Next request will block until credit is opened
+            flow_clone.wait_for_credit(32 * 1024)
+        });
+
+        // Sleep briefly to ensure waiter thread is parked
+        std::thread::sleep(std::time::Duration::from_millis(50));
+
+        // ACK 64 KiB
+        assert!(flow.ack(10, 64 * 1024));
+
+        let granted = handle.join().expect("thread joined");
+        assert!(granted);
+    }
+
+    #[test]
+    fn flow_controller_ignores_stale_or_mismatched_ack() {
+        let flow = FlowController::new(10);
+        assert!(flow.wait_for_credit(64 * 1024));
+
+        // Mismatched flow id is ignored
+        assert!(!flow.ack(9, 64 * 1024));
+        // Stale smaller ACK is ignored
+        assert!(flow.ack(10, 32 * 1024));
+        assert!(!flow.ack(10, 16 * 1024));
+    }
+
+    #[test]
+    fn flow_controller_close_wakes_waiters() {
+        let flow = FlowController::new(1);
+        assert!(flow.wait_for_credit(MAX_UNACKED_BYTES));
+
+        let flow_clone = flow.clone();
+        let handle = std::thread::spawn(move || flow_clone.wait_for_credit(1024));
+
+        std::thread::sleep(std::time::Duration::from_millis(50));
+        flow.close();
+
+        let ok = handle.join().expect("thread joined");
+        assert!(!ok); // closed session returns false
+    }
+
+    #[test]
+    fn pty_out_serializes_with_flow_id_and_byte_len() {
+        let data = PtyOut::Data(PtyDataPayload {
+            flow_id: 123,
+            data: "sample".to_string(),
+            byte_len: 6,
+        });
+        let json = serde_json::to_string(&data).unwrap();
+        assert!(json.contains("\"type\":\"data\""));
+        assert!(json.contains("\"flowId\":123"));
+        assert!(json.contains("\"byteLen\":6"));
+        assert!(json.contains("\"data\":\"sample\""));
+
+        let exit = PtyOut::Exit(PtyExitPayload {
+            flow_id: 123,
+            exit_code: 0,
+        });
+        let exit_json = serde_json::to_string(&exit).unwrap();
+        assert!(exit_json.contains("\"type\":\"exit\""));
+        assert!(exit_json.contains("\"flowId\":123"));
+        assert!(exit_json.contains("\"exitCode\":0"));
     }
 }

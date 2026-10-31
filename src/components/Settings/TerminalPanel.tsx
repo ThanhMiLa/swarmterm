@@ -14,6 +14,12 @@ import {
 import { useTerminalPrefStore } from '@/store/terminal-pref-store'
 import { useTerminalTextStore } from '@/store/terminal-text-store'
 import { useStatuslineStore } from '@/store/statusline-store'
+import { useTerminalScrollingStore } from '@/store/terminal-scrolling-store'
+import {
+  SENSITIVITY_MIN,
+  SENSITIVITY_MAX,
+  SENSITIVITY_STEP
+} from '@/lib/terminal-scrolling'
 import { listAvailableShells, type AvailableShell } from '@/tauri/shell'
 import { Button } from '@/components/ui/button'
 import { InputCompatibilitySetting } from '@/components/Settings/InputCompatibilitySetting'
@@ -65,6 +71,8 @@ export function TerminalPanel(): ReactElement {
       </section>
 
       <TextSettings />
+
+      <ScrollingSettings />
 
       <InputCompatibilitySetting />
 
@@ -389,6 +397,128 @@ function TextSettings(): ReactElement {
         </div>
 
         <TextPreview text={text} />
+      </div>
+    </section>
+  )
+}
+
+/** The "Scrolling" settings group: mode, sensitivity, smooth mouse wheel. */
+function ScrollingSettings(): ReactElement {
+  const scrolling = useTerminalScrollingStore((s) => s.scrolling)
+  const setMode = useTerminalScrollingStore((s) => s.setMode)
+  const setSensitivity = useTerminalScrollingStore((s) => s.setSensitivity)
+  const setSmoothMouseWheel = useTerminalScrollingStore((s) => s.setSmoothMouseWheel)
+
+  return (
+    <section className="rounded-xl border border-border bg-card/40 p-5 sm:p-6">
+      <div className="mb-5 flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-sm font-semibold text-foreground">Scrolling</h2>
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+            Scroll behaviour and wheel response across shells and CLI applications.
+          </p>
+        </div>
+      </div>
+
+      <div className="space-y-5">
+        {/* Mode Toggle */}
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <span className="block text-xs font-medium text-foreground">Mode</span>
+            <span className="mt-0.5 block text-[11px] leading-snug text-muted-foreground/70">
+              Enhanced uses normalized wheel delta, smooth trackpad gestures and queued reports. Compatibility uses standard xterm behavior.
+            </span>
+          </div>
+          <div className="flex rounded-md border border-pane-border bg-card p-0.5">
+            <button
+              type="button"
+              onClick={() => setMode('enhanced')}
+              className={cn(
+                'rounded px-2.5 py-1 text-xs font-medium transition-colors',
+                scrolling.mode === 'enhanced'
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              Enhanced
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode('compatibility')}
+              className={cn(
+                'rounded px-2.5 py-1 text-xs font-medium transition-colors',
+                scrolling.mode === 'compatibility'
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              Compatibility
+            </button>
+          </div>
+        </div>
+
+        {/* Sensitivity Stepper */}
+        <div className="flex items-center justify-between">
+          <div>
+            <span className="block text-xs font-medium text-foreground">Sensitivity</span>
+            <span className="mt-0.5 block text-[11px] leading-snug text-muted-foreground/70">
+              Multiplier for scroll speed (default 1.5, active in Enhanced mode).
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="icon-sm"
+              onClick={() => setSensitivity(scrolling.sensitivity - SENSITIVITY_STEP)}
+              disabled={scrolling.sensitivity <= SENSITIVITY_MIN || scrolling.mode === 'compatibility'}
+              aria-label="Decrease scroll sensitivity"
+            >
+              <Minus className="h-3 w-3" />
+            </Button>
+            <span className="w-14 text-center text-sm tabular-nums text-foreground">
+              {scrolling.sensitivity.toFixed(2)}x
+            </span>
+            <Button
+              variant="outline"
+              size="icon-sm"
+              onClick={() => setSensitivity(scrolling.sensitivity + SENSITIVITY_STEP)}
+              disabled={scrolling.sensitivity >= SENSITIVITY_MAX || scrolling.mode === 'compatibility'}
+              aria-label="Increase scroll sensitivity"
+            >
+              <Plus className="h-3 w-3" />
+            </Button>
+          </div>
+        </div>
+
+        {/* Smooth Mouse Wheel Switch */}
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <span className="block text-xs font-medium text-foreground">Smooth mouse wheel</span>
+            <span className="mt-0.5 block text-[11px] leading-snug text-muted-foreground/70">
+              100 ms smooth transition for physical notched mouse wheels. Trackpad gestures remain immediate.
+            </span>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={scrolling.smoothMouseWheel}
+            aria-label="Toggle smooth mouse wheel"
+            disabled={scrolling.mode === 'compatibility'}
+            onClick={() => setSmoothMouseWheel(!scrolling.smoothMouseWheel)}
+            className={cn(
+              'relative mt-0.5 h-5 w-9 shrink-0 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50',
+              scrolling.smoothMouseWheel && scrolling.mode !== 'compatibility' ? 'bg-primary' : 'bg-muted'
+            )}
+          >
+            <span
+              aria-hidden
+              className={cn(
+                'absolute top-0.5 h-4 w-4 rounded-full bg-background transition-transform',
+                scrolling.smoothMouseWheel && scrolling.mode !== 'compatibility' ? 'left-0.5 translate-x-4' : 'left-0.5'
+              )}
+            />
+          </button>
+        </div>
       </div>
     </section>
   )

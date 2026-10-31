@@ -1,11 +1,22 @@
 import { Terminal, type ILink, type ILinkHandler, type ITheme } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
-import { WebglAddon } from '@xterm/addon-webgl'
 import { SearchAddon, type ISearchOptions } from '@xterm/addon-search'
 import '@xterm/xterm/css/xterm.css'
-import { createTerminal, killTerminal, resizeTerminal, writeTerminal } from '@/tauri/terminal'
+import {
+  createTerminal,
+  killTerminal,
+  resizeTerminal,
+  writeTerminal,
+  writeTerminalBytes,
+  ackTerminalOutput
+} from '@/tauri/terminal'
 import { TerminalSession, type TerminalStatus } from '@/lib/terminal-session'
+import { TerminalScrollPolicy } from '@/lib/terminal-scroll'
+import { isTerminalMouseReport } from '@/lib/terminal-xterm'
+import { TerminalWebglManager } from '@/lib/terminal-webgl'
+import { useTerminalScrollingStore } from '@/store/terminal-scrolling-store'
+import { effectiveScrollOptions, type TerminalScrollingPref } from '@/lib/terminal-scrolling'
 import { useAppearanceStore } from '@/store/appearance-store'
 import type { Style } from '@/lib/appearance'
 import { useTerminalTextStore } from '@/store/terminal-text-store'
@@ -137,6 +148,7 @@ function ligatureFeatureSettings(on: boolean): string {
 
 /** Per-terminal options that persist across re-attaches (size is read live). */
 export interface AttachConfig {
+  benchmarkFixture?: import('@/tauri/terminal').CreateTerminalOptions['benchmarkFixture']
   cwd?: string
   shellId?: import('@/lib/terminal-pref').ShellId
   initialCommand?: string
@@ -193,10 +205,25 @@ interface Entry {
    * callers has any way to know that.
    */
   resetInputSegment: () => void
+  scrollPolicy: TerminalScrollPolicy
+  webglManager: TerminalWebglManager
 }
 
 /** Live terminals keyed by terminalId, owned outside React's render tree. */
 const entries = new Map<string, Entry>()
+
+/** Development harness uses the same registry, renderer, PTY and flow-control path. */
+export function getTerminalBenchmarkHandle(id: string) {
+  if (!import.meta.env.DEV) throw new Error('Terminal benchmark is development-only')
+  const entry = entries.get(id)
+  if (!entry) throw new Error(`Unknown terminal: ${id}`)
+  return {
+    term: entry.term,
+    output: () => entry.session.getOutputMetrics(),
+    renderer: () => entry.webglManager.getStatus(),
+    pendingReports: () => entry.scrollPolicy.getPendingReportCount()
+  }
+}
 
 let layoutTransitionTimer: ReturnType<typeof setTimeout> | null = null
 let layoutRefitRaf: number | null = null
@@ -259,35 +286,6 @@ const activityTracker = new ActivityTracker<string>(
 
 const NO_STATUS: TerminalStatus = { kind: 'connecting' }
 
-/**
- * Switch the terminal to the GPU (WebGL) renderer. xterm's default DOM renderer
- * rebuilds per-cell spans and reflows on every frame; the WebGL renderer offloads
- * drawing to the GPU and is markedly cheaper per frame under heavy output, which
- * is why every serious terminal (VS Code, Hyper) uses it.
- *
- * Must run AFTER `term.open()` (the addon needs a live render surface). Degrades
- * gracefully: if WebGL2 is unavailable, the browser hits its live-context limit
- * (~16 per page), or the GPU context is later lost, we dispose the addon and
- * xterm falls back to the DOM renderer — slower, but always functional.
- */
-function loadWebglRenderer(id: string, entry: Entry): void {
-  try {
-    const addon = new WebglAddon()
-    addon.onContextLoss(() => {
-      addon.dispose()
-      // The DOM renderer that takes over measures cells with its own metrics,
-      // and a fit that raced the context loss (alt-tab/occlusion on Windows can
-      // drop the GPU context mid-layout) may have collapsed cols/rows against
-      // garbage dimensions. Re-measure once the swap has settled so the pane —
-      // and the pty — match the renderer that's actually drawing now.
-      setTimeout(() => refitEntry(id, entry), 0)
-    })
-    entry.term.loadAddon(addon)
-  } catch {
-    // WebGL2 unavailable — stay on the DOM renderer.
-  }
-}
-
 /** Fit the terminal to its host, skipping when the host has no laid-out size. */
 function safeFit(entry: Entry): boolean {
   const { host, fit } = entry
@@ -327,6 +325,7 @@ function refitEntry(id: string, entry: Entry): void {
 export function refitAttachedTerminals(): void {
   for (const [id, entry] of entries) {
     cancelEntryRefit(entry)
+    entry.webglManager.onVisibleOrAttached()
     if (entry.opened && entry.observer !== undefined) refitEntry(id, entry)
   }
 }
@@ -390,6 +389,9 @@ function getOrCreate(id: string): Entry {
   const text = useTerminalTextStore.getState().text
   host.style.fontFeatureSettings = ligatureFeatureSettings(text.ligatures)
 
+  const scrollPref = useTerminalScrollingStore.getState().scrolling
+  const scrollOpts = effectiveScrollOptions(scrollPref)
+
   const term = new Terminal({
     // The find overlay's highlight-all decorations go through xterm's
     // registerDecoration, which is proposed API — without this flag the
@@ -401,6 +403,9 @@ function getOrCreate(id: string): Entry {
     fontSize: text.fontSize,
     lineHeight: text.lineHeight,
     scrollback: 5000,
+    scrollSensitivity: scrollOpts.scrollSensitivity,
+    smoothScrollDuration: scrollOpts.smoothScrollDuration,
+    enhancedWheel: scrollOpts.enhancedWheel,
     theme
   })
   const fit = new FitAddon()
@@ -499,10 +504,21 @@ function getOrCreate(id: string): Entry {
       : [id]
     for (const target of targets) {
       useTerminalTypingStore.getState().noteInput(target, data, kindOverride)
-      void writeTerminal(target, data)
+      void writeTerminal(target, data).catch(console.warn)
     }
   }
-  term.onData((data) => sendInput(data))
+  let scrollPolicy: TerminalScrollPolicy | undefined
+  term.onData((data) => {
+    if (scrollPolicy?.isDispatching()) return // batched by the policy's capture listener
+    if (scrollPolicy?.isWheelInput() || isTerminalMouseReport(data)) {
+      void writeTerminal(id, data).catch(console.warn)
+    } else sendInput(data)
+  })
+  term.onBinary((data) => {
+    if (scrollPolicy?.isDispatching()) return
+    const bytes = Array.from(data, (ch) => ch.charCodeAt(0) & 0xff)
+    void writeTerminalBytes(id, bytes).catch(console.warn)
+  })
 
   // Hoisted above the input adapter below (which needs them for
   // `isThirdLevelShiftKey`) as well as the clipboard/link handling further
@@ -914,19 +930,43 @@ function getOrCreate(id: string): Entry {
     return true
   })
 
+  scrollPolicy = new TerminalScrollPolicy({
+    term,
+    sendInput: (data, isBinary) => {
+      if (isBinary) {
+        const bytes = Array.from(data, (ch) => ch.charCodeAt(0) & 0xff)
+        void writeTerminalBytes(id, bytes).catch(console.warn)
+      } else {
+        void writeTerminal(id, data).catch(console.warn)
+      }
+    },
+    getPref: () => useTerminalScrollingStore.getState().scrolling
+  })
+  term.attachCustomWheelEventHandler((event) => scrollPolicy!.handleWheel(event))
+
+  const webglManager = new TerminalWebglManager({
+    id,
+    term,
+    host,
+    onRefitNeeded: () => {
+      const e = entries.get(id)
+      if (e) refitEntry(id, e)
+    }
+  })
+
   const session = new TerminalSession(
     id,
     {
-      write: (data) => {
+      onOutput: () => {
         // Every decoded pty chunk is one activity tick: the pane is "working"
         // while bytes flow (including agent spinner redraws) and goes idle after
         // ACTIVITY_IDLE_MS of silence.
         activityTracker.notify(id)
         entries.get(id)?.detector?.noteOutput()
-        term.write(data)
-      }
+      },
+      write: (data, callback) => term.write(data, callback)
     },
-    { createTerminal, killTerminal }
+    { createTerminal, killTerminal, ackTerminalOutput }
   )
   // Mirror pty death into the detector: the session is the source of truth for
   // exit/error, and the detector has no pty visibility of its own.
@@ -954,7 +994,9 @@ function getOrCreate(id: string): Entry {
     config: {},
     cwd: '',
     opened: false,
-    resetInputSegment: resetSegment
+    resetInputSegment: resetSegment,
+    scrollPolicy,
+    webglManager
   }
   entries.set(id, entry)
   return entry
@@ -984,8 +1026,10 @@ export function attachTerminal(id: string, container: HTMLElement, config: Attac
 
   if (!entry.opened) {
     entry.term.open(entry.host)
-    loadWebglRenderer(id, entry)
+    entry.webglManager.load()
     entry.opened = true
+  } else {
+    entry.webglManager.onVisibleOrAttached()
   }
   // The pty must end up at whatever size the pane (re)attached at. The fit
   // just above already moved xterm, so the observer's initial delivery goes
@@ -1024,6 +1068,8 @@ export function disposeTerminal(id: string): void {
   if (!entry) return
   entry.observer?.disconnect()
   cancelEntryRefit(entry)
+  entry.scrollPolicy.dispose()
+  entry.webglManager.dispose()
   entry.session.dispose()
   entry.term.dispose()
   entry.host.remove()
@@ -1152,6 +1198,7 @@ export function submitTerminalPrompt(id: string): void {
 export function retryTerminal(id: string): void {
   const entry = entries.get(id)
   if (!entry) return
+  entry.scrollPolicy.clearQueue()
   entry.term.reset()
   // The pty this segment's committed baseline described is gone.
   entry.resetInputSegment()
@@ -1186,6 +1233,7 @@ export function respawnTerminal(id: string, config: AttachConfig): void {
   // that's actually about to watch the new pty, not a stale one for the
   // previous agent.
   refreshDetector(id, entry)
+  entry.scrollPolicy.clearQueue()
   entry.term.reset()
   // The pty this segment's committed baseline described is gone.
   entry.resetInputSegment()
@@ -1406,3 +1454,21 @@ export function applyTerminalStyle(style: Style): void {
 
 // Push style changes to every live terminal.
 useAppearanceStore.subscribe((state) => applyTerminalStyle(state.style))
+
+/**
+ * Push scrolling preferences onto every live terminal.
+ */
+export function applyTerminalScrolling(pref: TerminalScrollingPref): void {
+  const opts = effectiveScrollOptions(pref)
+  for (const [, entry] of entries) {
+    entry.term.options.scrollSensitivity = opts.scrollSensitivity
+    entry.term.options.smoothScrollDuration = opts.smoothScrollDuration
+    entry.term.options.enhancedWheel = opts.enhancedWheel
+    if (pref.mode === 'compatibility') {
+      entry.scrollPolicy.clearQueue()
+    }
+  }
+}
+
+// Push scrolling preference changes to every live terminal.
+useTerminalScrollingStore.subscribe((state) => applyTerminalScrolling(state.scrolling))

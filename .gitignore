@@ -27,6 +27,9 @@ dist-ssr
 # superpowers brainstorming mockups
 .superpowers/
 
+# Local native terminal measurements; reviewed reports live under docs/benchmarks.
+artifacts/terminal-benchmark*.json
+
 # Apple signing material — never commit. `.env*` above already covers
 # .env.release; these patterns stop a stray key copied into the repo root,
 # and the negation keeps the credential-less template trackable.

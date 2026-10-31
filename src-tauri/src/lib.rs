@@ -8,6 +8,7 @@ mod links;
 mod mcp;
 mod preview;
 mod pty;
+mod pty_output;
 mod sessions;
 mod shell;
 pub mod token_usage;
@@ -18,6 +19,8 @@ pub mod hook;
 mod tray;
 mod warroom;
 mod window_fit;
+#[cfg(debug_assertions)]
+pub mod terminal_benchmark;
 
 use pty::AppState;
 use std::sync::atomic::Ordering;
@@ -26,6 +29,12 @@ use tauri::WindowEvent;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    let context = tauri::generate_context!();
+    #[cfg(debug_assertions)]
+    if std::env::args().any(|a| a == "--terminal-benchmark") {
+        terminal_benchmark::run(context);
+        return;
+    }
     tauri::Builder::default()
         .manage(AppState::default())
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
@@ -109,6 +118,8 @@ pub fn run() {
             input_compatibility::set_input_compatibility,
             commands::create_terminal,
             commands::write_terminal,
+            commands::write_terminal_bytes,
+            commands::ack_terminal_output,
             commands::resize_terminal,
             commands::kill_terminal,
             commands::war_room_join,
@@ -146,7 +157,7 @@ pub fn run() {
             preview::preview_set_visible,
             preview::preview_close,
         ])
-        .build(tauri::generate_context!())
+        .build(context)
         .expect("error while building tauri application")
         .run(|_app, _event| {
             // macOS: clicking the Dock icon while the window is hidden

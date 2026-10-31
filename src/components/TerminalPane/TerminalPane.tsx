@@ -345,7 +345,7 @@ export function TerminalPane({
 
         {status.kind === 'error' && (
           <StatusOverlay
-            title="Could not start the terminal"
+            title="Terminal error"
             detail={status.message}
             actionLabel="Retry"
             onAction={() => retryTerminal(terminalId)}

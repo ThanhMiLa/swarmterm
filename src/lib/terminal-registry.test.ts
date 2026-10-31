@@ -1,20 +1,27 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const mocks = vi.hoisted(() => ({ fit: vi.fn() }))
+const mocks = vi.hoisted(() => ({ fit: vi.fn(), terminals: [] as any[] }))
 
 vi.mock('@xterm/xterm', () => ({
   Terminal: class {
+    constructor() { mocks.terminals.push(this) }
+    dataListeners: ((data: string) => void)[] = []
+    binaryListeners: ((data: string) => void)[] = []
+    wheelHandler?: (event: any) => boolean
     cols = 80
     rows = 24
     options = {}
     parser = { registerOscHandler: vi.fn() }
+    buffer = { active: { type: 'normal', baseY: 0 }, onBufferChange: vi.fn() }
     loadAddon(addon: { activate?: (term: unknown) => void }): void { addon.activate?.(this) }
     open = vi.fn()
     dispose = vi.fn()
     onTitleChange = vi.fn()
-    onData = vi.fn()
+    onData = vi.fn((cb: (data: string) => void) => { this.dataListeners.push(cb); return { dispose: vi.fn() } })
+    onBinary = vi.fn((cb: (data: string) => void) => { this.binaryListeners.push(cb); return { dispose: vi.fn() } })
     registerLinkProvider = vi.fn()
     attachCustomKeyEventHandler = vi.fn()
+    attachCustomWheelEventHandler = vi.fn((cb: (event: any) => boolean) => { this.wheelHandler = cb })
   }
 }))
 vi.mock('@xterm/addon-fit', () => ({
@@ -29,16 +36,20 @@ vi.mock('@xterm/addon-fit', () => ({
   }
 }))
 vi.mock('@xterm/addon-web-links', () => ({ WebLinksAddon: class {} }))
-vi.mock('@xterm/addon-webgl', () => ({ WebglAddon: class { onContextLoss = vi.fn() } }))
+vi.mock('@xterm/addon-webgl', () => ({ WebglAddon: class { onContextLoss = vi.fn(); dispose = vi.fn() } }))
 vi.mock('@xterm/addon-search', () => ({ SearchAddon: class {} }))
 vi.mock('@/tauri/terminal', () => ({
   createTerminal: vi.fn().mockResolvedValue({ ok: true }),
   killTerminal: vi.fn().mockResolvedValue(undefined),
   resizeTerminal: vi.fn().mockResolvedValue(undefined),
-  writeTerminal: vi.fn().mockResolvedValue(undefined)
+  writeTerminal: vi.fn().mockResolvedValue(undefined),
+  writeTerminalBytes: vi.fn().mockResolvedValue(undefined),
+  ackTerminalOutput: vi.fn().mockResolvedValue(undefined)
 }))
 
-import { resizeTerminal } from '@/tauri/terminal'
+import { resizeTerminal, writeTerminal, writeTerminalBytes } from '@/tauri/terminal'
+import { useTerminalTypingStore } from '@/store/terminal-typing-store'
+import { useTerminalScrollingStore } from '@/store/terminal-scrolling-store'
 import {
   attachTerminal,
   beginLayoutTransition,
@@ -197,5 +208,39 @@ describe('terminal layout refits', () => {
     frame()
     expect(mocks.fit).not.toHaveBeenCalled()
     expect(resizeTerminal).not.toHaveBeenCalled()
+  })
+})
+
+describe('source-only mouse routing through the production registry', () => {
+  it('does not treat native SGR mouse reports as typing', () => {
+    const term = mocks.terminals.at(-1)!
+    const typing = vi.spyOn(useTerminalTypingStore.getState(), 'noteInput')
+    for (const cb of term.dataListeners) cb('\x1b[<65;10;5M')
+    expect(writeTerminal).toHaveBeenCalledWith('one', '\x1b[<65;10;5M')
+    expect(typing).not.toHaveBeenCalled()
+    typing.mockRestore()
+  })
+
+  it('keeps compatibility wheel fallback source-only while ordinary keyboard input still marks typing', async () => {
+    useTerminalScrollingStore.setState({ scrolling: { mode: 'compatibility', sensitivity: 1.5, smoothMouseWheel: true } })
+    const term = mocks.terminals.at(-1)!
+    const typing = vi.spyOn(useTerminalTypingStore.getState(), 'noteInput')
+    term.wheelHandler!({ deltaY: 120, deltaMode: 0 })
+    for (const cb of term.dataListeners) cb('\x1b[A')
+    expect(typing).not.toHaveBeenCalled()
+    await Promise.resolve()
+    for (const cb of term.dataListeners) cb('hello')
+    expect(typing).toHaveBeenCalledWith('one', 'hello', undefined)
+    typing.mockRestore()
+    useTerminalScrollingStore.setState({ scrolling: { mode: 'enhanced', sensitivity: 1.5, smoothMouseWheel: true } })
+  })
+
+  it('preserves raw legacy mouse bytes without typing updates', () => {
+    const term = mocks.terminals.at(-1)!
+    const typing = vi.spyOn(useTerminalTypingStore.getState(), 'noteInput')
+    for (const cb of term.binaryListeners) cb('\x1b[M`'+String.fromCharCode(183)+'!')
+    expect(writeTerminalBytes).toHaveBeenCalledWith('one', [27, 91, 77, 96, 183, 33])
+    expect(typing).not.toHaveBeenCalled()
+    typing.mockRestore()
   })
 })

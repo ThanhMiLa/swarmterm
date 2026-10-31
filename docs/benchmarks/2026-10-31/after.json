@@ -1,0 +1,3422 @@
+{
+  "schemaVersion": 1,
+  "measuredAt": "2026-10-31T16:21:02.754Z",
+  "runtime": "Tauri WKWebView; real production registry, PTY and renderer",
+  "comparison": "Same-build compatibility vs enhanced; not an unmodified pre-change baseline",
+  "note": "Presentation opportunity is the next rAF after actual xterm render; physical scanout is not measured.",
+  "results": [
+    {
+      "mode": "compatibility",
+      "fixture": "static",
+      "panes": 1,
+      "run": 1,
+      "environment": {
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)",
+        "dpr": 2,
+        "visibility": "visible",
+        "cols": 145,
+        "rows": 50,
+        "font": "\"SF Mono\", \"SFMono-Regular\", Menlo, monospace",
+        "renderers": [
+          "active"
+        ]
+      },
+      "durationMs": 1033.0000000000002,
+      "rafCadenceMs": {
+        "count": 61,
+        "meanMs": 16.672131147540984,
+        "minMs": 15,
+        "p50Ms": 17,
+        "p95Ms": 18,
+        "p99Ms": 18,
+        "maxMs": 18
+      },
+      "actualDrawCalls": 30,
+      "wheelToRenderMs": {
+        "count": 30,
+        "meanMs": 9.49999999999998,
+        "minMs": 7.999999999999886,
+        "p50Ms": 9,
+        "p95Ms": 11,
+        "p99Ms": 16,
+        "maxMs": 16
+      },
+      "wheelToPresentationOpportunityMs": {
+        "count": 30,
+        "meanMs": 24.99999999999999,
+        "minMs": 23,
+        "p50Ms": 25,
+        "p95Ms": 26,
+        "p99Ms": 32,
+        "maxMs": 32
+      },
+      "reportsReceived": 0,
+      "displacement": 0,
+      "expectedReports": null,
+      "output": [
+        {
+          "receivedBytes": 430012,
+          "parsedBytes": 430012,
+          "pendingBytes": 0,
+          "peakPendingBytes": 262144,
+          "largestChunkBytes": 1026
+        }
+      ],
+      "streamingMiBPerSecond": 0
+    },
+    {
+      "mode": "compatibility",
+      "fixture": "static",
+      "panes": 1,
+      "run": 2,
+      "environment": {
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)",
+        "dpr": 2,
+        "visibility": "visible",
+        "cols": 145,
+        "rows": 50,
+        "font": "\"SF Mono\", \"SFMono-Regular\", Menlo, monospace",
+        "renderers": [
+          "active"
+        ]
+      },
+      "durationMs": 1038,
+      "rafCadenceMs": {
+        "count": 61,
+        "meanMs": 16.75409836065574,
+        "minMs": 13,
+        "p50Ms": 17,
+        "p95Ms": 20,
+        "p99Ms": 22,
+        "maxMs": 22
+      },
+      "actualDrawCalls": 30,
+      "wheelToRenderMs": {
+        "count": 30,
+        "meanMs": 12.300000000000022,
+        "minMs": 6,
+        "p50Ms": 13,
+        "p95Ms": 17,
+        "p99Ms": 18,
+        "maxMs": 18
+      },
+      "wheelToPresentationOpportunityMs": {
+        "count": 30,
+        "meanMs": 24.60000000000003,
+        "minMs": 20,
+        "p50Ms": 24.000000000000227,
+        "p95Ms": 27.000000000000227,
+        "p99Ms": 30,
+        "maxMs": 30
+      },
+      "reportsReceived": 0,
+      "displacement": 0,
+      "expectedReports": null,
+      "output": [
+        {
+          "receivedBytes": 430012,
+          "parsedBytes": 430012,
+          "pendingBytes": 0,
+          "peakPendingBytes": 238594,
+          "largestChunkBytes": 1026
+        }
+      ],
+      "streamingMiBPerSecond": 0
+    },
+    {
+      "mode": "compatibility",
+      "fixture": "static",
+      "panes": 1,
+      "run": 3,
+      "environment": {
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)",
+        "dpr": 2,
+        "visibility": "visible",
+        "cols": 145,
+        "rows": 50,
+        "font": "\"SF Mono\", \"SFMono-Regular\", Menlo, monospace",
+        "renderers": [
+          "active"
+        ]
+      },
+      "durationMs": 1027,
+      "rafCadenceMs": {
+        "count": 61,
+        "meanMs": 16.59016393442623,
+        "minMs": 13,
+        "p50Ms": 17,
+        "p95Ms": 19,
+        "p99Ms": 22,
+        "maxMs": 22
+      },
+      "actualDrawCalls": 30,
+      "wheelToRenderMs": {
+        "count": 30,
+        "meanMs": 11.466666666666743,
+        "minMs": 5,
+        "p50Ms": 11,
+        "p95Ms": 16,
+        "p99Ms": 17.000000000000455,
+        "maxMs": 17.000000000000455
+      },
+      "wheelToPresentationOpportunityMs": {
+        "count": 30,
+        "meanMs": 24.766666666666666,
+        "minMs": 18,
+        "p50Ms": 25,
+        "p95Ms": 29,
+        "p99Ms": 32,
+        "maxMs": 32
+      },
+      "reportsReceived": 0,
+      "displacement": 0,
+      "expectedReports": null,
+      "output": [
+        {
+          "receivedBytes": 430012,
+          "parsedBytes": 430012,
+          "pendingBytes": 0,
+          "peakPendingBytes": 247808,
+          "largestChunkBytes": 1026
+        }
+      ],
+      "streamingMiBPerSecond": 0
+    },
+    {
+      "mode": "compatibility",
+      "fixture": "stream",
+      "panes": 1,
+      "run": 1,
+      "environment": {
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)",
+        "dpr": 2,
+        "visibility": "visible",
+        "cols": 145,
+        "rows": 50,
+        "font": "\"SF Mono\", \"SFMono-Regular\", Menlo, monospace",
+        "renderers": [
+          "active"
+        ]
+      },
+      "durationMs": 1016,
+      "rafCadenceMs": {
+        "count": 60,
+        "meanMs": 16.65,
+        "minMs": 15,
+        "p50Ms": 17,
+        "p95Ms": 18,
+        "p99Ms": 18,
+        "maxMs": 18
+      },
+      "actualDrawCalls": 61,
+      "wheelToRenderMs": {
+        "count": 30,
+        "meanMs": 9.833333333333394,
+        "minMs": 0.9999999999995453,
+        "p50Ms": 10,
+        "p95Ms": 11,
+        "p99Ms": 11,
+        "maxMs": 11
+      },
+      "wheelToPresentationOpportunityMs": {
+        "count": 30,
+        "meanMs": 24.83333333333335,
+        "minMs": 16.999999999999545,
+        "p50Ms": 25,
+        "p95Ms": 26,
+        "p99Ms": 26,
+        "maxMs": 26
+      },
+      "reportsReceived": 0,
+      "displacement": 0,
+      "expectedReports": null,
+      "output": [
+        {
+          "receivedBytes": 3840598,
+          "parsedBytes": 3840598,
+          "pendingBytes": 0,
+          "peakPendingBytes": 241664,
+          "largestChunkBytes": 1026
+        }
+      ],
+      "streamingMiBPerSecond": 3.086001854243241
+    },
+    {
+      "mode": "compatibility",
+      "fixture": "stream",
+      "panes": 1,
+      "run": 2,
+      "environment": {
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)",
+        "dpr": 2,
+        "visibility": "visible",
+        "cols": 145,
+        "rows": 50,
+        "font": "\"SF Mono\", \"SFMono-Regular\", Menlo, monospace",
+        "renderers": [
+          "active"
+        ]
+      },
+      "durationMs": 1033,
+      "rafCadenceMs": {
+        "count": 61,
+        "meanMs": 16.65573770491803,
+        "minMs": 15,
+        "p50Ms": 17,
+        "p95Ms": 18,
+        "p99Ms": 18,
+        "maxMs": 18
+      },
+      "actualDrawCalls": 62,
+      "wheelToRenderMs": {
+        "count": 30,
+        "meanMs": 10.466666666666756,
+        "minMs": 9,
+        "p50Ms": 10,
+        "p95Ms": 12,
+        "p99Ms": 17,
+        "maxMs": 17
+      },
+      "wheelToPresentationOpportunityMs": {
+        "count": 30,
+        "meanMs": 25.533333333333335,
+        "minMs": 24,
+        "p50Ms": 25,
+        "p95Ms": 26,
+        "p99Ms": 32,
+        "maxMs": 32
+      },
+      "reportsReceived": 0,
+      "displacement": 0,
+      "expectedReports": null,
+      "output": [
+        {
+          "receivedBytes": 3881566,
+          "parsedBytes": 3881566,
+          "pendingBytes": 0,
+          "peakPendingBytes": 254976,
+          "largestChunkBytes": 1026
+        }
+      ],
+      "streamingMiBPerSecond": 3.063582266173312
+    },
+    {
+      "mode": "compatibility",
+      "fixture": "stream",
+      "panes": 1,
+      "run": 3,
+      "environment": {
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)",
+        "dpr": 2,
+        "visibility": "visible",
+        "cols": 145,
+        "rows": 50,
+        "font": "\"SF Mono\", \"SFMono-Regular\", Menlo, monospace",
+        "renderers": [
+          "active"
+        ]
+      },
+      "durationMs": 1032.999999999999,
+      "rafCadenceMs": {
+        "count": 61,
+        "meanMs": 16.65573770491803,
+        "minMs": 15,
+        "p50Ms": 17,
+        "p95Ms": 18,
+        "p99Ms": 18,
+        "maxMs": 18
+      },
+      "actualDrawCalls": 62,
+      "wheelToRenderMs": {
+        "count": 30,
+        "meanMs": 10.10000000000003,
+        "minMs": 6.9999999999990905,
+        "p50Ms": 10,
+        "p95Ms": 11,
+        "p99Ms": 16.99999999999909,
+        "maxMs": 16.99999999999909
+      },
+      "wheelToPresentationOpportunityMs": {
+        "count": 30,
+        "meanMs": 25.4,
+        "minMs": 22.99999999999909,
+        "p50Ms": 25,
+        "p95Ms": 27,
+        "p99Ms": 31.99999999999909,
+        "maxMs": 31.99999999999909
+      },
+      "reportsReceived": 0,
+      "displacement": 0,
+      "expectedReports": null,
+      "output": [
+        {
+          "receivedBytes": 3850840,
+          "parsedBytes": 3850840,
+          "pendingBytes": 0,
+          "peakPendingBytes": 238594,
+          "largestChunkBytes": 1026
+        }
+      ],
+      "streamingMiBPerSecond": 3.073037766994837
+    },
+    {
+      "mode": "compatibility",
+      "fixture": "tui",
+      "panes": 1,
+      "run": 1,
+      "environment": {
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)",
+        "dpr": 2,
+        "visibility": "visible",
+        "cols": 145,
+        "rows": 50,
+        "font": "\"SF Mono\", \"SFMono-Regular\", Menlo, monospace",
+        "renderers": [
+          "active"
+        ]
+      },
+      "durationMs": 1074.999999999999,
+      "rafCadenceMs": {
+        "count": 64,
+        "meanMs": 16.546875,
+        "minMs": 11,
+        "p50Ms": 17,
+        "p95Ms": 20,
+        "p99Ms": 23,
+        "maxMs": 23
+      },
+      "actualDrawCalls": 30,
+      "wheelToRenderMs": {
+        "count": 30,
+        "meanMs": 9.333333333333304,
+        "minMs": 3,
+        "p50Ms": 8.00000000000091,
+        "p95Ms": 19.00000000000182,
+        "p99Ms": 22,
+        "maxMs": 22
+      },
+      "wheelToPresentationOpportunityMs": {
+        "count": 30,
+        "meanMs": 25.99999999999988,
+        "minMs": 20.99999999999818,
+        "p50Ms": 24,
+        "p95Ms": 37,
+        "p99Ms": 38,
+        "maxMs": 38
+      },
+      "reportsReceived": 30,
+      "displacement": -30,
+      "expectedReports": null,
+      "output": [
+        {
+          "receivedBytes": 1667,
+          "parsedBytes": 1667,
+          "pendingBytes": 0,
+          "peakPendingBytes": 65,
+          "largestChunkBytes": 54
+        }
+      ],
+      "streamingMiBPerSecond": 0.0014211965161700594
+    },
+    {
+      "mode": "compatibility",
+      "fixture": "tui",
+      "panes": 1,
+      "run": 2,
+      "environment": {
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)",
+        "dpr": 2,
+        "visibility": "visible",
+        "cols": 145,
+        "rows": 50,
+        "font": "\"SF Mono\", \"SFMono-Regular\", Menlo, monospace",
+        "renderers": [
+          "active"
+        ]
+      },
+      "durationMs": 1038,
+      "rafCadenceMs": {
+        "count": 62,
+        "meanMs": 16.467741935483872,
+        "minMs": 11,
+        "p50Ms": 17,
+        "p95Ms": 19,
+        "p99Ms": 20,
+        "maxMs": 20
+      },
+      "actualDrawCalls": 30,
+      "wheelToRenderMs": {
+        "count": 30,
+        "meanMs": 9.166666666666606,
+        "minMs": 5,
+        "p50Ms": 9,
+        "p95Ms": 17,
+        "p99Ms": 20,
+        "maxMs": 20
+      },
+      "wheelToPresentationOpportunityMs": {
+        "count": 30,
+        "meanMs": 24.79999999999988,
+        "minMs": 17.99999999999818,
+        "p50Ms": 25,
+        "p95Ms": 31,
+        "p99Ms": 33,
+        "maxMs": 33
+      },
+      "reportsReceived": 30,
+      "displacement": -30,
+      "expectedReports": null,
+      "output": [
+        {
+          "receivedBytes": 1667,
+          "parsedBytes": 1667,
+          "pendingBytes": 0,
+          "peakPendingBytes": 65,
+          "largestChunkBytes": 54
+        }
+      ],
+      "streamingMiBPerSecond": 0.0014718557368813222
+    },
+    {
+      "mode": "compatibility",
+      "fixture": "tui",
+      "panes": 1,
+      "run": 3,
+      "environment": {
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)",
+        "dpr": 2,
+        "visibility": "visible",
+        "cols": 145,
+        "rows": 50,
+        "font": "\"SF Mono\", \"SFMono-Regular\", Menlo, monospace",
+        "renderers": [
+          "active"
+        ]
+      },
+      "durationMs": 1083.9999999999982,
+      "rafCadenceMs": {
+        "count": 64,
+        "meanMs": 16.6875,
+        "minMs": 10,
+        "p50Ms": 17,
+        "p95Ms": 18,
+        "p99Ms": 23,
+        "maxMs": 23
+      },
+      "actualDrawCalls": 30,
+      "wheelToRenderMs": {
+        "count": 30,
+        "meanMs": 10.566666666666666,
+        "minMs": 7.999999999998181,
+        "p50Ms": 9,
+        "p95Ms": 21,
+        "p99Ms": 24,
+        "maxMs": 24
+      },
+      "wheelToPresentationOpportunityMs": {
+        "count": 30,
+        "meanMs": 26.366666666666667,
+        "minMs": 22,
+        "p50Ms": 25,
+        "p95Ms": 37,
+        "p99Ms": 39,
+        "maxMs": 39
+      },
+      "reportsReceived": 30,
+      "displacement": -30,
+      "expectedReports": null,
+      "output": [
+        {
+          "receivedBytes": 1667,
+          "parsedBytes": 1667,
+          "pendingBytes": 0,
+          "peakPendingBytes": 65,
+          "largestChunkBytes": 65
+        }
+      ],
+      "streamingMiBPerSecond": 0.001409396914098538
+    },
+    {
+      "mode": "compatibility",
+      "fixture": "tui-stream",
+      "panes": 1,
+      "run": 1,
+      "environment": {
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)",
+        "dpr": 2,
+        "visibility": "visible",
+        "cols": 145,
+        "rows": 50,
+        "font": "\"SF Mono\", \"SFMono-Regular\", Menlo, monospace",
+        "renderers": [
+          "active"
+        ]
+      },
+      "durationMs": 1033.0000000000018,
+      "rafCadenceMs": {
+        "count": 61,
+        "meanMs": 16.65573770491803,
+        "minMs": 15,
+        "p50Ms": 17,
+        "p95Ms": 18,
+        "p99Ms": 19,
+        "maxMs": 19
+      },
+      "actualDrawCalls": 62,
+      "wheelToRenderMs": {
+        "count": 30,
+        "meanMs": 9.666666666666666,
+        "minMs": 7.999999999998181,
+        "p50Ms": 9.000000000001819,
+        "p95Ms": 11.00000000000182,
+        "p99Ms": 18,
+        "maxMs": 18
+      },
+      "wheelToPresentationOpportunityMs": {
+        "count": 30,
+        "meanMs": 25.30000000000006,
+        "minMs": 23.99999999999818,
+        "p50Ms": 25,
+        "p95Ms": 26,
+        "p99Ms": 33.00000000000182,
+        "maxMs": 33.00000000000182
+      },
+      "reportsReceived": 30,
+      "displacement": -30,
+      "expectedReports": null,
+      "output": [
+        {
+          "receivedBytes": 3442979,
+          "parsedBytes": 3442979,
+          "pendingBytes": 0,
+          "peakPendingBytes": 30726,
+          "largestChunkBytes": 1024
+        }
+      ],
+      "streamingMiBPerSecond": 3.0745167469124306
+    },
+    {
+      "mode": "compatibility",
+      "fixture": "tui-stream",
+      "panes": 1,
+      "run": 2,
+      "environment": {
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)",
+        "dpr": 2,
+        "visibility": "visible",
+        "cols": 145,
+        "rows": 50,
+        "font": "\"SF Mono\", \"SFMono-Regular\", Menlo, monospace",
+        "renderers": [
+          "active"
+        ]
+      },
+      "durationMs": 1034,
+      "rafCadenceMs": {
+        "count": 61,
+        "meanMs": 16.672131147540984,
+        "minMs": 15,
+        "p50Ms": 17,
+        "p95Ms": 18,
+        "p99Ms": 18,
+        "maxMs": 18
+      },
+      "actualDrawCalls": 62,
+      "wheelToRenderMs": {
+        "count": 30,
+        "meanMs": 9.39999999999994,
+        "minMs": 8,
+        "p50Ms": 9,
+        "p95Ms": 10,
+        "p99Ms": 18,
+        "maxMs": 18
+      },
+      "wheelToPresentationOpportunityMs": {
+        "count": 30,
+        "meanMs": 25.16666666666673,
+        "minMs": 23.99999999999818,
+        "p50Ms": 25,
+        "p95Ms": 26,
+        "p99Ms": 33,
+        "maxMs": 33
+      },
+      "reportsReceived": 30,
+      "displacement": -30,
+      "expectedReports": null,
+      "output": [
+        {
+          "receivedBytes": 3431711,
+          "parsedBytes": 3431711,
+          "pendingBytes": 0,
+          "peakPendingBytes": 30726,
+          "largestChunkBytes": 1024
+        }
+      ],
+      "streamingMiBPerSecond": 3.08948974314234
+    },
+    {
+      "mode": "compatibility",
+      "fixture": "tui-stream",
+      "panes": 1,
+      "run": 3,
+      "environment": {
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)",
+        "dpr": 2,
+        "visibility": "visible",
+        "cols": 145,
+        "rows": 50,
+        "font": "\"SF Mono\", \"SFMono-Regular\", Menlo, monospace",
+        "renderers": [
+          "active"
+        ]
+      },
+      "durationMs": 1034.9999999999982,
+      "rafCadenceMs": {
+        "count": 61,
+        "meanMs": 16.672131147540984,
+        "minMs": 15,
+        "p50Ms": 17,
+        "p95Ms": 18,
+        "p99Ms": 19,
+        "maxMs": 19
+      },
+      "actualDrawCalls": 62,
+      "wheelToRenderMs": {
+        "count": 30,
+        "meanMs": 9.466666666666486,
+        "minMs": 4,
+        "p50Ms": 10,
+        "p95Ms": 11,
+        "p99Ms": 18.99999999999818,
+        "maxMs": 18.99999999999818
+      },
+      "wheelToPresentationOpportunityMs": {
+        "count": 30,
+        "meanMs": 25.366666666666667,
+        "minMs": 20,
+        "p50Ms": 25,
+        "p95Ms": 27,
+        "p99Ms": 34.99999999999818,
+        "maxMs": 34.99999999999818
+      },
+      "reportsReceived": 30,
+      "displacement": -30,
+      "expectedReports": null,
+      "output": [
+        {
+          "receivedBytes": 3391769,
+          "parsedBytes": 3391769,
+          "pendingBytes": 0,
+          "peakPendingBytes": 24582,
+          "largestChunkBytes": 1024
+        }
+      ],
+      "streamingMiBPerSecond": 3.049701193104625
+    },
+    {
+      "mode": "compatibility",
+      "fixture": "static",
+      "panes": 4,
+      "run": 1,
+      "environment": {
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)",
+        "dpr": 2,
+        "visibility": "visible",
+        "cols": 71,
+        "rows": 25,
+        "font": "\"SF Mono\", \"SFMono-Regular\", Menlo, monospace",
+        "renderers": [
+          "active",
+          "active",
+          "active",
+          "active"
+        ]
+      },
+      "durationMs": 1032,
+      "rafCadenceMs": {
+        "count": 61,
+        "meanMs": 16.65573770491803,
+        "minMs": 10,
+        "p50Ms": 17,
+        "p95Ms": 19,
+        "p99Ms": 24,
+        "maxMs": 24
+      },
+      "actualDrawCalls": 30,
+      "wheelToRenderMs": {
+        "count": 30,
+        "meanMs": 9.56666666666697,
+        "minMs": 2,
+        "p50Ms": 9.000000000001819,
+        "p95Ms": 15,
+        "p99Ms": 16,
+        "maxMs": 16
+      },
+      "wheelToPresentationOpportunityMs": {
+        "count": 30,
+        "meanMs": 24.80000000000012,
+        "minMs": 17,
+        "p50Ms": 25,
+        "p95Ms": 29.99999999999818,
+        "p99Ms": 32,
+        "maxMs": 32
+      },
+      "reportsReceived": 0,
+      "displacement": 0,
+      "expectedReports": null,
+      "output": [
+        {
+          "receivedBytes": 430012,
+          "parsedBytes": 430012,
+          "pendingBytes": 0,
+          "peakPendingBytes": 262144,
+          "largestChunkBytes": 1026
+        },
+        {
+          "receivedBytes": 430012,
+          "parsedBytes": 430012,
+          "pendingBytes": 0,
+          "peakPendingBytes": 262144,
+          "largestChunkBytes": 1026
+        },
+        {
+          "receivedBytes": 430012,
+          "parsedBytes": 430012,
+          "pendingBytes": 0,
+          "peakPendingBytes": 262144,
+          "largestChunkBytes": 1026
+        },
+        {
+          "receivedBytes": 430012,
+          "parsedBytes": 430012,
+          "pendingBytes": 0,
+          "peakPendingBytes": 262144,
+          "largestChunkBytes": 1026
+        }
+      ],
+      "streamingMiBPerSecond": 0
+    },
+    {
+      "mode": "compatibility",
+      "fixture": "static",
+      "panes": 4,
+      "run": 2,
+      "environment": {
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)",
+        "dpr": 2,
+        "visibility": "visible",
+        "cols": 71,
+        "rows": 25,
+        "font": "\"SF Mono\", \"SFMono-Regular\", Menlo, monospace",
+        "renderers": [
+          "active",
+          "active",
+          "active",
+          "active"
+        ]
+      },
+      "durationMs": 1032,
+      "rafCadenceMs": {
+        "count": 61,
+        "meanMs": 16.65573770491803,
+        "minMs": 7,
+        "p50Ms": 17,
+        "p95Ms": 18,
+        "p99Ms": 28,
+        "maxMs": 28
+      },
+      "actualDrawCalls": 30,
+      "wheelToRenderMs": {
+        "count": 30,
+        "meanMs": 9.733333333333272,
+        "minMs": 4,
+        "p50Ms": 9,
+        "p95Ms": 17,
+        "p99Ms": 21,
+        "maxMs": 21
+      },
+      "wheelToPresentationOpportunityMs": {
+        "count": 30,
+        "meanMs": 24.633333333333333,
+        "minMs": 20,
+        "p50Ms": 25,
+        "p95Ms": 27,
+        "p99Ms": 32,
+        "maxMs": 32
+      },
+      "reportsReceived": 0,
+      "displacement": 0,
+      "expectedReports": null,
+      "output": [
+        {
+          "receivedBytes": 430012,
+          "parsedBytes": 430012,
+          "pendingBytes": 0,
+          "peakPendingBytes": 262144,
+          "largestChunkBytes": 1026
+        },
+        {
+          "receivedBytes": 430012,
+          "parsedBytes": 430012,
+          "pendingBytes": 0,
+          "peakPendingBytes": 262144,
+          "largestChunkBytes": 1026
+        },
+        {
+          "receivedBytes": 430012,
+          "parsedBytes": 430012,
+          "pendingBytes": 0,
+          "peakPendingBytes": 262144,
+          "largestChunkBytes": 1026
+        },
+        {
+          "receivedBytes": 430012,
+          "parsedBytes": 430012,
+          "pendingBytes": 0,
+          "peakPendingBytes": 262144,
+          "largestChunkBytes": 1026
+        }
+      ],
+      "streamingMiBPerSecond": 0
+    },
+    {
+      "mode": "compatibility",
+      "fixture": "static",
+      "panes": 4,
+      "run": 3,
+      "environment": {
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)",
+        "dpr": 2,
+        "visibility": "visible",
+        "cols": 71,
+        "rows": 25,
+        "font": "\"SF Mono\", \"SFMono-Regular\", Menlo, monospace",
+        "renderers": [
+          "active",
+          "active",
+          "active",
+          "active"
+        ]
+      },
+      "durationMs": 1035,
+      "rafCadenceMs": {
+        "count": 61,
+        "meanMs": 16.737704918032787,
+        "minMs": 14,
+        "p50Ms": 17,
+        "p95Ms": 19,
+        "p99Ms": 21,
+        "maxMs": 21
+      },
+      "actualDrawCalls": 30,
+      "wheelToRenderMs": {
+        "count": 30,
+        "meanMs": 10.066666666666787,
+        "minMs": 7,
+        "p50Ms": 10,
+        "p95Ms": 13,
+        "p99Ms": 14,
+        "maxMs": 14
+      },
+      "wheelToPresentationOpportunityMs": {
+        "count": 30,
+        "meanMs": 24.8,
+        "minMs": 21.99999999999636,
+        "p50Ms": 24.99999999999636,
+        "p95Ms": 29,
+        "p99Ms": 32,
+        "maxMs": 32
+      },
+      "reportsReceived": 0,
+      "displacement": 0,
+      "expectedReports": null,
+      "output": [
+        {
+          "receivedBytes": 430012,
+          "parsedBytes": 430012,
+          "pendingBytes": 0,
+          "peakPendingBytes": 262144,
+          "largestChunkBytes": 1026
+        },
+        {
+          "receivedBytes": 430012,
+          "parsedBytes": 430012,
+          "pendingBytes": 0,
+          "peakPendingBytes": 262144,
+          "largestChunkBytes": 1026
+        },
+        {
+          "receivedBytes": 430012,
+          "parsedBytes": 430012,
+          "pendingBytes": 0,
+          "peakPendingBytes": 262144,
+          "largestChunkBytes": 1026
+        },
+        {
+          "receivedBytes": 430012,
+          "parsedBytes": 430012,
+          "pendingBytes": 0,
+          "peakPendingBytes": 262144,
+          "largestChunkBytes": 1026
+        }
+      ],
+      "streamingMiBPerSecond": 0
+    },
+    {
+      "mode": "compatibility",
+      "fixture": "stream",
+      "panes": 4,
+      "run": 1,
+      "environment": {
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)",
+        "dpr": 2,
+        "visibility": "visible",
+        "cols": 71,
+        "rows": 25,
+        "font": "\"SF Mono\", \"SFMono-Regular\", Menlo, monospace",
+        "renderers": [
+          "active",
+          "active",
+          "active",
+          "active"
+        ]
+      },
+      "durationMs": 1031,
+      "rafCadenceMs": {
+        "count": 62,
+        "meanMs": 16.451612903225808,
+        "minMs": 10,
+        "p50Ms": 17,
+        "p95Ms": 18,
+        "p99Ms": 18,
+        "maxMs": 18
+      },
+      "actualDrawCalls": 250,
+      "wheelToRenderMs": {
+        "count": 30,
+        "meanMs": 9.333333333333696,
+        "minMs": 8,
+        "p50Ms": 9,
+        "p95Ms": 11,
+        "p99Ms": 12,
+        "maxMs": 12
+      },
+      "wheelToPresentationOpportunityMs": {
+        "count": 30,
+        "meanMs": 24.933333333333817,
+        "minMs": 23,
+        "p50Ms": 25,
+        "p95Ms": 26,
+        "p99Ms": 26,
+        "maxMs": 26
+      },
+      "reportsReceived": 0,
+      "displacement": 0,
+      "expectedReports": null,
+      "output": [
+        {
+          "receivedBytes": 4127374,
+          "parsedBytes": 4127374,
+          "pendingBytes": 0,
+          "peakPendingBytes": 262144,
+          "largestChunkBytes": 1026
+        },
+        {
+          "receivedBytes": 4086406,
+          "parsedBytes": 4086406,
+          "pendingBytes": 0,
+          "peakPendingBytes": 262144,
+          "largestChunkBytes": 1026
+        },
+        {
+          "receivedBytes": 4014712,
+          "parsedBytes": 4014712,
+          "pendingBytes": 0,
+          "peakPendingBytes": 262144,
+          "largestChunkBytes": 1026
+        },
+        {
+          "receivedBytes": 4024954,
+          "parsedBytes": 4024954,
+          "pendingBytes": 0,
+          "peakPendingBytes": 262144,
+          "largestChunkBytes": 1026
+        }
+      ],
+      "streamingMiBPerSecond": 12.14546699412926
+    },
+    {
+      "mode": "compatibility",
+      "fixture": "stream",
+      "panes": 4,
+      "run": 2,
+      "environment": {
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)",
+        "dpr": 2,
+        "visibility": "visible",
+        "cols": 71,
+        "rows": 25,
+        "font": "\"SF Mono\", \"SFMono-Regular\", Menlo, monospace",
+        "renderers": [
+          "active",
+          "active",
+          "active",
+          "active"
+        ]
+      },
+      "durationMs": 1017.9999999999964,
+      "rafCadenceMs": {
+        "count": 61,
+        "meanMs": 16.540983606557376,
+        "minMs": 9,
+        "p50Ms": 17,
+        "p95Ms": 18,
+        "p99Ms": 26,
+        "maxMs": 26
+      },
+      "actualDrawCalls": 247,
+      "wheelToRenderMs": {
+        "count": 30,
+        "meanMs": 8.933333333333334,
+        "minMs": 1,
+        "p50Ms": 9.000000000003638,
+        "p95Ms": 10.999999999996362,
+        "p99Ms": 11,
+        "maxMs": 11
+      },
+      "wheelToPresentationOpportunityMs": {
+        "count": 30,
+        "meanMs": 24.79999999999988,
+        "minMs": 15.000000000003638,
+        "p50Ms": 25,
+        "p95Ms": 26,
+        "p99Ms": 34,
+        "maxMs": 34
+      },
+      "reportsReceived": 0,
+      "displacement": 0,
+      "expectedReports": null,
+      "output": [
+        {
+          "receivedBytes": 3994228,
+          "parsedBytes": 3994228,
+          "pendingBytes": 0,
+          "peakPendingBytes": 262144,
+          "largestChunkBytes": 1026
+        },
+        {
+          "receivedBytes": 3973744,
+          "parsedBytes": 3972718,
+          "pendingBytes": 1026,
+          "peakPendingBytes": 262144,
+          "largestChunkBytes": 1026
+        },
+        {
+          "receivedBytes": 3994228,
+          "parsedBytes": 3993202,
+          "pendingBytes": 1026,
+          "peakPendingBytes": 262144,
+          "largestChunkBytes": 1026
+        },
+        {
+          "receivedBytes": 3932776,
+          "parsedBytes": 3932776,
+          "pendingBytes": 0,
+          "peakPendingBytes": 262144,
+          "largestChunkBytes": 1026
+        }
+      ],
+      "streamingMiBPerSecond": 12.113468117704604
+    },
+    {
+      "mode": "compatibility",
+      "fixture": "stream",
+      "panes": 4,
+      "run": 3,
+      "environment": {
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)",
+        "dpr": 2,
+        "visibility": "visible",
+        "cols": 71,
+        "rows": 25,
+        "font": "\"SF Mono\", \"SFMono-Regular\", Menlo, monospace",
+        "renderers": [
+          "active",
+          "active",
+          "active",
+          "active"
+        ]
+      },
+      "durationMs": 1025,
+      "rafCadenceMs": {
+        "count": 61,
+        "meanMs": 16.62295081967213,
+        "minMs": 14,
+        "p50Ms": 17,
+        "p95Ms": 18,
+        "p99Ms": 18,
+        "maxMs": 18
+      },
+      "actualDrawCalls": 246,
+      "wheelToRenderMs": {
+        "count": 30,
+        "meanMs": 9.3,
+        "minMs": 8,
+        "p50Ms": 9,
+        "p95Ms": 10.000000000003638,
+        "p99Ms": 11,
+        "maxMs": 11
+      },
+      "wheelToPresentationOpportunityMs": {
+        "count": 30,
+        "meanMs": 25.099999999999877,
+        "minMs": 23,
+        "p50Ms": 25,
+        "p95Ms": 26,
+        "p99Ms": 27,
+        "maxMs": 27
+      },
+      "reportsReceived": 0,
+      "displacement": 0,
+      "expectedReports": null,
+      "output": [
+        {
+          "receivedBytes": 3963502,
+          "parsedBytes": 3963502,
+          "pendingBytes": 0,
+          "peakPendingBytes": 262144,
+          "largestChunkBytes": 1026
+        },
+        {
+          "receivedBytes": 3904098,
+          "parsedBytes": 3904098,
+          "pendingBytes": 0,
+          "peakPendingBytes": 262144,
+          "largestChunkBytes": 1026
+        },
+        {
+          "receivedBytes": 3894880,
+          "parsedBytes": 3894880,
+          "pendingBytes": 0,
+          "peakPendingBytes": 262144,
+          "largestChunkBytes": 1026
+        },
+        {
+          "receivedBytes": 3861082,
+          "parsedBytes": 3861082,
+          "pendingBytes": 0,
+          "peakPendingBytes": 262144,
+          "largestChunkBytes": 1026
+        }
+      ],
+      "streamingMiBPerSecond": 11.859212735804118
+    },
+    {
+      "mode": "compatibility",
+      "fixture": "tui",
+      "panes": 4,
+      "run": 1,
+      "environment": {
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)",
+        "dpr": 2,
+        "visibility": "visible",
+        "cols": 71,
+        "rows": 25,
+        "font": "\"SF Mono\", \"SFMono-Regular\", Menlo, monospace",
+        "renderers": [
+          "active",
+          "active",
+          "active",
+          "active"
+        ]
+      },
+      "durationMs": 1119,
+      "rafCadenceMs": {
+        "count": 66,
+        "meanMs": 16.696969696969695,
+        "minMs": 4,
+        "p50Ms": 17,
+        "p95Ms": 22,
+        "p99Ms": 31,
+        "maxMs": 31
+      },
+      "actualDrawCalls": 30,
+      "wheelToRenderMs": {
+        "count": 30,
+        "meanMs": 9.49999999999988,
+        "minMs": 4,
+        "p50Ms": 8,
+        "p95Ms": 20,
+        "p99Ms": 23,
+        "maxMs": 23
+      },
+      "wheelToPresentationOpportunityMs": {
+        "count": 30,
+        "meanMs": 27.733333333333455,
+        "minMs": 22.99999999999636,
+        "p50Ms": 26,
+        "p95Ms": 38.00000000000364,
+        "p99Ms": 40,
+        "maxMs": 40
+      },
+      "reportsReceived": 30,
+      "displacement": -30,
+      "expectedReports": null,
+      "output": [
+        {
+          "receivedBytes": 1667,
+          "parsedBytes": 1667,
+          "pendingBytes": 0,
+          "peakPendingBytes": 65,
+          "largestChunkBytes": 65
+        },
+        {
+          "receivedBytes": 65,
+          "parsedBytes": 65,
+          "pendingBytes": 0,
+          "peakPendingBytes": 65,
+          "largestChunkBytes": 53
+        },
+        {
+          "receivedBytes": 65,
+          "parsedBytes": 65,
+          "pendingBytes": 0,
+          "peakPendingBytes": 65,
+          "largestChunkBytes": 65
+        },
+        {
+          "receivedBytes": 65,
+          "parsedBytes": 65,
+          "pendingBytes": 0,
+          "peakPendingBytes": 65,
+          "largestChunkBytes": 65
+        }
+      ],
+      "streamingMiBPerSecond": 0.0013653139006995644
+    },
+    {
+      "mode": "compatibility",
+      "fixture": "tui",
+      "panes": 4,
+      "run": 2,
+      "environment": {
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)",
+        "dpr": 2,
+        "visibility": "visible",
+        "cols": 71,
+        "rows": 25,
+        "font": "\"SF Mono\", \"SFMono-Regular\", Menlo, monospace",
+        "renderers": [
+          "active",
+          "active",
+          "active",
+          "active"
+        ]
+      },
+      "durationMs": 1051,
+      "rafCadenceMs": {
+        "count": 62,
+        "meanMs": 16.677419354838708,
+        "minMs": 12,
+        "p50Ms": 17,
+        "p95Ms": 20,
+        "p99Ms": 21,
+        "maxMs": 21
+      },
+      "actualDrawCalls": 30,
+      "wheelToRenderMs": {
+        "count": 30,
+        "meanMs": 8.699999999999878,
+        "minMs": 4,
+        "p50Ms": 8,
+        "p95Ms": 17,
+        "p99Ms": 22.00000000000364,
+        "maxMs": 22.00000000000364
+      },
+      "wheelToPresentationOpportunityMs": {
+        "count": 30,
+        "meanMs": 25.49999999999976,
+        "minMs": 20.99999999999636,
+        "p50Ms": 25,
+        "p95Ms": 33,
+        "p99Ms": 36,
+        "maxMs": 36
+      },
+      "reportsReceived": 30,
+      "displacement": -30,
+      "expectedReports": null,
+      "output": [
+        {
+          "receivedBytes": 1667,
+          "parsedBytes": 1667,
+          "pendingBytes": 0,
+          "peakPendingBytes": 65,
+          "largestChunkBytes": 54
+        },
+        {
+          "receivedBytes": 65,
+          "parsedBytes": 65,
+          "pendingBytes": 0,
+          "peakPendingBytes": 65,
+          "largestChunkBytes": 53
+        },
+        {
+          "receivedBytes": 65,
+          "parsedBytes": 65,
+          "pendingBytes": 0,
+          "peakPendingBytes": 65,
+          "largestChunkBytes": 53
+        },
+        {
+          "receivedBytes": 65,
+          "parsedBytes": 65,
+          "pendingBytes": 0,
+          "peakPendingBytes": 65,
+          "largestChunkBytes": 65
+        }
+      ],
+      "streamingMiBPerSecond": 0.0014536500997933517
+    },
+    {
+      "mode": "compatibility",
+      "fixture": "tui",
+      "panes": 4,
+      "run": 3,
+      "environment": {
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)",
+        "dpr": 2,
+        "visibility": "visible",
+        "cols": 71,
+        "rows": 25,
+        "font": "\"SF Mono\", \"SFMono-Regular\", Menlo, monospace",
+        "renderers": [
+          "active",
+          "active",
+          "active",
+          "active"
+        ]
+      },
+      "durationMs": 1033,
+      "rafCadenceMs": {
+        "count": 61,
+        "meanMs": 16.672131147540984,
+        "minMs": 13,
+        "p50Ms": 17,
+        "p95Ms": 19,
+        "p99Ms": 21,
+        "maxMs": 21
+      },
+      "actualDrawCalls": 30,
+      "wheelToRenderMs": {
+        "count": 30,
+        "meanMs": 8.500000000000364,
+        "minMs": 4,
+        "p50Ms": 8.000000000003638,
+        "p95Ms": 10,
+        "p99Ms": 16,
+        "maxMs": 16
+      },
+      "wheelToPresentationOpportunityMs": {
+        "count": 30,
+        "meanMs": 24.933333333333575,
+        "minMs": 21,
+        "p50Ms": 25,
+        "p95Ms": 28,
+        "p99Ms": 33,
+        "maxMs": 33
+      },
+      "reportsReceived": 30,
+      "displacement": -30,
+      "expectedReports": null,
+      "output": [
+        {
+          "receivedBytes": 1667,
+          "parsedBytes": 1667,
+          "pendingBytes": 0,
+          "peakPendingBytes": 65,
+          "largestChunkBytes": 54
+        },
+        {
+          "receivedBytes": 65,
+          "parsedBytes": 65,
+          "pendingBytes": 0,
+          "peakPendingBytes": 65,
+          "largestChunkBytes": 53
+        },
+        {
+          "receivedBytes": 65,
+          "parsedBytes": 65,
+          "pendingBytes": 0,
+          "peakPendingBytes": 65,
+          "largestChunkBytes": 65
+        },
+        {
+          "receivedBytes": 65,
+          "parsedBytes": 65,
+          "pendingBytes": 0,
+          "peakPendingBytes": 65,
+          "largestChunkBytes": 65
+        }
+      ],
+      "streamingMiBPerSecond": 0.0014789799176019485
+    },
+    {
+      "mode": "compatibility",
+      "fixture": "tui-stream",
+      "panes": 4,
+      "run": 1,
+      "environment": {
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)",
+        "dpr": 2,
+        "visibility": "visible",
+        "cols": 71,
+        "rows": 25,
+        "font": "\"SF Mono\", \"SFMono-Regular\", Menlo, monospace",
+        "renderers": [
+          "active",
+          "active",
+          "active",
+          "active"
+        ]
+      },
+      "durationMs": 1038,
+      "rafCadenceMs": {
+        "count": 62,
+        "meanMs": 16.580645161290324,
+        "minMs": 12,
+        "p50Ms": 17,
+        "p95Ms": 18,
+        "p99Ms": 18,
+        "maxMs": 18
+      },
+      "actualDrawCalls": 255,
+      "wheelToRenderMs": {
+        "count": 30,
+        "meanMs": 9.799999999999756,
+        "minMs": 8,
+        "p50Ms": 10,
+        "p95Ms": 11,
+        "p99Ms": 16.999999999996362,
+        "maxMs": 16.999999999996362
+      },
+      "wheelToPresentationOpportunityMs": {
+        "count": 30,
+        "meanMs": 25.33333333333321,
+        "minMs": 20,
+        "p50Ms": 25.00000000000364,
+        "p95Ms": 29,
+        "p99Ms": 32.99999999999636,
+        "maxMs": 32.99999999999636
+      },
+      "reportsReceived": 30,
+      "displacement": -30,
+      "expectedReports": null,
+      "output": [
+        {
+          "receivedBytes": 3576125,
+          "parsedBytes": 3576125,
+          "pendingBytes": 0,
+          "peakPendingBytes": 92243,
+          "largestChunkBytes": 1024
+        },
+        {
+          "receivedBytes": 3523313,
+          "parsedBytes": 3523313,
+          "pendingBytes": 0,
+          "peakPendingBytes": 122969,
+          "largestChunkBytes": 1024
+        },
+        {
+          "receivedBytes": 3482345,
+          "parsedBytes": 3479271,
+          "pendingBytes": 3074,
+          "peakPendingBytes": 71759,
+          "largestChunkBytes": 1024
+        },
+        {
+          "receivedBytes": 3441377,
+          "parsedBytes": 3437279,
+          "pendingBytes": 4098,
+          "peakPendingBytes": 71692,
+          "largestChunkBytes": 1024
+        }
+      ],
+      "streamingMiBPerSecond": 12.083852911271112
+    },
+    {
+      "mode": "compatibility",
+      "fixture": "tui-stream",
+      "panes": 4,
+      "run": 2,
+      "environment": {
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)",
+        "dpr": 2,
+        "visibility": "visible",
+        "cols": 71,
+        "rows": 25,
+        "font": "\"SF Mono\", \"SFMono-Regular\", Menlo, monospace",
+        "renderers": [
+          "active",
+          "active",
+          "active",
+          "active"
+        ]
+      },
+      "durationMs": 1040.0000000000036,
+      "rafCadenceMs": {
+        "count": 62,
+        "meanMs": 16.612903225806452,
+        "minMs": 13,
+        "p50Ms": 17,
+        "p95Ms": 17,
+        "p99Ms": 18,
+        "maxMs": 18
+      },
+      "actualDrawCalls": 255,
+      "wheelToRenderMs": {
+        "count": 30,
+        "meanMs": 9.766666666666788,
+        "minMs": 8,
+        "p50Ms": 9.999999999996362,
+        "p95Ms": 11,
+        "p99Ms": 21,
+        "maxMs": 21
+      },
+      "wheelToPresentationOpportunityMs": {
+        "count": 30,
+        "meanMs": 25.53333333333321,
+        "minMs": 22.99999999999636,
+        "p50Ms": 25,
+        "p95Ms": 27,
+        "p99Ms": 38,
+        "maxMs": 38
+      },
+      "reportsReceived": 30,
+      "displacement": -30,
+      "expectedReports": null,
+      "output": [
+        {
+          "receivedBytes": 3565883,
+          "parsedBytes": 3565883,
+          "pendingBytes": 0,
+          "peakPendingBytes": 82001,
+          "largestChunkBytes": 1024
+        },
+        {
+          "receivedBytes": 3533555,
+          "parsedBytes": 3533555,
+          "pendingBytes": 0,
+          "peakPendingBytes": 71694,
+          "largestChunkBytes": 1024
+        },
+        {
+          "receivedBytes": 3496683,
+          "parsedBytes": 3494635,
+          "pendingBytes": 2048,
+          "peakPendingBytes": 82001,
+          "largestChunkBytes": 1024
+        },
+        {
+          "receivedBytes": 3445473,
+          "parsedBytes": 3442401,
+          "pendingBytes": 3072,
+          "peakPendingBytes": 61450,
+          "largestChunkBytes": 1024
+        }
+      ],
+      "streamingMiBPerSecond": 12.133869758019038
+    },
+    {
+      "mode": "compatibility",
+      "fixture": "tui-stream",
+      "panes": 4,
+      "run": 3,
+      "environment": {
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)",
+        "dpr": 2,
+        "visibility": "visible",
+        "cols": 71,
+        "rows": 25,
+        "font": "\"SF Mono\", \"SFMono-Regular\", Menlo, monospace",
+        "renderers": [
+          "active",
+          "active",
+          "active",
+          "active"
+        ]
+      },
+      "durationMs": 1045,
+      "rafCadenceMs": {
+        "count": 63,
+        "meanMs": 16.396825396825395,
+        "minMs": 8,
+        "p50Ms": 17,
+        "p95Ms": 18,
+        "p99Ms": 23,
+        "maxMs": 23
+      },
+      "actualDrawCalls": 258,
+      "wheelToRenderMs": {
+        "count": 30,
+        "meanMs": 9.73333333333406,
+        "minMs": 5,
+        "p50Ms": 9,
+        "p95Ms": 17,
+        "p99Ms": 18,
+        "maxMs": 18
+      },
+      "wheelToPresentationOpportunityMs": {
+        "count": 30,
+        "meanMs": 25.166666666666668,
+        "minMs": 19,
+        "p50Ms": 25,
+        "p95Ms": 30,
+        "p99Ms": 33,
+        "maxMs": 33
+      },
+      "reportsReceived": 30,
+      "displacement": -30,
+      "expectedReports": null,
+      "output": [
+        {
+          "receivedBytes": 3627335,
+          "parsedBytes": 3627335,
+          "pendingBytes": 0,
+          "peakPendingBytes": 82001,
+          "largestChunkBytes": 1024
+        },
+        {
+          "receivedBytes": 3595007,
+          "parsedBytes": 3595007,
+          "pendingBytes": 0,
+          "peakPendingBytes": 133211,
+          "largestChunkBytes": 1024
+        },
+        {
+          "receivedBytes": 3543797,
+          "parsedBytes": 3543797,
+          "pendingBytes": 0,
+          "peakPendingBytes": 82001,
+          "largestChunkBytes": 1024
+        },
+        {
+          "receivedBytes": 3492587,
+          "parsedBytes": 3492587,
+          "pendingBytes": 0,
+          "peakPendingBytes": 120919,
+          "largestChunkBytes": 1024
+        }
+      ],
+      "streamingMiBPerSecond": 12.13750519820948
+    },
+    {
+      "mode": "enhanced",
+      "fixture": "static",
+      "panes": 1,
+      "run": 1,
+      "environment": {
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)",
+        "dpr": 2,
+        "visibility": "visible",
+        "cols": 145,
+        "rows": 50,
+        "font": "\"SF Mono\", \"SFMono-Regular\", Menlo, monospace",
+        "renderers": [
+          "active"
+        ]
+      },
+      "durationMs": 1034.0000000000036,
+      "rafCadenceMs": {
+        "count": 61,
+        "meanMs": 16.672131147540984,
+        "minMs": 15,
+        "p50Ms": 17,
+        "p95Ms": 18,
+        "p99Ms": 18,
+        "maxMs": 18
+      },
+      "actualDrawCalls": 62,
+      "wheelToRenderMs": {
+        "count": 30,
+        "meanMs": 11.60000000000012,
+        "minMs": 10,
+        "p50Ms": 11,
+        "p95Ms": 14.000000000003638,
+        "p99Ms": 16,
+        "maxMs": 16
+      },
+      "wheelToPresentationOpportunityMs": {
+        "count": 30,
+        "meanMs": 25.366666666666788,
+        "minMs": 24,
+        "p50Ms": 25,
+        "p95Ms": 27,
+        "p99Ms": 31,
+        "maxMs": 31
+      },
+      "reportsReceived": 0,
+      "displacement": 0,
+      "expectedReports": null,
+      "output": [
+        {
+          "receivedBytes": 430012,
+          "parsedBytes": 430012,
+          "pendingBytes": 0,
+          "peakPendingBytes": 253952,
+          "largestChunkBytes": 1026
+        }
+      ],
+      "streamingMiBPerSecond": 0
+    },
+    {
+      "mode": "enhanced",
+      "fixture": "static",
+      "panes": 1,
+      "run": 2,
+      "environment": {
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)",
+        "dpr": 2,
+        "visibility": "visible",
+        "cols": 145,
+        "rows": 50,
+        "font": "\"SF Mono\", \"SFMono-Regular\", Menlo, monospace",
+        "renderers": [
+          "active"
+        ]
+      },
+      "durationMs": 1035,
+      "rafCadenceMs": {
+        "count": 61,
+        "meanMs": 16.672131147540984,
+        "minMs": 15,
+        "p50Ms": 17,
+        "p95Ms": 18,
+        "p99Ms": 18,
+        "maxMs": 18
+      },
+      "actualDrawCalls": 62,
+      "wheelToRenderMs": {
+        "count": 30,
+        "meanMs": 11.30000000000097,
+        "minMs": 9,
+        "p50Ms": 11.000000000003638,
+        "p95Ms": 14.000000000003638,
+        "p99Ms": 17,
+        "maxMs": 17
+      },
+      "wheelToPresentationOpportunityMs": {
+        "count": 30,
+        "meanMs": 25.20000000000024,
+        "minMs": 23,
+        "p50Ms": 25,
+        "p95Ms": 27.00000000000364,
+        "p99Ms": 32,
+        "maxMs": 32
+      },
+      "reportsReceived": 0,
+      "displacement": 0,
+      "expectedReports": null,
+      "output": [
+        {
+          "receivedBytes": 430012,
+          "parsedBytes": 430012,
+          "pendingBytes": 0,
+          "peakPendingBytes": 203708,
+          "largestChunkBytes": 1026
+        }
+      ],
+      "streamingMiBPerSecond": 0
+    },
+    {
+      "mode": "enhanced",
+      "fixture": "static",
+      "panes": 1,
+      "run": 3,
+      "environment": {
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)",
+        "dpr": 2,
+        "visibility": "visible",
+        "cols": 145,
+        "rows": 50,
+        "font": "\"SF Mono\", \"SFMono-Regular\", Menlo, monospace",
+        "renderers": [
+          "active"
+        ]
+      },
+      "durationMs": 1036,
+      "rafCadenceMs": {
+        "count": 61,
+        "meanMs": 16.672131147540984,
+        "minMs": 15,
+        "p50Ms": 17,
+        "p95Ms": 17,
+        "p99Ms": 18,
+        "maxMs": 18
+      },
+      "actualDrawCalls": 62,
+      "wheelToRenderMs": {
+        "count": 30,
+        "meanMs": 11.199999999998544,
+        "minMs": 9,
+        "p50Ms": 11,
+        "p95Ms": 13,
+        "p99Ms": 17,
+        "maxMs": 17
+      },
+      "wheelToPresentationOpportunityMs": {
+        "count": 30,
+        "meanMs": 25.19999999999976,
+        "minMs": 23.999999999992724,
+        "p50Ms": 25,
+        "p95Ms": 26.000000000007276,
+        "p99Ms": 32.000000000007276,
+        "maxMs": 32.000000000007276
+      },
+      "reportsReceived": 0,
+      "displacement": 0,
+      "expectedReports": null,
+      "output": [
+        {
+          "receivedBytes": 430012,
+          "parsedBytes": 430012,
+          "pendingBytes": 0,
+          "peakPendingBytes": 233472,
+          "largestChunkBytes": 1026
+        }
+      ],
+      "streamingMiBPerSecond": 0
+    },
+    {
+      "mode": "enhanced",
+      "fixture": "stream",
+      "panes": 1,
+      "run": 1,
+      "environment": {
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)",
+        "dpr": 2,
+        "visibility": "visible",
+        "cols": 145,
+        "rows": 50,
+        "font": "\"SF Mono\", \"SFMono-Regular\", Menlo, monospace",
+        "renderers": [
+          "active"
+        ]
+      },
+      "durationMs": 1034,
+      "rafCadenceMs": {
+        "count": 61,
+        "meanMs": 16.672131147540984,
+        "minMs": 15,
+        "p50Ms": 17,
+        "p95Ms": 17,
+        "p99Ms": 18,
+        "maxMs": 18
+      },
+      "actualDrawCalls": 62,
+      "wheelToRenderMs": {
+        "count": 30,
+        "meanMs": 10.666666666665696,
+        "minMs": 9.999999999992724,
+        "p50Ms": 10,
+        "p95Ms": 11,
+        "p99Ms": 17,
+        "maxMs": 17
+      },
+      "wheelToPresentationOpportunityMs": {
+        "count": 30,
+        "meanMs": 25.26666666666691,
+        "minMs": 24,
+        "p50Ms": 25,
+        "p95Ms": 26.000000000007276,
+        "p99Ms": 32,
+        "maxMs": 32
+      },
+      "reportsReceived": 0,
+      "displacement": 0,
+      "expectedReports": null,
+      "output": [
+        {
+          "receivedBytes": 3871324,
+          "parsedBytes": 3871324,
+          "pendingBytes": 0,
+          "peakPendingBytes": 262144,
+          "largestChunkBytes": 1026
+        }
+      ],
+      "streamingMiBPerSecond": 3.088958489364535
+    },
+    {
+      "mode": "enhanced",
+      "fixture": "stream",
+      "panes": 1,
+      "run": 2,
+      "environment": {
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)",
+        "dpr": 2,
+        "visibility": "visible",
+        "cols": 145,
+        "rows": 50,
+        "font": "\"SF Mono\", \"SFMono-Regular\", Menlo, monospace",
+        "renderers": [
+          "active"
+        ]
+      },
+      "durationMs": 1034,
+      "rafCadenceMs": {
+        "count": 61,
+        "meanMs": 16.672131147540984,
+        "minMs": 16,
+        "p50Ms": 17,
+        "p95Ms": 17,
+        "p99Ms": 17,
+        "maxMs": 17
+      },
+      "actualDrawCalls": 62,
+      "wheelToRenderMs": {
+        "count": 30,
+        "meanMs": 10.433333333332603,
+        "minMs": 4,
+        "p50Ms": 10.999999999992724,
+        "p95Ms": 11,
+        "p99Ms": 17,
+        "maxMs": 17
+      },
+      "wheelToPresentationOpportunityMs": {
+        "count": 30,
+        "meanMs": 25.266666666667152,
+        "minMs": 19,
+        "p50Ms": 25,
+        "p95Ms": 27,
+        "p99Ms": 31,
+        "maxMs": 31
+      },
+      "reportsReceived": 0,
+      "displacement": 0,
+      "expectedReports": null,
+      "output": [
+        {
+          "receivedBytes": 3943018,
+          "parsedBytes": 3943018,
+          "pendingBytes": 0,
+          "peakPendingBytes": 244736,
+          "largestChunkBytes": 1026
+        }
+      ],
+      "streamingMiBPerSecond": 3.107851201837713
+    },
+    {
+      "mode": "enhanced",
+      "fixture": "stream",
+      "panes": 1,
+      "run": 3,
+      "environment": {
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)",
+        "dpr": 2,
+        "visibility": "visible",
+        "cols": 145,
+        "rows": 50,
+        "font": "\"SF Mono\", \"SFMono-Regular\", Menlo, monospace",
+        "renderers": [
+          "active"
+        ]
+      },
+      "durationMs": 1034,
+      "rafCadenceMs": {
+        "count": 61,
+        "meanMs": 16.672131147540984,
+        "minMs": 16,
+        "p50Ms": 17,
+        "p95Ms": 17,
+        "p99Ms": 17,
+        "maxMs": 17
+      },
+      "actualDrawCalls": 62,
+      "wheelToRenderMs": {
+        "count": 30,
+        "meanMs": 10.86666666666594,
+        "minMs": 9.999999999992724,
+        "p50Ms": 11,
+        "p95Ms": 12,
+        "p99Ms": 17,
+        "maxMs": 17
+      },
+      "wheelToPresentationOpportunityMs": {
+        "count": 30,
+        "meanMs": 25.333333333333577,
+        "minMs": 24,
+        "p50Ms": 25,
+        "p95Ms": 26,
+        "p99Ms": 32,
+        "maxMs": 32
+      },
+      "reportsReceived": 0,
+      "displacement": 0,
+      "expectedReports": null,
+      "output": [
+        {
+          "receivedBytes": 3902050,
+          "parsedBytes": 3902050,
+          "pendingBytes": 0,
+          "peakPendingBytes": 235520,
+          "largestChunkBytes": 1026
+        }
+      ],
+      "streamingMiBPerSecond": 3.098404845601124
+    },
+    {
+      "mode": "enhanced",
+      "fixture": "tui",
+      "panes": 1,
+      "run": 1,
+      "environment": {
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)",
+        "dpr": 2,
+        "visibility": "visible",
+        "cols": 145,
+        "rows": 50,
+        "font": "\"SF Mono\", \"SFMono-Regular\", Menlo, monospace",
+        "renderers": [
+          "active"
+        ]
+      },
+      "durationMs": 1035,
+      "rafCadenceMs": {
+        "count": 61,
+        "meanMs": 16.688524590163933,
+        "minMs": 13,
+        "p50Ms": 17,
+        "p95Ms": 19,
+        "p99Ms": 22,
+        "maxMs": 22
+      },
+      "actualDrawCalls": 30,
+      "wheelToRenderMs": {
+        "count": 30,
+        "meanMs": 8.399999999999515,
+        "minMs": 5,
+        "p50Ms": 8,
+        "p95Ms": 10,
+        "p99Ms": 18,
+        "maxMs": 18
+      },
+      "wheelToPresentationOpportunityMs": {
+        "count": 30,
+        "meanMs": 24.83333333333309,
+        "minMs": 22,
+        "p50Ms": 25,
+        "p95Ms": 28,
+        "p99Ms": 34.000000000007276,
+        "maxMs": 34.000000000007276
+      },
+      "reportsReceived": 337,
+      "displacement": -337,
+      "expectedReports": 337,
+      "output": [
+        {
+          "receivedBytes": 1729,
+          "parsedBytes": 1729,
+          "pendingBytes": 0,
+          "peakPendingBytes": 65,
+          "largestChunkBytes": 56
+        }
+      ],
+      "streamingMiBPerSecond": 0.0015332503019323672
+    },
+    {
+      "mode": "enhanced",
+      "fixture": "tui",
+      "panes": 1,
+      "run": 2,
+      "environment": {
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)",
+        "dpr": 2,
+        "visibility": "visible",
+        "cols": 145,
+        "rows": 50,
+        "font": "\"SF Mono\", \"SFMono-Regular\", Menlo, monospace",
+        "renderers": [
+          "active"
+        ]
+      },
+      "durationMs": 1068.0000000000073,
+      "rafCadenceMs": {
+        "count": 63,
+        "meanMs": 16.666666666666668,
+        "minMs": 13,
+        "p50Ms": 17,
+        "p95Ms": 19,
+        "p99Ms": 20,
+        "maxMs": 20
+      },
+      "actualDrawCalls": 30,
+      "wheelToRenderMs": {
+        "count": 30,
+        "meanMs": 9.999999999999517,
+        "minMs": 6,
+        "p50Ms": 9,
+        "p95Ms": 25,
+        "p99Ms": 29.000000000007276,
+        "maxMs": 29.000000000007276
+      },
+      "wheelToPresentationOpportunityMs": {
+        "count": 30,
+        "meanMs": 25.733333333332848,
+        "minMs": 21,
+        "p50Ms": 25,
+        "p95Ms": 37,
+        "p99Ms": 40,
+        "maxMs": 40
+      },
+      "reportsReceived": 337,
+      "displacement": -337,
+      "expectedReports": 337,
+      "output": [
+        {
+          "receivedBytes": 1729,
+          "parsedBytes": 1729,
+          "pendingBytes": 0,
+          "peakPendingBytes": 65,
+          "largestChunkBytes": 65
+        }
+      ],
+      "streamingMiBPerSecond": 0.0014858745903557954
+    },
+    {
+      "mode": "enhanced",
+      "fixture": "tui",
+      "panes": 1,
+      "run": 3,
+      "environment": {
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)",
+        "dpr": 2,
+        "visibility": "visible",
+        "cols": 145,
+        "rows": 50,
+        "font": "\"SF Mono\", \"SFMono-Regular\", Menlo, monospace",
+        "renderers": [
+          "active"
+        ]
+      },
+      "durationMs": 1052,
+      "rafCadenceMs": {
+        "count": 62,
+        "meanMs": 16.693548387096776,
+        "minMs": 13,
+        "p50Ms": 17,
+        "p95Ms": 19,
+        "p99Ms": 20,
+        "maxMs": 20
+      },
+      "actualDrawCalls": 30,
+      "wheelToRenderMs": {
+        "count": 30,
+        "meanMs": 9.599999999999271,
+        "minMs": 6,
+        "p50Ms": 9,
+        "p95Ms": 18,
+        "p99Ms": 24.999999999992724,
+        "maxMs": 24.999999999992724
+      },
+      "wheelToPresentationOpportunityMs": {
+        "count": 30,
+        "meanMs": 25.466666666666185,
+        "minMs": 22,
+        "p50Ms": 25,
+        "p95Ms": 34,
+        "p99Ms": 37.99999999999272,
+        "maxMs": 37.99999999999272
+      },
+      "reportsReceived": 337,
+      "displacement": -337,
+      "expectedReports": 337,
+      "output": [
+        {
+          "receivedBytes": 1729,
+          "parsedBytes": 1729,
+          "pendingBytes": 0,
+          "peakPendingBytes": 65,
+          "largestChunkBytes": 65
+        }
+      ],
+      "streamingMiBPerSecond": 0.0015084734434410649
+    },
+    {
+      "mode": "enhanced",
+      "fixture": "tui-stream",
+      "panes": 1,
+      "run": 1,
+      "environment": {
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)",
+        "dpr": 2,
+        "visibility": "visible",
+        "cols": 145,
+        "rows": 50,
+        "font": "\"SF Mono\", \"SFMono-Regular\", Menlo, monospace",
+        "renderers": [
+          "active"
+        ]
+      },
+      "durationMs": 1033,
+      "rafCadenceMs": {
+        "count": 61,
+        "meanMs": 16.65573770491803,
+        "minMs": 15,
+        "p50Ms": 17,
+        "p95Ms": 17,
+        "p99Ms": 18,
+        "maxMs": 18
+      },
+      "actualDrawCalls": 62,
+      "wheelToRenderMs": {
+        "count": 30,
+        "meanMs": 9.766666666667152,
+        "minMs": 8,
+        "p50Ms": 9.999999999992724,
+        "p95Ms": 11,
+        "p99Ms": 18,
+        "maxMs": 18
+      },
+      "wheelToPresentationOpportunityMs": {
+        "count": 30,
+        "meanMs": 25.30000000000024,
+        "minMs": 23.999999999992724,
+        "p50Ms": 25,
+        "p95Ms": 26.000000000007276,
+        "p99Ms": 33,
+        "maxMs": 33
+      },
+      "reportsReceived": 337,
+      "displacement": -337,
+      "expectedReports": 337,
+      "output": [
+        {
+          "receivedBytes": 3402073,
+          "parsedBytes": 3402073,
+          "pendingBytes": 0,
+          "peakPendingBytes": 29700,
+          "largestChunkBytes": 1024
+        }
+      ],
+      "streamingMiBPerSecond": 3.0556629841925447
+    },
+    {
+      "mode": "enhanced",
+      "fixture": "tui-stream",
+      "panes": 1,
+      "run": 2,
+      "environment": {
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)",
+        "dpr": 2,
+        "visibility": "visible",
+        "cols": 145,
+        "rows": 50,
+        "font": "\"SF Mono\", \"SFMono-Regular\", Menlo, monospace",
+        "renderers": [
+          "active"
+        ]
+      },
+      "durationMs": 1032.9999999999927,
+      "rafCadenceMs": {
+        "count": 61,
+        "meanMs": 16.65573770491803,
+        "minMs": 15,
+        "p50Ms": 17,
+        "p95Ms": 18,
+        "p99Ms": 18,
+        "maxMs": 18
+      },
+      "actualDrawCalls": 62,
+      "wheelToRenderMs": {
+        "count": 30,
+        "meanMs": 9.633333333333333,
+        "minMs": 4,
+        "p50Ms": 10,
+        "p95Ms": 10.000000000007276,
+        "p99Ms": 18,
+        "maxMs": 18
+      },
+      "wheelToPresentationOpportunityMs": {
+        "count": 30,
+        "meanMs": 25.19999999999976,
+        "minMs": 19,
+        "p50Ms": 25,
+        "p95Ms": 26,
+        "p99Ms": 33.999999999992724,
+        "maxMs": 33.999999999992724
+      },
+      "reportsReceived": 337,
+      "displacement": -337,
+      "expectedReports": 337,
+      "output": [
+        {
+          "receivedBytes": 3381589,
+          "parsedBytes": 3381589,
+          "pendingBytes": 0,
+          "peakPendingBytes": 29758,
+          "largestChunkBytes": 1024
+        }
+      ],
+      "streamingMiBPerSecond": 3.046207483371043
+    },
+    {
+      "mode": "enhanced",
+      "fixture": "tui-stream",
+      "panes": 1,
+      "run": 3,
+      "environment": {
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)",
+        "dpr": 2,
+        "visibility": "visible",
+        "cols": 145,
+        "rows": 50,
+        "font": "\"SF Mono\", \"SFMono-Regular\", Menlo, monospace",
+        "renderers": [
+          "active"
+        ]
+      },
+      "durationMs": 1034,
+      "rafCadenceMs": {
+        "count": 61,
+        "meanMs": 16.65573770491803,
+        "minMs": 16,
+        "p50Ms": 17,
+        "p95Ms": 17,
+        "p99Ms": 18,
+        "maxMs": 18
+      },
+      "actualDrawCalls": 62,
+      "wheelToRenderMs": {
+        "count": 30,
+        "meanMs": 9.566666666666425,
+        "minMs": 7.999999999992724,
+        "p50Ms": 9,
+        "p95Ms": 11,
+        "p99Ms": 18,
+        "maxMs": 18
+      },
+      "wheelToPresentationOpportunityMs": {
+        "count": 30,
+        "meanMs": 25.3,
+        "minMs": 24,
+        "p50Ms": 25,
+        "p95Ms": 26.000000000007276,
+        "p99Ms": 33,
+        "maxMs": 33
+      },
+      "reportsReceived": 337,
+      "displacement": -337,
+      "expectedReports": 337,
+      "output": [
+        {
+          "receivedBytes": 3361105,
+          "parsedBytes": 3361105,
+          "pendingBytes": 0,
+          "peakPendingBytes": 20484,
+          "largestChunkBytes": 1024
+        }
+      ],
+      "streamingMiBPerSecond": 3.017757570720503
+    },
+    {
+      "mode": "enhanced",
+      "fixture": "static",
+      "panes": 4,
+      "run": 1,
+      "environment": {
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)",
+        "dpr": 2,
+        "visibility": "visible",
+        "cols": 71,
+        "rows": 25,
+        "font": "\"SF Mono\", \"SFMono-Regular\", Menlo, monospace",
+        "renderers": [
+          "active",
+          "active",
+          "active",
+          "active"
+        ]
+      },
+      "durationMs": 1033,
+      "rafCadenceMs": {
+        "count": 61,
+        "meanMs": 16.672131147540984,
+        "minMs": 10,
+        "p50Ms": 17,
+        "p95Ms": 19,
+        "p99Ms": 27,
+        "maxMs": 27
+      },
+      "actualDrawCalls": 77,
+      "wheelToRenderMs": {
+        "count": 30,
+        "meanMs": 9.099999999999516,
+        "minMs": 5,
+        "p50Ms": 9,
+        "p95Ms": 16,
+        "p99Ms": 21,
+        "maxMs": 21
+      },
+      "wheelToPresentationOpportunityMs": {
+        "count": 30,
+        "meanMs": 24.799999999999272,
+        "minMs": 20,
+        "p50Ms": 24.000000000007276,
+        "p95Ms": 29,
+        "p99Ms": 33,
+        "maxMs": 33
+      },
+      "reportsReceived": 0,
+      "displacement": 0,
+      "expectedReports": null,
+      "output": [
+        {
+          "receivedBytes": 430012,
+          "parsedBytes": 430012,
+          "pendingBytes": 0,
+          "peakPendingBytes": 262144,
+          "largestChunkBytes": 1026
+        },
+        {
+          "receivedBytes": 430012,
+          "parsedBytes": 430012,
+          "pendingBytes": 0,
+          "peakPendingBytes": 262144,
+          "largestChunkBytes": 1026
+        },
+        {
+          "receivedBytes": 430012,
+          "parsedBytes": 430012,
+          "pendingBytes": 0,
+          "peakPendingBytes": 262144,
+          "largestChunkBytes": 1026
+        },
+        {
+          "receivedBytes": 430012,
+          "parsedBytes": 430012,
+          "pendingBytes": 0,
+          "peakPendingBytes": 262144,
+          "largestChunkBytes": 1026
+        }
+      ],
+      "streamingMiBPerSecond": 0
+    },
+    {
+      "mode": "enhanced",
+      "fixture": "static",
+      "panes": 4,
+      "run": 2,
+      "environment": {
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)",
+        "dpr": 2,
+        "visibility": "visible",
+        "cols": 71,
+        "rows": 25,
+        "font": "\"SF Mono\", \"SFMono-Regular\", Menlo, monospace",
+        "renderers": [
+          "active",
+          "active",
+          "active",
+          "active"
+        ]
+      },
+      "durationMs": 1034,
+      "rafCadenceMs": {
+        "count": 61,
+        "meanMs": 16.672131147540984,
+        "minMs": 13,
+        "p50Ms": 17,
+        "p95Ms": 19,
+        "p99Ms": 21,
+        "maxMs": 21
+      },
+      "actualDrawCalls": 80,
+      "wheelToRenderMs": {
+        "count": 30,
+        "meanMs": 9.899999999999755,
+        "minMs": 6,
+        "p50Ms": 9.999999999992724,
+        "p95Ms": 13,
+        "p99Ms": 17,
+        "maxMs": 17
+      },
+      "wheelToPresentationOpportunityMs": {
+        "count": 30,
+        "meanMs": 25.066666666666663,
+        "minMs": 21,
+        "p50Ms": 25,
+        "p95Ms": 30,
+        "p99Ms": 34,
+        "maxMs": 34
+      },
+      "reportsReceived": 0,
+      "displacement": 0,
+      "expectedReports": null,
+      "output": [
+        {
+          "receivedBytes": 430012,
+          "parsedBytes": 430012,
+          "pendingBytes": 0,
+          "peakPendingBytes": 262144,
+          "largestChunkBytes": 1026
+        },
+        {
+          "receivedBytes": 430012,
+          "parsedBytes": 430012,
+          "pendingBytes": 0,
+          "peakPendingBytes": 262144,
+          "largestChunkBytes": 1026
+        },
+        {
+          "receivedBytes": 430012,
+          "parsedBytes": 430012,
+          "pendingBytes": 0,
+          "peakPendingBytes": 262144,
+          "largestChunkBytes": 1026
+        },
+        {
+          "receivedBytes": 430012,
+          "parsedBytes": 430012,
+          "pendingBytes": 0,
+          "peakPendingBytes": 262144,
+          "largestChunkBytes": 1026
+        }
+      ],
+      "streamingMiBPerSecond": 0
+    },
+    {
+      "mode": "enhanced",
+      "fixture": "static",
+      "panes": 4,
+      "run": 3,
+      "environment": {
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)",
+        "dpr": 2,
+        "visibility": "visible",
+        "cols": 71,
+        "rows": 25,
+        "font": "\"SF Mono\", \"SFMono-Regular\", Menlo, monospace",
+        "renderers": [
+          "active",
+          "active",
+          "active",
+          "active"
+        ]
+      },
+      "durationMs": 1033,
+      "rafCadenceMs": {
+        "count": 61,
+        "meanMs": 16.672131147540984,
+        "minMs": 13,
+        "p50Ms": 17,
+        "p95Ms": 18,
+        "p99Ms": 19,
+        "maxMs": 19
+      },
+      "actualDrawCalls": 77,
+      "wheelToRenderMs": {
+        "count": 30,
+        "meanMs": 9.533333333333092,
+        "minMs": 6,
+        "p50Ms": 9,
+        "p95Ms": 14.000000000007276,
+        "p99Ms": 17,
+        "maxMs": 17
+      },
+      "wheelToPresentationOpportunityMs": {
+        "count": 30,
+        "meanMs": 25.00000000000024,
+        "minMs": 20.999999999992724,
+        "p50Ms": 24.999999999992724,
+        "p95Ms": 29,
+        "p99Ms": 33,
+        "maxMs": 33
+      },
+      "reportsReceived": 0,
+      "displacement": 0,
+      "expectedReports": null,
+      "output": [
+        {
+          "receivedBytes": 430012,
+          "parsedBytes": 430012,
+          "pendingBytes": 0,
+          "peakPendingBytes": 262144,
+          "largestChunkBytes": 1026
+        },
+        {
+          "receivedBytes": 430012,
+          "parsedBytes": 430012,
+          "pendingBytes": 0,
+          "peakPendingBytes": 262144,
+          "largestChunkBytes": 1026
+        },
+        {
+          "receivedBytes": 430012,
+          "parsedBytes": 430012,
+          "pendingBytes": 0,
+          "peakPendingBytes": 262144,
+          "largestChunkBytes": 1026
+        },
+        {
+          "receivedBytes": 430012,
+          "parsedBytes": 430012,
+          "pendingBytes": 0,
+          "peakPendingBytes": 262144,
+          "largestChunkBytes": 1026
+        }
+      ],
+      "streamingMiBPerSecond": 0
+    },
+    {
+      "mode": "enhanced",
+      "fixture": "stream",
+      "panes": 4,
+      "run": 1,
+      "environment": {
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)",
+        "dpr": 2,
+        "visibility": "visible",
+        "cols": 71,
+        "rows": 25,
+        "font": "\"SF Mono\", \"SFMono-Regular\", Menlo, monospace",
+        "renderers": [
+          "active",
+          "active",
+          "active",
+          "active"
+        ]
+      },
+      "durationMs": 1017,
+      "rafCadenceMs": {
+        "count": 61,
+        "meanMs": 16.508196721311474,
+        "minMs": 10,
+        "p50Ms": 17,
+        "p95Ms": 18,
+        "p99Ms": 24,
+        "maxMs": 24
+      },
+      "actualDrawCalls": 248,
+      "wheelToRenderMs": {
+        "count": 30,
+        "meanMs": 8.333333333333819,
+        "minMs": 2,
+        "p50Ms": 9,
+        "p95Ms": 10.000000000007276,
+        "p99Ms": 10.000000000007276,
+        "maxMs": 10.000000000007276
+      },
+      "wheelToPresentationOpportunityMs": {
+        "count": 30,
+        "meanMs": 24.633333333333333,
+        "minMs": 19,
+        "p50Ms": 25,
+        "p95Ms": 26.000000000007276,
+        "p99Ms": 33,
+        "maxMs": 33
+      },
+      "reportsReceived": 0,
+      "displacement": 0,
+      "expectedReports": null,
+      "output": [
+        {
+          "receivedBytes": 4055680,
+          "parsedBytes": 4055680,
+          "pendingBytes": 0,
+          "peakPendingBytes": 262144,
+          "largestChunkBytes": 1026
+        },
+        {
+          "receivedBytes": 4045438,
+          "parsedBytes": 4045438,
+          "pendingBytes": 0,
+          "peakPendingBytes": 262144,
+          "largestChunkBytes": 1026
+        },
+        {
+          "receivedBytes": 3932776,
+          "parsedBytes": 3932776,
+          "pendingBytes": 0,
+          "peakPendingBytes": 262144,
+          "largestChunkBytes": 1026
+        },
+        {
+          "receivedBytes": 3983986,
+          "parsedBytes": 3983986,
+          "pendingBytes": 0,
+          "peakPendingBytes": 262144,
+          "largestChunkBytes": 1026
+        }
+      ],
+      "streamingMiBPerSecond": 12.16571849121574
+    },
+    {
+      "mode": "enhanced",
+      "fixture": "stream",
+      "panes": 4,
+      "run": 2,
+      "environment": {
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)",
+        "dpr": 2,
+        "visibility": "visible",
+        "cols": 71,
+        "rows": 25,
+        "font": "\"SF Mono\", \"SFMono-Regular\", Menlo, monospace",
+        "renderers": [
+          "active",
+          "active",
+          "active",
+          "active"
+        ]
+      },
+      "durationMs": 1014,
+      "rafCadenceMs": {
+        "count": 61,
+        "meanMs": 16.42622950819672,
+        "minMs": 10,
+        "p50Ms": 17,
+        "p95Ms": 18,
+        "p99Ms": 21,
+        "maxMs": 21
+      },
+      "actualDrawCalls": 248,
+      "wheelToRenderMs": {
+        "count": 30,
+        "meanMs": 8.500000000000728,
+        "minMs": 2,
+        "p50Ms": 9,
+        "p95Ms": 10.000000000007276,
+        "p99Ms": 12,
+        "maxMs": 12
+      },
+      "wheelToPresentationOpportunityMs": {
+        "count": 30,
+        "meanMs": 24.599999999999756,
+        "minMs": 18,
+        "p50Ms": 25,
+        "p95Ms": 27.000000000007276,
+        "p99Ms": 28,
+        "maxMs": 28
+      },
+      "reportsReceived": 0,
+      "displacement": 0,
+      "expectedReports": null,
+      "output": [
+        {
+          "receivedBytes": 4004470,
+          "parsedBytes": 4004470,
+          "pendingBytes": 0,
+          "peakPendingBytes": 262144,
+          "largestChunkBytes": 1026
+        },
+        {
+          "receivedBytes": 3994228,
+          "parsedBytes": 3994228,
+          "pendingBytes": 0,
+          "peakPendingBytes": 262144,
+          "largestChunkBytes": 1026
+        },
+        {
+          "receivedBytes": 3983986,
+          "parsedBytes": 3983986,
+          "pendingBytes": 0,
+          "peakPendingBytes": 262144,
+          "largestChunkBytes": 1026
+        },
+        {
+          "receivedBytes": 3912292,
+          "parsedBytes": 3912292,
+          "pendingBytes": 0,
+          "peakPendingBytes": 262144,
+          "largestChunkBytes": 1026
+        }
+      ],
+      "streamingMiBPerSecond": 12.117905024240708
+    },
+    {
+      "mode": "enhanced",
+      "fixture": "stream",
+      "panes": 4,
+      "run": 3,
+      "environment": {
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)",
+        "dpr": 2,
+        "visibility": "visible",
+        "cols": 71,
+        "rows": 25,
+        "font": "\"SF Mono\", \"SFMono-Regular\", Menlo, monospace",
+        "renderers": [
+          "active",
+          "active",
+          "active",
+          "active"
+        ]
+      },
+      "durationMs": 1019,
+      "rafCadenceMs": {
+        "count": 61,
+        "meanMs": 16.508196721311474,
+        "minMs": 10,
+        "p50Ms": 17,
+        "p95Ms": 18,
+        "p99Ms": 25,
+        "maxMs": 25
+      },
+      "actualDrawCalls": 248,
+      "wheelToRenderMs": {
+        "count": 30,
+        "meanMs": 8.466666666666667,
+        "minMs": 0.999999999992724,
+        "p50Ms": 9,
+        "p95Ms": 10,
+        "p99Ms": 12,
+        "maxMs": 12
+      },
+      "wheelToPresentationOpportunityMs": {
+        "count": 30,
+        "meanMs": 24.800000000000484,
+        "minMs": 15.999999999992724,
+        "p50Ms": 25,
+        "p95Ms": 27,
+        "p99Ms": 34,
+        "maxMs": 34
+      },
+      "reportsReceived": 0,
+      "displacement": 0,
+      "expectedReports": null,
+      "output": [
+        {
+          "receivedBytes": 4024954,
+          "parsedBytes": 4024954,
+          "pendingBytes": 0,
+          "peakPendingBytes": 262144,
+          "largestChunkBytes": 1026
+        },
+        {
+          "receivedBytes": 4032122,
+          "parsedBytes": 4032122,
+          "pendingBytes": 0,
+          "peakPendingBytes": 262144,
+          "largestChunkBytes": 1026
+        },
+        {
+          "receivedBytes": 3953260,
+          "parsedBytes": 3953260,
+          "pendingBytes": 0,
+          "peakPendingBytes": 262144,
+          "largestChunkBytes": 1026
+        },
+        {
+          "receivedBytes": 3953260,
+          "parsedBytes": 3953260,
+          "pendingBytes": 0,
+          "peakPendingBytes": 262144,
+          "largestChunkBytes": 1027
+        }
+      ],
+      "streamingMiBPerSecond": 12.153342848788068
+    },
+    {
+      "mode": "enhanced",
+      "fixture": "tui",
+      "panes": 4,
+      "run": 1,
+      "environment": {
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)",
+        "dpr": 2,
+        "visibility": "visible",
+        "cols": 71,
+        "rows": 25,
+        "font": "\"SF Mono\", \"SFMono-Regular\", Menlo, monospace",
+        "renderers": [
+          "active",
+          "active",
+          "active",
+          "active"
+        ]
+      },
+      "durationMs": 1068.9999999999927,
+      "rafCadenceMs": {
+        "count": 63,
+        "meanMs": 16.682539682539684,
+        "minMs": 12,
+        "p50Ms": 17,
+        "p95Ms": 18,
+        "p99Ms": 22,
+        "maxMs": 22
+      },
+      "actualDrawCalls": 30,
+      "wheelToRenderMs": {
+        "count": 30,
+        "meanMs": 9.366666666666424,
+        "minMs": 4.999999999992724,
+        "p50Ms": 8,
+        "p95Ms": 16.999999999992724,
+        "p99Ms": 30.000000000007276,
+        "maxMs": 30.000000000007276
+      },
+      "wheelToPresentationOpportunityMs": {
+        "count": 30,
+        "meanMs": 25.866666666665697,
+        "minMs": 20.999999999992724,
+        "p50Ms": 25,
+        "p95Ms": 32.999999999992724,
+        "p99Ms": 41,
+        "maxMs": 41
+      },
+      "reportsReceived": 337,
+      "displacement": -337,
+      "expectedReports": 337,
+      "output": [
+        {
+          "receivedBytes": 1729,
+          "parsedBytes": 1729,
+          "pendingBytes": 0,
+          "peakPendingBytes": 65,
+          "largestChunkBytes": 65
+        },
+        {
+          "receivedBytes": 65,
+          "parsedBytes": 65,
+          "pendingBytes": 0,
+          "peakPendingBytes": 65,
+          "largestChunkBytes": 65
+        },
+        {
+          "receivedBytes": 65,
+          "parsedBytes": 65,
+          "pendingBytes": 0,
+          "peakPendingBytes": 65,
+          "largestChunkBytes": 65
+        },
+        {
+          "receivedBytes": 65,
+          "parsedBytes": 65,
+          "pendingBytes": 0,
+          "peakPendingBytes": 65,
+          "largestChunkBytes": 65
+        }
+      ],
+      "streamingMiBPerSecond": 0.001484484623479898
+    },
+    {
+      "mode": "enhanced",
+      "fixture": "tui",
+      "panes": 4,
+      "run": 2,
+      "environment": {
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)",
+        "dpr": 2,
+        "visibility": "visible",
+        "cols": 71,
+        "rows": 25,
+        "font": "\"SF Mono\", \"SFMono-Regular\", Menlo, monospace",
+        "renderers": [
+          "active",
+          "active",
+          "active",
+          "active"
+        ]
+      },
+      "durationMs": 1053,
+      "rafCadenceMs": {
+        "count": 62,
+        "meanMs": 16.70967741935484,
+        "minMs": 12,
+        "p50Ms": 17,
+        "p95Ms": 20,
+        "p99Ms": 21,
+        "maxMs": 21
+      },
+      "actualDrawCalls": 30,
+      "wheelToRenderMs": {
+        "count": 30,
+        "meanMs": 8.333333333333576,
+        "minMs": 4,
+        "p50Ms": 8,
+        "p95Ms": 17,
+        "p99Ms": 21,
+        "maxMs": 21
+      },
+      "wheelToPresentationOpportunityMs": {
+        "count": 30,
+        "meanMs": 25.33333333333382,
+        "minMs": 22,
+        "p50Ms": 25,
+        "p95Ms": 34.000000000007276,
+        "p99Ms": 37,
+        "maxMs": 37
+      },
+      "reportsReceived": 337,
+      "displacement": -337,
+      "expectedReports": 337,
+      "output": [
+        {
+          "receivedBytes": 1729,
+          "parsedBytes": 1729,
+          "pendingBytes": 0,
+          "peakPendingBytes": 65,
+          "largestChunkBytes": 65
+        },
+        {
+          "receivedBytes": 65,
+          "parsedBytes": 65,
+          "pendingBytes": 0,
+          "peakPendingBytes": 65,
+          "largestChunkBytes": 53
+        },
+        {
+          "receivedBytes": 65,
+          "parsedBytes": 65,
+          "pendingBytes": 0,
+          "peakPendingBytes": 65,
+          "largestChunkBytes": 53
+        },
+        {
+          "receivedBytes": 65,
+          "parsedBytes": 65,
+          "pendingBytes": 0,
+          "peakPendingBytes": 65,
+          "largestChunkBytes": 65
+        }
+      ],
+      "streamingMiBPerSecond": 0.0015070408950617286
+    },
+    {
+      "mode": "enhanced",
+      "fixture": "tui",
+      "panes": 4,
+      "run": 3,
+      "environment": {
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)",
+        "dpr": 2,
+        "visibility": "visible",
+        "cols": 71,
+        "rows": 25,
+        "font": "\"SF Mono\", \"SFMono-Regular\", Menlo, monospace",
+        "renderers": [
+          "active",
+          "active",
+          "active",
+          "active"
+        ]
+      },
+      "durationMs": 1066,
+      "rafCadenceMs": {
+        "count": 63,
+        "meanMs": 16.666666666666668,
+        "minMs": 12,
+        "p50Ms": 17,
+        "p95Ms": 20,
+        "p99Ms": 21,
+        "maxMs": 21
+      },
+      "actualDrawCalls": 30,
+      "wheelToRenderMs": {
+        "count": 30,
+        "meanMs": 8.933333333333575,
+        "minMs": 4,
+        "p50Ms": 8,
+        "p95Ms": 21.000000000007276,
+        "p99Ms": 23,
+        "maxMs": 23
+      },
+      "wheelToPresentationOpportunityMs": {
+        "count": 30,
+        "meanMs": 25.86666666666691,
+        "minMs": 21,
+        "p50Ms": 25,
+        "p95Ms": 37,
+        "p99Ms": 42,
+        "maxMs": 42
+      },
+      "reportsReceived": 337,
+      "displacement": -337,
+      "expectedReports": 337,
+      "output": [
+        {
+          "receivedBytes": 1729,
+          "parsedBytes": 1729,
+          "pendingBytes": 0,
+          "peakPendingBytes": 65,
+          "largestChunkBytes": 56
+        },
+        {
+          "receivedBytes": 65,
+          "parsedBytes": 65,
+          "pendingBytes": 0,
+          "peakPendingBytes": 65,
+          "largestChunkBytes": 53
+        },
+        {
+          "receivedBytes": 65,
+          "parsedBytes": 65,
+          "pendingBytes": 0,
+          "peakPendingBytes": 65,
+          "largestChunkBytes": 65
+        },
+        {
+          "receivedBytes": 65,
+          "parsedBytes": 65,
+          "pendingBytes": 0,
+          "peakPendingBytes": 65,
+          "largestChunkBytes": 53
+        }
+      ],
+      "streamingMiBPerSecond": 0.0014886623475609756
+    },
+    {
+      "mode": "enhanced",
+      "fixture": "tui-stream",
+      "panes": 4,
+      "run": 1,
+      "environment": {
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)",
+        "dpr": 2,
+        "visibility": "visible",
+        "cols": 71,
+        "rows": 25,
+        "font": "\"SF Mono\", \"SFMono-Regular\", Menlo, monospace",
+        "renderers": [
+          "active",
+          "active",
+          "active",
+          "active"
+        ]
+      },
+      "durationMs": 1027,
+      "rafCadenceMs": {
+        "count": 61,
+        "meanMs": 16.59016393442623,
+        "minMs": 13,
+        "p50Ms": 17,
+        "p95Ms": 18,
+        "p99Ms": 18,
+        "maxMs": 18
+      },
+      "actualDrawCalls": 250,
+      "wheelToRenderMs": {
+        "count": 30,
+        "meanMs": 9.599999999999516,
+        "minMs": 8,
+        "p50Ms": 9,
+        "p95Ms": 11,
+        "p99Ms": 14,
+        "maxMs": 14
+      },
+      "wheelToPresentationOpportunityMs": {
+        "count": 30,
+        "meanMs": 25.166666666666423,
+        "minMs": 22,
+        "p50Ms": 25.999999999992724,
+        "p95Ms": 26.000000000007276,
+        "p99Ms": 26.000000000007276,
+        "maxMs": 26.000000000007276
+      },
+      "reportsReceived": 337,
+      "displacement": -337,
+      "expectedReports": 337,
+      "output": [
+        {
+          "receivedBytes": 3565945,
+          "parsedBytes": 3565945,
+          "pendingBytes": 0,
+          "peakPendingBytes": 102485,
+          "largestChunkBytes": 1024
+        },
+        {
+          "receivedBytes": 3502829,
+          "parsedBytes": 3502829,
+          "pendingBytes": 0,
+          "peakPendingBytes": 133211,
+          "largestChunkBytes": 1024
+        },
+        {
+          "receivedBytes": 3439327,
+          "parsedBytes": 3439327,
+          "pendingBytes": 0,
+          "peakPendingBytes": 82001,
+          "largestChunkBytes": 1024
+        },
+        {
+          "receivedBytes": 3410651,
+          "parsedBytes": 3410651,
+          "pendingBytes": 0,
+          "peakPendingBytes": 118871,
+          "largestChunkBytes": 1024
+        }
+      ],
+      "streamingMiBPerSecond": 12.049752061764014
+    },
+    {
+      "mode": "enhanced",
+      "fixture": "tui-stream",
+      "panes": 4,
+      "run": 2,
+      "environment": {
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)",
+        "dpr": 2,
+        "visibility": "visible",
+        "cols": 71,
+        "rows": 25,
+        "font": "\"SF Mono\", \"SFMono-Regular\", Menlo, monospace",
+        "renderers": [
+          "active",
+          "active",
+          "active",
+          "active"
+        ]
+      },
+      "durationMs": 1038.9999999999927,
+      "rafCadenceMs": {
+        "count": 62,
+        "meanMs": 16.580645161290324,
+        "minMs": 10,
+        "p50Ms": 17,
+        "p95Ms": 18,
+        "p99Ms": 21,
+        "maxMs": 21
+      },
+      "actualDrawCalls": 254,
+      "wheelToRenderMs": {
+        "count": 30,
+        "meanMs": 9.866666666666182,
+        "minMs": 6,
+        "p50Ms": 10,
+        "p95Ms": 12,
+        "p99Ms": 22.999999999992724,
+        "maxMs": 22.999999999992724
+      },
+      "wheelToPresentationOpportunityMs": {
+        "count": 30,
+        "meanMs": 25.066666666666908,
+        "minMs": 20,
+        "p50Ms": 25,
+        "p95Ms": 27,
+        "p99Ms": 39.99999999999272,
+        "maxMs": 39.99999999999272
+      },
+      "reportsReceived": 337,
+      "displacement": -337,
+      "expectedReports": 337,
+      "output": [
+        {
+          "receivedBytes": 3658123,
+          "parsedBytes": 3658123,
+          "pendingBytes": 0,
+          "peakPendingBytes": 117847,
+          "largestChunkBytes": 1024
+        },
+        {
+          "receivedBytes": 3603199,
+          "parsedBytes": 3603199,
+          "pendingBytes": 0,
+          "peakPendingBytes": 143453,
+          "largestChunkBytes": 1024
+        },
+        {
+          "receivedBytes": 3563255,
+          "parsedBytes": 3563255,
+          "pendingBytes": 0,
+          "peakPendingBytes": 102485,
+          "largestChunkBytes": 1024
+        },
+        {
+          "receivedBytes": 3482345,
+          "parsedBytes": 3482345,
+          "pendingBytes": 0,
+          "peakPendingBytes": 122969,
+          "largestChunkBytes": 1024
+        }
+      ],
+      "streamingMiBPerSecond": 12.182266925595233
+    },
+    {
+      "mode": "enhanced",
+      "fixture": "tui-stream",
+      "panes": 4,
+      "run": 3,
+      "environment": {
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)",
+        "dpr": 2,
+        "visibility": "visible",
+        "cols": 71,
+        "rows": 25,
+        "font": "\"SF Mono\", \"SFMono-Regular\", Menlo, monospace",
+        "renderers": [
+          "active",
+          "active",
+          "active",
+          "active"
+        ]
+      },
+      "durationMs": 1070,
+      "rafCadenceMs": {
+        "count": 64,
+        "meanMs": 16.546875,
+        "minMs": 8,
+        "p50Ms": 17,
+        "p95Ms": 17,
+        "p99Ms": 32,
+        "maxMs": 32
+      },
+      "actualDrawCalls": 262,
+      "wheelToRenderMs": {
+        "count": 30,
+        "meanMs": 10.099999999999516,
+        "minMs": 7.000000000007276,
+        "p50Ms": 9,
+        "p95Ms": 18,
+        "p99Ms": 23.999999999992724,
+        "maxMs": 23.999999999992724
+      },
+      "wheelToPresentationOpportunityMs": {
+        "count": 30,
+        "meanMs": 26.233333333333576,
+        "minMs": 23,
+        "p50Ms": 25.999999999992724,
+        "p95Ms": 35.999999999992724,
+        "p99Ms": 40,
+        "maxMs": 40
+      },
+      "reportsReceived": 337,
+      "displacement": -337,
+      "expectedReports": 337,
+      "output": [
+        {
+          "receivedBytes": 3699091,
+          "parsedBytes": 3699091,
+          "pendingBytes": 0,
+          "peakPendingBytes": 82001,
+          "largestChunkBytes": 1024
+        },
+        {
+          "receivedBytes": 3656459,
+          "parsedBytes": 3656459,
+          "pendingBytes": 0,
+          "peakPendingBytes": 71694,
+          "largestChunkBytes": 1024
+        },
+        {
+          "receivedBytes": 3615491,
+          "parsedBytes": 3615491,
+          "pendingBytes": 0,
+          "peakPendingBytes": 82001,
+          "largestChunkBytes": 1024
+        },
+        {
+          "receivedBytes": 3564281,
+          "parsedBytes": 3564281,
+          "pendingBytes": 0,
+          "peakPendingBytes": 66574,
+          "largestChunkBytes": 1024
+        }
+      ],
+      "streamingMiBPerSecond": 12.194467704986856
+    }
+  ],
+  "nativeWindow": {
+    "visible": true,
+    "focused": true,
+    "minimized": false
+  }
+}

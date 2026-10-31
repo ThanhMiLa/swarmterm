@@ -2,6 +2,14 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
+    #[cfg(debug_assertions)]
+    {
+        let args: Vec<String> = std::env::args().collect();
+        if let Some(index) = args.iter().position(|a| a == "--terminal-fixture") {
+            swarmterm_lib::terminal_benchmark::fixture(args.get(index + 1).map(String::as_str).unwrap_or("static"));
+            return;
+        }
+    }
     // `swarmterm --statusline` is Claude Code's status line command: read its
     // JSON from stdin, print one line, exit. Handled here, before `run()`, so
     // the Tauri builder / single-instance plugin / tray / AppKit are never

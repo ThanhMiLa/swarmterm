@@ -1,0 +1,1101 @@
+{
+  "schemaVersion": 1,
+  "measuredAt": "2026-10-31T16:48:32.138Z",
+  "runtime": "Tauri WKWebView; real production registry, PTY and renderer",
+  "comparison": "Same-build compatibility vs enhanced; not an unmodified pre-change baseline",
+  "note": "Presentation opportunity is the next rAF after actual xterm render; physical scanout is not measured.",
+  "results": [
+    {
+      "mode": "compatibility",
+      "fixture": "static",
+      "panes": 1,
+      "run": 1,
+      "environment": {
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)",
+        "dpr": 2,
+        "visibility": "visible",
+        "cols": 145,
+        "rows": 50,
+        "font": "\"SF Mono\", \"SFMono-Regular\", Menlo, monospace",
+        "renderers": [
+          "active"
+        ]
+      },
+      "durationMs": 587,
+      "rafCadenceMs": {
+        "count": 70,
+        "meanMs": 8.342857142857143,
+        "minMs": 7,
+        "p50Ms": 8,
+        "p95Ms": 10,
+        "p99Ms": 10,
+        "maxMs": 10
+      },
+      "actualDrawCalls": 30,
+      "wheelToRenderMs": {
+        "count": 30,
+        "meanMs": 4.2,
+        "minMs": 1,
+        "p50Ms": 2,
+        "p95Ms": 10,
+        "p99Ms": 10,
+        "maxMs": 10
+      },
+      "wheelToPresentationOpportunityMs": {
+        "count": 30,
+        "meanMs": 10.833333333333329,
+        "minMs": 7,
+        "p50Ms": 9,
+        "p95Ms": 17.000000000000057,
+        "p99Ms": 18,
+        "maxMs": 18
+      },
+      "wheelDispatchMs": {
+        "count": 30,
+        "meanMs": 0.23333333333333336,
+        "minMs": 0,
+        "p50Ms": 0,
+        "p95Ms": 1,
+        "p99Ms": 1,
+        "maxMs": 1
+      },
+      "wheelToTuiParsedMs": {
+        "count": 0,
+        "meanMs": 0,
+        "minMs": 0,
+        "p50Ms": 0,
+        "p95Ms": 0,
+        "p99Ms": 0,
+        "maxMs": 0
+      },
+      "tuiParsedToRenderMs": {
+        "count": 0,
+        "meanMs": 0,
+        "minMs": 0,
+        "p50Ms": 0,
+        "p95Ms": 0,
+        "p99Ms": 0,
+        "maxMs": 0
+      },
+      "trace": [
+        {
+          "framePhaseMs": null,
+          "renderMs": 6,
+          "parsedMs": null,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 1,
+          "renderMs": 9.000000000000057,
+          "parsedMs": null,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 9,
+          "renderMs": 1,
+          "parsedMs": null,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 9,
+          "renderMs": 1,
+          "parsedMs": null,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 0,
+          "renderMs": 10,
+          "parsedMs": null,
+          "dispatchMs": 1
+        },
+        {
+          "framePhaseMs": 7.999999999999943,
+          "renderMs": 2,
+          "parsedMs": null,
+          "dispatchMs": 1
+        },
+        {
+          "framePhaseMs": 1,
+          "renderMs": 10,
+          "parsedMs": null,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 8,
+          "renderMs": 2,
+          "parsedMs": null,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 0,
+          "renderMs": 9.999999999999943,
+          "parsedMs": null,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 9,
+          "renderMs": 2,
+          "parsedMs": null,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 9,
+          "renderMs": 1,
+          "parsedMs": null,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 9,
+          "renderMs": 1,
+          "parsedMs": null,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 8,
+          "renderMs": 2,
+          "parsedMs": null,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 9.000000000000114,
+          "renderMs": 2,
+          "parsedMs": null,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 8,
+          "renderMs": 2,
+          "parsedMs": null,
+          "dispatchMs": 1
+        },
+        {
+          "framePhaseMs": 9,
+          "renderMs": 1,
+          "parsedMs": null,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 8,
+          "renderMs": 2,
+          "parsedMs": null,
+          "dispatchMs": 1
+        },
+        {
+          "framePhaseMs": 9,
+          "renderMs": 2,
+          "parsedMs": null,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 9,
+          "renderMs": 1,
+          "parsedMs": null,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 0,
+          "renderMs": 9,
+          "parsedMs": null,
+          "dispatchMs": 1
+        },
+        {
+          "framePhaseMs": 9.000000000000114,
+          "renderMs": 2,
+          "parsedMs": null,
+          "dispatchMs": 1
+        },
+        {
+          "framePhaseMs": 8,
+          "renderMs": 2,
+          "parsedMs": null,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 1,
+          "renderMs": 9,
+          "parsedMs": null,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 1,
+          "renderMs": 10,
+          "parsedMs": null,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 1,
+          "renderMs": 10,
+          "parsedMs": null,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 8,
+          "renderMs": 2,
+          "parsedMs": null,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 8.000000000000114,
+          "renderMs": 2,
+          "parsedMs": null,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 8.999999999999886,
+          "renderMs": 1,
+          "parsedMs": null,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 0,
+          "renderMs": 10,
+          "parsedMs": null,
+          "dispatchMs": 1
+        },
+        {
+          "framePhaseMs": 8,
+          "renderMs": 2,
+          "parsedMs": null,
+          "dispatchMs": 0
+        }
+      ],
+      "reportsReceived": 0,
+      "displacement": 0,
+      "expectedReports": null,
+      "output": [
+        {
+          "receivedMessages": 92,
+          "receivedBytes": 430012,
+          "parsedBytes": 430012,
+          "pendingBytes": 0,
+          "peakPendingBytes": 262144,
+          "largestChunkBytes": 8192
+        }
+      ],
+      "streamingMiBPerSecond": 0,
+      "ipcMessagesPerMiB": null
+    },
+    {
+      "mode": "compatibility",
+      "fixture": "tui",
+      "panes": 1,
+      "run": 1,
+      "environment": {
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)",
+        "dpr": 2,
+        "visibility": "visible",
+        "cols": 145,
+        "rows": 50,
+        "font": "\"SF Mono\", \"SFMono-Regular\", Menlo, monospace",
+        "renderers": [
+          "active"
+        ]
+      },
+      "durationMs": 759.0000000000002,
+      "rafCadenceMs": {
+        "count": 91,
+        "meanMs": 8.31868131868132,
+        "minMs": 6,
+        "p50Ms": 8,
+        "p95Ms": 10,
+        "p99Ms": 10,
+        "maxMs": 10
+      },
+      "actualDrawCalls": 30,
+      "wheelToRenderMs": {
+        "count": 30,
+        "meanMs": 9.500000000000025,
+        "minMs": 8,
+        "p50Ms": 10,
+        "p95Ms": 10.000000000000227,
+        "p99Ms": 11,
+        "maxMs": 11
+      },
+      "wheelToPresentationOpportunityMs": {
+        "count": 30,
+        "meanMs": 16.666666666666675,
+        "minMs": 15,
+        "p50Ms": 17,
+        "p95Ms": 19,
+        "p99Ms": 19,
+        "maxMs": 19
+      },
+      "wheelDispatchMs": {
+        "count": 30,
+        "meanMs": 0.7000000000000342,
+        "minMs": 0,
+        "p50Ms": 1,
+        "p95Ms": 1.0000000000002274,
+        "p99Ms": 1.0000000000002274,
+        "maxMs": 1.0000000000002274
+      },
+      "wheelToTuiParsedMs": {
+        "count": 30,
+        "meanMs": 1.6333333333333295,
+        "minMs": 0.9999999999997726,
+        "p50Ms": 2,
+        "p95Ms": 3,
+        "p99Ms": 3.0000000000001137,
+        "maxMs": 3.0000000000001137
+      },
+      "tuiParsedToRenderMs": {
+        "count": 30,
+        "meanMs": 7.866666666666693,
+        "minMs": 6,
+        "p50Ms": 8,
+        "p95Ms": 9,
+        "p99Ms": 9.000000000000227,
+        "maxMs": 9.000000000000227
+      },
+      "trace": [
+        {
+          "framePhaseMs": null,
+          "renderMs": 10,
+          "parsedMs": 3.0000000000001137,
+          "dispatchMs": 1.0000000000001137
+        },
+        {
+          "framePhaseMs": 8,
+          "renderMs": 11,
+          "parsedMs": 2,
+          "dispatchMs": 1
+        },
+        {
+          "framePhaseMs": 1,
+          "renderMs": 9,
+          "parsedMs": 2,
+          "dispatchMs": 1
+        },
+        {
+          "framePhaseMs": 0,
+          "renderMs": 10,
+          "parsedMs": 1,
+          "dispatchMs": 1
+        },
+        {
+          "framePhaseMs": 8,
+          "renderMs": 10,
+          "parsedMs": 1,
+          "dispatchMs": 1
+        },
+        {
+          "framePhaseMs": 0,
+          "renderMs": 10,
+          "parsedMs": 2,
+          "dispatchMs": 1.0000000000002274
+        },
+        {
+          "framePhaseMs": 9,
+          "renderMs": 8,
+          "parsedMs": 1,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 8,
+          "renderMs": 10,
+          "parsedMs": 2,
+          "dispatchMs": 1
+        },
+        {
+          "framePhaseMs": 1,
+          "renderMs": 9,
+          "parsedMs": 1,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 0,
+          "renderMs": 9,
+          "parsedMs": 1,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 0,
+          "renderMs": 9.000000000000227,
+          "parsedMs": 2,
+          "dispatchMs": 1.0000000000002274
+        },
+        {
+          "framePhaseMs": 8,
+          "renderMs": 10,
+          "parsedMs": 2,
+          "dispatchMs": 1
+        },
+        {
+          "framePhaseMs": 1,
+          "renderMs": 8,
+          "parsedMs": 1,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 9,
+          "renderMs": 10,
+          "parsedMs": 1,
+          "dispatchMs": 1
+        },
+        {
+          "framePhaseMs": 9,
+          "renderMs": 9.000000000000227,
+          "parsedMs": 1,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 0,
+          "renderMs": 10,
+          "parsedMs": 2,
+          "dispatchMs": 1.0000000000002274
+        },
+        {
+          "framePhaseMs": 9,
+          "renderMs": 9,
+          "parsedMs": 1,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 0,
+          "renderMs": 9,
+          "parsedMs": 3,
+          "dispatchMs": 1
+        },
+        {
+          "framePhaseMs": 9,
+          "renderMs": 10,
+          "parsedMs": 2,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 8,
+          "renderMs": 9,
+          "parsedMs": 3,
+          "dispatchMs": 1
+        },
+        {
+          "framePhaseMs": 0,
+          "renderMs": 8.999999999999773,
+          "parsedMs": 0.9999999999997726,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 8,
+          "renderMs": 10,
+          "parsedMs": 2,
+          "dispatchMs": 1
+        },
+        {
+          "framePhaseMs": 8,
+          "renderMs": 10,
+          "parsedMs": 2,
+          "dispatchMs": 1
+        },
+        {
+          "framePhaseMs": 0,
+          "renderMs": 10,
+          "parsedMs": 1,
+          "dispatchMs": 1
+        },
+        {
+          "framePhaseMs": 9,
+          "renderMs": 9.000000000000227,
+          "parsedMs": 1,
+          "dispatchMs": 1
+        },
+        {
+          "framePhaseMs": 8.999999999999773,
+          "renderMs": 10,
+          "parsedMs": 2,
+          "dispatchMs": 1.0000000000002274
+        },
+        {
+          "framePhaseMs": 0,
+          "renderMs": 10,
+          "parsedMs": 2,
+          "dispatchMs": 1
+        },
+        {
+          "framePhaseMs": 1,
+          "renderMs": 8,
+          "parsedMs": 1,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 9,
+          "renderMs": 10,
+          "parsedMs": 2,
+          "dispatchMs": 1
+        },
+        {
+          "framePhaseMs": 0,
+          "renderMs": 10.000000000000227,
+          "parsedMs": 1,
+          "dispatchMs": 1
+        }
+      ],
+      "reportsReceived": 30,
+      "displacement": -30,
+      "expectedReports": null,
+      "output": [
+        {
+          "receivedMessages": 31,
+          "receivedBytes": 1667,
+          "parsedBytes": 1667,
+          "pendingBytes": 0,
+          "peakPendingBytes": 65,
+          "largestChunkBytes": 65
+        }
+      ],
+      "streamingMiBPerSecond": 0.0020128936164463926,
+      "ipcMessagesPerMiB": 19636.25468164794
+    },
+    {
+      "mode": "enhanced",
+      "fixture": "static",
+      "panes": 1,
+      "run": 1,
+      "environment": {
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)",
+        "dpr": 2,
+        "visibility": "visible",
+        "cols": 145,
+        "rows": 50,
+        "font": "\"SF Mono\", \"SFMono-Regular\", Menlo, monospace",
+        "renderers": [
+          "active"
+        ]
+      },
+      "durationMs": 616,
+      "rafCadenceMs": {
+        "count": 74,
+        "meanMs": 8.27027027027027,
+        "minMs": 5,
+        "p50Ms": 8,
+        "p95Ms": 9,
+        "p99Ms": 10,
+        "maxMs": 10
+      },
+      "actualDrawCalls": 75,
+      "wheelToRenderMs": {
+        "count": 30,
+        "meanMs": 4.46666666666672,
+        "minMs": 1,
+        "p50Ms": 3,
+        "p95Ms": 8,
+        "p99Ms": 8.000000000000455,
+        "maxMs": 8.000000000000455
+      },
+      "wheelToPresentationOpportunityMs": {
+        "count": 30,
+        "meanMs": 10.999999999999975,
+        "minMs": 6.999999999999773,
+        "p50Ms": 10,
+        "p95Ms": 15.000000000000457,
+        "p99Ms": 16,
+        "maxMs": 16
+      },
+      "wheelDispatchMs": {
+        "count": 30,
+        "meanMs": 0.06666666666666667,
+        "minMs": 0,
+        "p50Ms": 0,
+        "p95Ms": 1,
+        "p99Ms": 1,
+        "maxMs": 1
+      },
+      "wheelToTuiParsedMs": {
+        "count": 0,
+        "meanMs": 0,
+        "minMs": 0,
+        "p50Ms": 0,
+        "p95Ms": 0,
+        "p99Ms": 0,
+        "maxMs": 0
+      },
+      "tuiParsedToRenderMs": {
+        "count": 0,
+        "meanMs": 0,
+        "minMs": 0,
+        "p50Ms": 0,
+        "p95Ms": 0,
+        "p99Ms": 0,
+        "maxMs": 0
+      },
+      "trace": [
+        {
+          "framePhaseMs": null,
+          "renderMs": 3,
+          "parsedMs": null,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 1,
+          "renderMs": 7,
+          "parsedMs": null,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 7,
+          "renderMs": 2,
+          "parsedMs": null,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 1,
+          "renderMs": 8,
+          "parsedMs": null,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 6.999999999999773,
+          "renderMs": 2.0000000000002274,
+          "parsedMs": null,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 8,
+          "renderMs": 1,
+          "parsedMs": null,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 6.999999999999773,
+          "renderMs": 2,
+          "parsedMs": null,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 8,
+          "renderMs": 1,
+          "parsedMs": null,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 1,
+          "renderMs": 7,
+          "parsedMs": null,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 1,
+          "renderMs": 8,
+          "parsedMs": null,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 1.0000000000004547,
+          "renderMs": 8,
+          "parsedMs": null,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 6.999999999999545,
+          "renderMs": 2,
+          "parsedMs": null,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 7,
+          "renderMs": 2,
+          "parsedMs": null,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 1,
+          "renderMs": 8,
+          "parsedMs": null,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 7,
+          "renderMs": 2,
+          "parsedMs": null,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 1,
+          "renderMs": 8,
+          "parsedMs": null,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 7,
+          "renderMs": 3.0000000000004547,
+          "parsedMs": null,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 0.9999999999995453,
+          "renderMs": 8,
+          "parsedMs": null,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 7.000000000000455,
+          "renderMs": 1.9999999999995453,
+          "parsedMs": null,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 7,
+          "renderMs": 2,
+          "parsedMs": null,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 7,
+          "renderMs": 2,
+          "parsedMs": null,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 7,
+          "renderMs": 2,
+          "parsedMs": null,
+          "dispatchMs": 1
+        },
+        {
+          "framePhaseMs": 1,
+          "renderMs": 8,
+          "parsedMs": null,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 1.0000000000004547,
+          "renderMs": 8,
+          "parsedMs": null,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 5.999999999999545,
+          "renderMs": 2.0000000000004547,
+          "parsedMs": null,
+          "dispatchMs": 1
+        },
+        {
+          "framePhaseMs": 1,
+          "renderMs": 7,
+          "parsedMs": null,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 1,
+          "renderMs": 8,
+          "parsedMs": null,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 7,
+          "renderMs": 2,
+          "parsedMs": null,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 2,
+          "renderMs": 8.000000000000455,
+          "parsedMs": null,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 8,
+          "renderMs": 1.0000000000004547,
+          "parsedMs": null,
+          "dispatchMs": 0
+        }
+      ],
+      "reportsReceived": 0,
+      "displacement": 0,
+      "expectedReports": null,
+      "output": [
+        {
+          "receivedMessages": 70,
+          "receivedBytes": 430012,
+          "parsedBytes": 430012,
+          "pendingBytes": 0,
+          "peakPendingBytes": 200704,
+          "largestChunkBytes": 8192
+        }
+      ],
+      "streamingMiBPerSecond": 0,
+      "ipcMessagesPerMiB": null
+    },
+    {
+      "mode": "enhanced",
+      "fixture": "tui",
+      "panes": 1,
+      "run": 1,
+      "environment": {
+        "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)",
+        "dpr": 2,
+        "visibility": "visible",
+        "cols": 145,
+        "rows": 50,
+        "font": "\"SF Mono\", \"SFMono-Regular\", Menlo, monospace",
+        "renderers": [
+          "active"
+        ]
+      },
+      "durationMs": 759.0000000000005,
+      "rafCadenceMs": {
+        "count": 90,
+        "meanMs": 8.322222222222223,
+        "minMs": 6,
+        "p50Ms": 8,
+        "p95Ms": 10,
+        "p99Ms": 10,
+        "maxMs": 10
+      },
+      "actualDrawCalls": 30,
+      "wheelToRenderMs": {
+        "count": 30,
+        "meanMs": 8.600000000000016,
+        "minMs": 7.999999999999545,
+        "p50Ms": 9,
+        "p95Ms": 9.000000000000455,
+        "p99Ms": 10,
+        "maxMs": 10
+      },
+      "wheelToPresentationOpportunityMs": {
+        "count": 30,
+        "meanMs": 16.633333333333287,
+        "minMs": 15,
+        "p50Ms": 16.999999999999545,
+        "p95Ms": 18,
+        "p99Ms": 18.000000000000455,
+        "maxMs": 18.000000000000455
+      },
+      "wheelDispatchMs": {
+        "count": 30,
+        "meanMs": 0.6000000000000152,
+        "minMs": 0,
+        "p50Ms": 1,
+        "p95Ms": 1.0000000000004547,
+        "p99Ms": 1.0000000000004547,
+        "maxMs": 1.0000000000004547
+      },
+      "wheelToTuiParsedMs": {
+        "count": 30,
+        "meanMs": 1.5666666666666669,
+        "minMs": 0.9999999999995453,
+        "p50Ms": 1.9999999999995453,
+        "p95Ms": 3,
+        "p99Ms": 3,
+        "maxMs": 3
+      },
+      "tuiParsedToRenderMs": {
+        "count": 30,
+        "meanMs": 7.033333333333348,
+        "minMs": 5,
+        "p50Ms": 7,
+        "p95Ms": 8,
+        "p99Ms": 8,
+        "maxMs": 8
+      },
+      "trace": [
+        {
+          "framePhaseMs": null,
+          "renderMs": 9.000000000000455,
+          "parsedMs": 2,
+          "dispatchMs": 1.0000000000004547
+        },
+        {
+          "framePhaseMs": 1.0000000000004547,
+          "renderMs": 8.999999999999545,
+          "parsedMs": 0.9999999999995453,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 9,
+          "renderMs": 8,
+          "parsedMs": 1,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 8,
+          "renderMs": 8,
+          "parsedMs": 1,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 0,
+          "renderMs": 9,
+          "parsedMs": 1,
+          "dispatchMs": 1
+        },
+        {
+          "framePhaseMs": 9,
+          "renderMs": 9.000000000000455,
+          "parsedMs": 2,
+          "dispatchMs": 1.0000000000004547
+        },
+        {
+          "framePhaseMs": 9.000000000000455,
+          "renderMs": 7.999999999999545,
+          "parsedMs": 0.9999999999995453,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 8,
+          "renderMs": 9,
+          "parsedMs": 1,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 9,
+          "renderMs": 9,
+          "parsedMs": 1,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 8,
+          "renderMs": 9,
+          "parsedMs": 2.0000000000004547,
+          "dispatchMs": 1
+        },
+        {
+          "framePhaseMs": 8,
+          "renderMs": 9.000000000000455,
+          "parsedMs": 1.0000000000004547,
+          "dispatchMs": 1.0000000000004547
+        },
+        {
+          "framePhaseMs": 1.0000000000004547,
+          "renderMs": 8.999999999999545,
+          "parsedMs": 0.9999999999995453,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 8,
+          "renderMs": 8,
+          "parsedMs": 1,
+          "dispatchMs": 1
+        },
+        {
+          "framePhaseMs": 9,
+          "renderMs": 8,
+          "parsedMs": 1,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 8,
+          "renderMs": 10,
+          "parsedMs": 2,
+          "dispatchMs": 1
+        },
+        {
+          "framePhaseMs": 8,
+          "renderMs": 8,
+          "parsedMs": 1.0000000000004547,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 0,
+          "renderMs": 8,
+          "parsedMs": 1.9999999999995453,
+          "dispatchMs": 0.9999999999995453
+        },
+        {
+          "framePhaseMs": 9,
+          "renderMs": 8,
+          "parsedMs": 2,
+          "dispatchMs": 1
+        },
+        {
+          "framePhaseMs": 9,
+          "renderMs": 8,
+          "parsedMs": 1,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 8,
+          "renderMs": 9,
+          "parsedMs": 2,
+          "dispatchMs": 1
+        },
+        {
+          "framePhaseMs": 9,
+          "renderMs": 9.000000000000455,
+          "parsedMs": 1.0000000000004547,
+          "dispatchMs": 1.0000000000004547
+        },
+        {
+          "framePhaseMs": 9.000000000000455,
+          "renderMs": 8,
+          "parsedMs": 1.9999999999995453,
+          "dispatchMs": 0.9999999999995453
+        },
+        {
+          "framePhaseMs": 8,
+          "renderMs": 9,
+          "parsedMs": 2,
+          "dispatchMs": 1
+        },
+        {
+          "framePhaseMs": 8,
+          "renderMs": 8,
+          "parsedMs": 3,
+          "dispatchMs": 1
+        },
+        {
+          "framePhaseMs": 9,
+          "renderMs": 9,
+          "parsedMs": 2.0000000000004547,
+          "dispatchMs": 0
+        },
+        {
+          "framePhaseMs": 8,
+          "renderMs": 9,
+          "parsedMs": 3,
+          "dispatchMs": 1
+        },
+        {
+          "framePhaseMs": 0,
+          "renderMs": 8,
+          "parsedMs": 1.9999999999995453,
+          "dispatchMs": 0.9999999999995453
+        },
+        {
+          "framePhaseMs": 1,
+          "renderMs": 9,
+          "parsedMs": 2,
+          "dispatchMs": 1
+        },
+        {
+          "framePhaseMs": 8,
+          "renderMs": 9,
+          "parsedMs": 2,
+          "dispatchMs": 1
+        },
+        {
+          "framePhaseMs": 2,
+          "renderMs": 8,
+          "parsedMs": 1.0000000000004547,
+          "dispatchMs": 0
+        }
+      ],
+      "reportsReceived": 337,
+      "displacement": -337,
+      "expectedReports": 337,
+      "output": [
+        {
+          "receivedMessages": 31,
+          "receivedBytes": 1729,
+          "parsedBytes": 1729,
+          "pendingBytes": 0,
+          "peakPendingBytes": 65,
+          "largestChunkBytes": 65
+        }
+      ],
+      "streamingMiBPerSecond": 0.0020907958662714087,
+      "ipcMessagesPerMiB": 18904.615384615383
+    }
+  ],
+  "nativeWindow": {
+    "visible": true,
+    "focused": true,
+    "minimized": false
+  },
+  "refreshProbe": {
+    "requested": true,
+    "supported": true,
+    "applied": true,
+    "originalPrefer60": true,
+    "currentPrefer60": false
+  }
+}

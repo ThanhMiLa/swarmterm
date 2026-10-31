@@ -1,0 +1,100 @@
+{
+  "measuredAt": "2026-10-31T17:06:22.793Z",
+  "baseline": "Pre-change terminal c3b730fe99e84e60a907bc962f26c0f00e9b981a; only isolated fixture and measurement instrumentation added",
+  "mode": "enhanced",
+  "aggregation": "median of three per-run p95 render latencies; next-rAF is not physical scanout",
+  "note": "Streaming rate is achieved fixture rate, not maximum parser throughput. OS scheduling and millisecond timer quantisation affect small differences.",
+  "cases": [
+    {
+      "panes": 1,
+      "fixture": "static",
+      "beforeMs": 11,
+      "afterMs": 13,
+      "changePercent": 18.181818181818187,
+      "beforeMiBps": 0,
+      "afterMiBps": 0,
+      "streamingChangePercent": null
+    },
+    {
+      "panes": 1,
+      "fixture": "stream",
+      "beforeMs": 10.00000000000091,
+      "afterMs": 11.000000000007276,
+      "changePercent": 10.000000000062759,
+      "beforeMiBps": 3.1361902705474796,
+      "afterMiBps": 3.359125015583444,
+      "streamingChangePercent": 7.108457261971135
+    },
+    {
+      "panes": 1,
+      "fixture": "tui",
+      "beforeMs": 10,
+      "afterMs": 16,
+      "changePercent": 60.00000000000001,
+      "beforeMiBps": 0.0014775495695191609,
+      "afterMiBps": 0.001511346726190476,
+      "streamingChangePercent": null
+    },
+    {
+      "panes": 1,
+      "fixture": "tui-stream",
+      "beforeMs": 10,
+      "afterMs": 10,
+      "changePercent": 0,
+      "beforeMiBps": 3.080989682697466,
+      "afterMiBps": 3.3582390104812667,
+      "streamingChangePercent": 8.998710035960379
+    },
+    {
+      "panes": 4,
+      "fixture": "static",
+      "beforeMs": 10,
+      "afterMs": 17.000000000007276,
+      "changePercent": 70.00000000007276,
+      "beforeMiBps": 0,
+      "afterMiBps": 0,
+      "streamingChangePercent": null
+    },
+    {
+      "panes": 4,
+      "fixture": "stream",
+      "beforeMs": 11,
+      "afterMs": 10,
+      "changePercent": -9.090909090909093,
+      "beforeMiBps": 12.061409983206596,
+      "afterMiBps": 13.378734082247398,
+      "streamingChangePercent": 10.92180848569897
+    },
+    {
+      "panes": 4,
+      "fixture": "tui",
+      "beforeMs": 9.000000000003638,
+      "afterMs": 16,
+      "changePercent": 77.77777777770592,
+      "beforeMiBps": 0.0014775495695191609,
+      "afterMiBps": 0.001511346726190476,
+      "streamingChangePercent": null
+    },
+    {
+      "panes": 4,
+      "fixture": "tui-stream",
+      "beforeMs": 10.000000000003638,
+      "afterMs": 11,
+      "changePercent": 9.999999999959975,
+      "beforeMiBps": 11.901716219474215,
+      "afterMiBps": 13.358123585959486,
+      "streamingChangePercent": 12.236952550609637
+    }
+  ],
+  "gates": {
+    "quietP95WithinTenPercent": false,
+    "stressedP95ImprovedTwentyFivePercent": false,
+    "streamingRateWithinFifteenPercent": true,
+    "enhancedWheelQuantitiesPreserved": true,
+    "chunksAtMostEightKiB": true,
+    "pendingOutputAtMost256KiB": true,
+    "webglActive": true,
+    "visibleWindow": true
+  },
+  "accepted": false
+}

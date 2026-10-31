@@ -13,26 +13,28 @@ const DEFAULT_IDLE_MS = 900
 export class ActivityTracker<T> {
   private readonly setActive: (target: T, active: boolean) => void
   private readonly idleMs: number
-  private readonly timers = new Map<T, ReturnType<typeof setTimeout>>()
+  private readonly timers = new Map<T, { timer: ReturnType<typeof setTimeout>; deadline: number }>()
 
   constructor(setActive: (target: T, active: boolean) => void, idleMs: number = DEFAULT_IDLE_MS) {
     this.setActive = setActive
     this.idleMs = idleMs
   }
 
-  /** Record a tick from `target`. Activates it if idle; resets the idle timer. */
+  /** Record a tick without reallocating a timer for every streaming PTY chunk. */
   notify(target: T): void {
     const existing = this.timers.get(target)
-    if (existing === undefined) this.setActive(target, true)
-    else clearTimeout(existing)
-
-    this.timers.set(
-      target,
-      setTimeout(() => {
-        this.timers.delete(target)
-        this.setActive(target, false)
-      }, this.idleMs)
-    )
+    const deadline = performance.now() + this.idleMs
+    if (existing) { existing.deadline = deadline; return }
+    this.setActive(target, true)
+    const entry = { deadline, timer: undefined as unknown as ReturnType<typeof setTimeout> }
+    const checkIdle = () => {
+      const remaining = entry.deadline - performance.now()
+      if (remaining > 0) { entry.timer = setTimeout(checkIdle, remaining); return }
+      this.timers.delete(target)
+      this.setActive(target, false)
+    }
+    entry.timer = setTimeout(checkIdle, this.idleMs)
+    this.timers.set(target, entry)
   }
 
   /**
@@ -43,14 +45,14 @@ export class ActivityTracker<T> {
   cancel(target: T): void {
     const timer = this.timers.get(target)
     if (timer !== undefined) {
-      clearTimeout(timer)
+      clearTimeout(timer.timer)
       this.timers.delete(target)
     }
   }
 
   /** Cancel all pending idle timers (no deactivation callbacks fire). */
   dispose(): void {
-    for (const timer of this.timers.values()) clearTimeout(timer)
+    for (const timer of this.timers.values()) clearTimeout(timer.timer)
     this.timers.clear()
   }
 }

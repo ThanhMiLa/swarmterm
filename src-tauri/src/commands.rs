@@ -17,11 +17,62 @@ pub fn create_terminal(
 }
 
 #[tauri::command]
-pub fn write_terminal(state: State<'_, AppState>, id: String, data: String) {
-    if let Some(t) = state.terminals.lock().unwrap().get_mut(&id) {
-        let _ = t.writer.write_all(data.as_bytes());
-        let _ = t.writer.flush();
+pub async fn write_terminal(
+    state: State<'_, AppState>,
+    id: String,
+    data: String,
+    input_token: Option<String>,
+) -> Result<(), String> {
+    write_input(&state, &id, data.into_bytes(), input_token).await
+}
+
+#[tauri::command]
+pub async fn write_terminal_bytes(
+    state: State<'_, AppState>,
+    id: String,
+    bytes: Vec<u8>,
+    input_token: Option<String>,
+) -> Result<(), String> {
+    write_input(&state, &id, bytes, input_token).await
+}
+
+async fn write_input(
+    state: &AppState,
+    id: &str,
+    bytes: Vec<u8>,
+    input_token: Option<String>,
+) -> Result<(), String> {
+    // Never hold the terminal map or the UI thread while a PTY write waits for
+    // its child. ACK, resize and kill must remain available under backpressure.
+    let writer = state
+        .terminals
+        .lock()
+        .unwrap()
+        .get(id)
+        .filter(|t| t.input_token == input_token)
+        .map(|t| t.writer.clone());
+    if let Some(writer) = writer {
+        tauri::async_runtime::spawn_blocking(move || {
+            let mut writer = writer.lock().map_err(|e| e.to_string())?;
+            for chunk in bytes.chunks(4096) {
+                writer.write_all(chunk).map_err(|e| e.to_string())?;
+            }
+            writer.flush().map_err(|e| e.to_string())
+        })
+        .await
+        .map_err(|e| e.to_string())??;
     }
+    Ok(())
+}
+
+#[tauri::command]
+pub fn ack_terminal_output(
+    state: State<'_, AppState>,
+    id: String,
+    flow_id: u64,
+    processed_bytes: u64,
+) {
+    crate::pty::ack_terminal_output(&state, &id, flow_id, processed_bytes);
 }
 
 #[tauri::command]
@@ -108,12 +159,7 @@ pub fn kill_terminal(app: AppHandle, state: State<'_, AppState>, id: String) {
 /// the renderer), and the M2 `war_room.wait_peer` / `read_peer` verbs must
 /// answer without a renderer round-trip — see `mcp::peer_state`.
 #[tauri::command]
-pub fn report_agent_state(
-    app: AppHandle,
-    state: State<'_, AppState>,
-    id: String,
-    display: String,
-) {
+pub fn report_agent_state(app: AppHandle, state: State<'_, AppState>, id: String, display: String) {
     // Only live terminals may be written. A report can race a kill (the
     // store's diff fires after `kill_terminal` already ran `forget`), and
     // accepting it would resurrect a row for a dead pty that nothing will
@@ -124,11 +170,12 @@ pub fn report_agent_state(
     if !live {
         return;
     }
-    let changed = state
-        .peer_states
-        .lock()
-        .unwrap()
-        .set_state(&id, &display, crate::warroom::now_ms());
+    let changed =
+        state
+            .peer_states
+            .lock()
+            .unwrap()
+            .set_state(&id, &display, crate::warroom::now_ms());
     if changed {
         state.peer_wake.notify_waiters();
     }
@@ -514,4 +561,152 @@ pub async fn get_token_usage_stats(
     })
     .await
     .map_err(|e| e.to_string())
+}
+
+#[cfg(test)]
+mod terminal_io_tests {
+    use super::*;
+    use crate::pty::{FlowController, ManagedTerminal, MAX_UNACKED_BYTES};
+    use portable_pty::{native_pty_system, ChildKiller};
+    use std::sync::{Arc, Condvar, Mutex};
+    use std::time::Duration;
+
+    struct BlockedWriter(Arc<(Mutex<bool>, Condvar)>);
+    impl Write for BlockedWriter {
+        fn write(&mut self, data: &[u8]) -> std::io::Result<usize> {
+            let (lock, wake) = &*self.0;
+            let mut released = lock.lock().unwrap();
+            while !*released {
+                released = wake.wait(released).unwrap();
+            }
+            Ok(data.len())
+        }
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+    #[derive(Debug)]
+    struct NoopKiller;
+    impl ChildKiller for NoopKiller {
+        fn kill(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+        fn clone_killer(&self) -> Box<dyn ChildKiller + Send + Sync> {
+            Box::new(NoopKiller)
+        }
+    }
+
+    #[tokio::test]
+    async fn blocked_pty_input_does_not_block_ack_or_terminal_management() {
+        let pair = native_pty_system()
+            .openpty(PtySize {
+                rows: 24,
+                cols: 80,
+                pixel_width: 0,
+                pixel_height: 0,
+            })
+            .unwrap();
+        let gate = Arc::new((Mutex::new(false), Condvar::new()));
+        let writer: Arc<Mutex<Box<dyn Write + Send>>> =
+            Arc::new(Mutex::new(Box::new(BlockedWriter(gate.clone()))));
+        let flow = FlowController::new(999);
+        assert!(flow.wait_for_credit(MAX_UNACKED_BYTES));
+        let state = Arc::new(AppState::default());
+        state.terminals.lock().unwrap().insert(
+            "blocked".into(),
+            ManagedTerminal {
+                input_token: None,
+                writer: writer.clone(),
+                master: pair.master,
+                killer: Box::new(NoopKiller),
+                #[cfg(windows)]
+                job: None,
+                worktree_mode: false,
+                repo_root: None,
+                flow: flow.clone(),
+            },
+        );
+        let input_state = state.clone();
+        let input = tokio::spawn(async move {
+            write_input(&input_state, "blocked", vec![b'x'; 8192], None).await
+        });
+        tokio::time::sleep(Duration::from_millis(30)).await;
+        let blocked = writer.try_lock().is_err();
+        let ack_state = state.clone();
+        let ack = tokio::task::spawn_blocking(move || {
+            crate::pty::ack_terminal_output(&ack_state, "blocked", 999, 32768)
+        });
+        let ack_result = tokio::time::timeout(Duration::from_millis(500), ack).await;
+        // Release before asserting so even a regression cannot strand the test worker.
+        *gate.0.lock().unwrap() = true;
+        gate.1.notify_all();
+        let write_result = tokio::time::timeout(Duration::from_secs(2), input).await;
+        assert!(blocked, "fixture must exercise a blocked writer");
+        assert!(
+            ack_result.is_ok(),
+            "ACK must not wait for the PTY writer's mutex"
+        );
+        assert!(write_result.is_ok());
+        assert_eq!(flow.inner.0.lock().unwrap().total_acked_bytes, 32768);
+        assert!(state.terminals.lock().unwrap().remove("blocked").is_some());
+    }
+
+    #[tokio::test]
+    async fn stale_input_cannot_reach_a_replacement_session() {
+        struct Recorder(Arc<Mutex<Vec<u8>>>);
+        impl Write for Recorder {
+            fn write(&mut self, data: &[u8]) -> std::io::Result<usize> {
+                self.0.lock().unwrap().extend_from_slice(data);
+                Ok(data.len())
+            }
+            fn flush(&mut self) -> std::io::Result<()> {
+                Ok(())
+            }
+        }
+        let pair = native_pty_system()
+            .openpty(PtySize {
+                rows: 24,
+                cols: 80,
+                pixel_width: 0,
+                pixel_height: 0,
+            })
+            .unwrap();
+        let recorded = Arc::new(Mutex::new(Vec::new()));
+        let state = AppState::default();
+        state.terminals.lock().unwrap().insert(
+            "reused-id".into(),
+            ManagedTerminal {
+                input_token: Some("new-session".into()),
+                writer: Arc::new(Mutex::new(Box::new(Recorder(recorded.clone())))),
+                master: pair.master,
+                killer: Box::new(NoopKiller),
+                #[cfg(windows)]
+                job: None,
+                worktree_mode: false,
+                repo_root: None,
+                flow: FlowController::new(1000),
+            },
+        );
+        write_input(
+            &state,
+            "reused-id",
+            b"stale".to_vec(),
+            Some("old-session".into()),
+        )
+        .await
+        .unwrap();
+        write_input(&state, "reused-id", b"missing-token".to_vec(), None)
+            .await
+            .unwrap();
+        assert!(recorded.lock().unwrap().is_empty());
+        write_input(
+            &state,
+            "reused-id",
+            b"fresh".to_vec(),
+            Some("new-session".into()),
+        )
+        .await
+        .unwrap();
+        assert_eq!(*recorded.lock().unwrap(), b"fresh");
+    }
 }

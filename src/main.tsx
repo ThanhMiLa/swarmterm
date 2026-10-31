@@ -2,7 +2,6 @@
 // imported above it could throw before the listeners exist (see boot-guard.ts).
 import './boot-guard'
 import ReactDOM from "react-dom/client";
-import App from "./App";
 import './index.css'
 import { installScrollbarActivity } from './lib/scrollbar-activity'
 import { applyStyleToDom, readStoredStyle } from './lib/appearance'
@@ -21,4 +20,10 @@ installScrollbarActivity()
 // real OS pty; StrictMode's dev-only double-mount would spawn a shell, kill it,
 // and spawn another (and run a template's initialCommand twice), and the rapid
 // re-create races the async pty teardown ("Terminal already exists").
-ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(<App />);
+if (import.meta.env.DEV && new URLSearchParams(location.search).has('terminalBenchmark')) {
+  void import('./lib/benchmark/terminal-benchmark').then(m => m.runTerminalBenchmark())
+} else {
+  void import('./App').then(({ default: App }) => {
+    ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(<App />)
+  })
+}
