@@ -17,7 +17,7 @@ import {
   formatCurrency,
 } from '@/lib/token-pricing'
 import {
-  sortDailyUsageByTokens,
+  sortDailyUsageByDate,
   summarizeDailyModelUsage,
   summarizeProjectProviderUsage,
   type ModelProviderId,
@@ -113,7 +113,7 @@ export function TokenUsagePanel({ selectedWorkspace }: TokenUsagePanelProps): Re
   }, [currentProject])
 
   const dailyRows = useMemo(() => {
-    return currentProject ? sortDailyUsageByTokens(currentProject.dailyStats) : []
+    return currentProject ? sortDailyUsageByDate(currentProject.dailyStats) : []
   }, [currentProject])
 
   const displayName = selectedWorkspace?.name || currentProject?.projectName || 'Project'

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { DailyUsageStats, ModelUsageStats, ProjectTokenStats } from '@/tauri/token-usage'
 import { calculateDailyCost, calculateProjectCost } from './token-pricing'
-import { getModelProvider, sortDailyUsageByTokens, summarizeDailyModelUsage, summarizeProjectProviderUsage } from './token-usage-summary'
+import { getModelProvider, sortDailyUsageByDate, summarizeDailyModelUsage, summarizeProjectProviderUsage } from './token-usage-summary'
 
 function model(agentId: string, name: string): ModelUsageStats {
   return {
@@ -53,17 +53,17 @@ describe('model provider usage', () => {
     expect(summarizeDailyModelUsage(stats).map((row) => row.providerId)).toEqual(['deepseek', 'codex'])
   })
 
-  it('ranks days by token subtotal with newer dates breaking ties without mutating history', () => {
+  it('keeps newer days first even when older days have more tokens without mutating history', () => {
     const days = [
       day('2026-10-31', [model('codex', 'gpt-6-astra')]),
       day('2026-10-29', [model('opencode', 'deepseek-v4.1-flash'), model('codex', 'gpt-6.1-sol')]),
       day('2026-10-30', [model('codex', 'gpt-6.1-sol')]),
     ]
-    expect(sortDailyUsageByTokens(days).map((row) => row.date)).toEqual([
-      '2026-10-29', '2026-10-31', '2026-10-30',
+    expect(sortDailyUsageByDate(days).map((row) => row.date)).toEqual([
+      '2026-10-31', '2026-10-30', '2026-10-29',
     ])
     expect(days.map((row) => row.date)).toEqual(['2026-10-31', '2026-10-29', '2026-10-30'])
-    expect(sortDailyUsageByTokens([])).toEqual([])
+    expect(sortDailyUsageByDate([])).toEqual([])
   })
 
   it.each([

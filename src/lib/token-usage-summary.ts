@@ -84,7 +84,7 @@ export function summarizeProjectProviderUsage(project: ProjectTokenStats): Provi
   return [...providers.values()].sort((a, b) => b.totalTokens - a.totalTokens)
 }
 
-/** Rank days by their token subtotal; keep newer dates first when totals match. */
-export function sortDailyUsageByTokens(days: DailyUsageStats[]): DailyUsageStats[] {
-  return [...days].sort((a, b) => b.totalTokens - a.totalTokens || b.date.localeCompare(a.date))
+/** Keep the daily history in reverse chronological order, regardless of token usage. */
+export function sortDailyUsageByDate(days: DailyUsageStats[]): DailyUsageStats[] {
+  return [...days].sort((a, b) => b.date.localeCompare(a.date))
 }
