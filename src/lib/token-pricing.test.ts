@@ -147,6 +147,38 @@ describe('token-pricing', () => {
   })
 
   describe('getModelPricing for Anthropic', () => {
+    it.each([
+      'Claude Opus 4.6 (Thinking)',
+      'claude-opus-4.6',
+      'claude-opus-4-6',
+      'anthropic/claude-opus-4-6-20260205',
+      'Opus 4.6',
+    ])('prices %s at the configured Opus 4.6 rates', (name) => {
+      expect(getModelPricing(name)).toEqual({
+        inputPerMillion: 5,
+        outputPerMillion: 25,
+        cachePerMillion: 0.5,
+        displayName: 'Claude Opus 4.6',
+      })
+      expect(calculateTokenCost(name, 1_000_000, 100_000, 500_000)).toBeCloseTo(7.75)
+    })
+
+    it.each([
+      'Claude Sonnet 4.6 (High)',
+      'claude-sonnet-4.6',
+      'claude-sonnet-4-6',
+      'anthropic/claude-sonnet-4-6',
+      'Sonnet 4.6',
+    ])('prices %s at the configured Sonnet 4.6 rates', (name) => {
+      expect(getModelPricing(name)).toEqual({
+        inputPerMillion: 3,
+        outputPerMillion: 15,
+        cachePerMillion: 0.3,
+        displayName: 'Claude Sonnet 4.6',
+      })
+      expect(calculateTokenCost(name, 1_000_000, 100_000, 500_000)).toBeCloseTo(4.65)
+    })
+
     it('matches Claude Opus 5.5', () => {
       const p = getModelPricing('Claude Opus 5.5 (High)')
       expect(p.inputPerMillion).toBe(4.0)

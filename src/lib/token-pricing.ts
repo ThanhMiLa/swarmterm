@@ -5,7 +5,7 @@
  * - OpenAI (Codex): gpt-6-astra, gpt-6.1-sol, gpt-6.1-terra, gpt-6-sol, gpt-6-luna, gpt-5.6-sol, gpt-5.6-terra, gpt-5.6-luna
  * - DeepSeek: DeepSeek V4.1 Flash
  * - Google DeepMind (Antigravity): Gemini 4 Argon, Gemini 3.8 Flash (with date-based promo pricing)
- * - Anthropic: Claude Opus 5.5, Claude Sonnet 5.5, Claude Fable 5.1, Claude Haiku 5.5
+ * - Anthropic: Claude Opus/Sonnet 4.6 and 5.5, Claude Fable 5.1, Claude Haiku 5.5
  *
  * Rates are stored in USD per 1,000,000 (1M) tokens for:
  * 1. inputTokens (Uncached Prompt tokens)
@@ -126,6 +126,18 @@ const STATIC_PRICING_TABLE: Record<string, ModelPricing> = {
   },
 
   // --- Anthropic Models ---
+  'claude-opus-4.6': {
+    inputPerMillion: 5.0,
+    outputPerMillion: 25.0,
+    cachePerMillion: 0.5,
+    displayName: 'Claude Opus 4.6',
+  },
+  'claude-sonnet-4.6': {
+    inputPerMillion: 3.0,
+    outputPerMillion: 15.0,
+    cachePerMillion: 0.3,
+    displayName: 'Claude Sonnet 4.6',
+  },
   'claude-opus-5.5': {
     inputPerMillion: 4.0,
     outputPerMillion: 20.0,
@@ -269,6 +281,12 @@ export function getModelPricing(rawModel: string, dateStr?: string): ModelPricin
   }
 
   // 4. Prefix / Substring matching for Claude models
+  if (/\bopus-4[.-]6\b/.test(normHyphen)) {
+    return STATIC_PRICING_TABLE['claude-opus-4.6']
+  }
+  if (/\bsonnet-4[.-]6\b/.test(normHyphen)) {
+    return STATIC_PRICING_TABLE['claude-sonnet-4.6']
+  }
   if (norm.includes('opus 5.5') || normHyphen.includes('opus-5.5')) {
     return STATIC_PRICING_TABLE['claude-opus-5.5']
   }

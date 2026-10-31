@@ -3,38 +3,39 @@ import { Calendar, RefreshCw, Sparkles } from 'lucide-react'
 import antigravityIcon from '@/assets/agents/antigravity.svg'
 import claudeIcon from '@/assets/agents/claude-code.svg'
 import codexIcon from '@/assets/agents/codex.svg'
-import opencodeIcon from '@/assets/agents/opencode.svg'
+import deepseekIcon from '@/assets/agents/deepseek.svg'
 import { Button } from '@/components/ui/button'
 import {
   getTokenUsageStats,
   onTokenUsageUpdated,
-  type ModelUsageStats,
   type ProjectTokenStats,
   type TokenUsageResponse,
 } from '@/tauri/token-usage'
 import {
   calculateDailyCost,
-  calculateModelUsageCost,
-  calculateProjectAgentCosts,
-  calculateProjectAgentUsage,
   calculateProjectCost,
   formatCurrency,
 } from '@/lib/token-pricing'
+import {
+  summarizeDailyModelUsage,
+  summarizeProjectProviderUsage,
+  type ModelProviderId,
+} from '@/lib/token-usage-summary'
 import { cn } from '@/lib/utils'
 import { TokenCount } from './TokenCount'
 
-function getAgentInfo(agentId: string): { label: string; icon: string } {
-  switch (agentId) {
+function getProviderInfo(providerId: ModelProviderId): { label: string; icon?: string } {
+  switch (providerId) {
     case 'codex':
       return { label: 'Codex', icon: codexIcon }
-    case 'claude-code':
-      return { label: 'Claude Code', icon: claudeIcon }
+    case 'claude':
+      return { label: 'Claude', icon: claudeIcon }
     case 'antigravity':
       return { label: 'Antigravity', icon: antigravityIcon }
-    case 'opencode':
-      return { label: 'OpenCode', icon: opencodeIcon }
+    case 'deepseek':
+      return { label: 'DeepSeek', icon: deepseekIcon }
     default:
-      return { label: agentId, icon: codexIcon }
+      return { label: 'Other Models' }
   }
 }
 
@@ -106,25 +107,9 @@ export function TokenUsagePanel({ selectedWorkspace }: TokenUsagePanelProps): Re
     return calculateProjectCost(currentProject)
   }, [currentProject])
 
-  const projectAgentCosts = useMemo(() => {
-    if (!currentProject) return {}
-    return calculateProjectAgentCosts(currentProject)
-  }, [currentProject])
-
-  const projectAgentUsage = useMemo(() => {
-    if (!currentProject) return {}
-    return calculateProjectAgentUsage(currentProject)
-  }, [currentProject])
-
   const providerRows = useMemo(() => {
-    return Object.entries(projectAgentUsage)
-      .map(([agentId, usage]) => ({
-        agentId,
-        usage,
-        cost: projectAgentCosts[agentId] ?? 0,
-      }))
-      .sort((a, b) => b.cost - a.cost)
-  }, [projectAgentUsage, projectAgentCosts])
+    return currentProject ? summarizeProjectProviderUsage(currentProject) : []
+  }, [currentProject])
 
   const displayName = selectedWorkspace?.name || currentProject?.projectName || 'Project'
 
@@ -175,8 +160,9 @@ export function TokenUsagePanel({ selectedWorkspace }: TokenUsagePanelProps): Re
             <span className="font-mono text-foreground font-semibold">{displayName}</span>
           </h3>
           <p className="mt-1.5 text-xs text-muted-foreground max-w-md mx-auto">
-            When you run prompts in <strong>Claude Code</strong>, <strong>Codex</strong>, or{' '}
-            <strong>Antigravity</strong> in this workspace, token usage will automatically be tracked,
+            When you run prompts in <strong>Claude Code</strong>, <strong>Codex</strong>,{' '}
+            <strong>Antigravity</strong>, or <strong>OpenCode</strong> in this workspace,
+            token usage will automatically be tracked,
             persisted, and summarized here by Date and Model.
           </p>
         </div>
@@ -205,7 +191,7 @@ export function TokenUsagePanel({ selectedWorkspace }: TokenUsagePanelProps): Re
               <thead>
                 <tr className="border-b border-border/50 text-[10px] text-muted-foreground sm:text-[11px]">
                   <th className="px-3 py-2.5 text-left font-medium sm:px-4 sm:py-3">
-                    Provider
+                    Model Provider
                   </th>
                   <th className="px-2 py-2.5 text-right font-medium sm:px-3 sm:py-3">
                     Prompts
@@ -228,18 +214,23 @@ export function TokenUsagePanel({ selectedWorkspace }: TokenUsagePanelProps): Re
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/40 font-mono">
-                {providerRows.map(({ agentId, usage, cost }) => {
-                  const info = getAgentInfo(agentId)
+                {providerRows.map((usage) => {
+                  const { providerId, cost } = usage
+                  const info = getProviderInfo(providerId)
                   const pct = projectCost > 0 ? ((cost / projectCost) * 100).toFixed(1) : '0'
                   return (
-                    <tr key={agentId} className="hover:bg-accent/20 transition-colors">
+                    <tr key={providerId} className="hover:bg-accent/20 transition-colors">
                       <td className="px-3 py-2.5 font-sans sm:px-4 sm:py-3">
                         <div className="flex min-w-0 items-center gap-2 sm:gap-2.5">
-                          <img
-                            src={info.icon}
-                            alt=""
-                            className="h-4 w-4 shrink-0 rounded"
-                          />
+                          {info.icon ? (
+                            <img
+                              src={info.icon}
+                              alt=""
+                              className="h-4 w-4 shrink-0 rounded object-contain"
+                            />
+                          ) : (
+                            <Sparkles aria-hidden="true" className="h-4 w-4 shrink-0 text-muted-foreground" />
+                          )}
                           <span className="truncate text-xs font-medium text-foreground">
                             {info.label}
                           </span>
@@ -351,7 +342,7 @@ export function TokenUsagePanel({ selectedWorkspace }: TokenUsagePanelProps): Re
                       <table className="w-full text-left text-xs">
                         <thead>
                           <tr className="border-b border-border/50 text-[11px] text-muted-foreground">
-                            <th className="px-4 py-2 font-medium">Agent &amp; Model</th>
+                            <th className="px-4 py-2 font-medium">Model Provider &amp; Model</th>
                             <th className="px-3 py-2 text-right font-medium">Prompts</th>
                             <th className="px-3 py-2 text-right font-medium">Input</th>
                             <th className="px-3 py-2 text-right font-medium">Output</th>
@@ -367,23 +358,26 @@ export function TokenUsagePanel({ selectedWorkspace }: TokenUsagePanelProps): Re
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-border/40 font-mono">
-                          {day.models.map((m: ModelUsageStats) => {
-                            const agent = getAgentInfo(m.agentId)
-                            const modelCost = calculateModelUsageCost(m, day.date)
+                          {summarizeDailyModelUsage(day).map((m) => {
+                            const provider = getProviderInfo(m.providerId)
                             return (
                               <tr
-                                key={`${m.agentId}:${m.model}`}
+                                key={`${m.providerId}:${m.model}`}
                                 className="hover:bg-accent/20 transition-colors"
                               >
                                 <td className="px-4 py-2.5 font-sans">
                                   <div className="flex items-center gap-2">
-                                    <img
-                                      src={agent.icon}
-                                      alt=""
-                                      className="h-4 w-4 shrink-0 rounded"
-                                    />
+                                    {provider.icon ? (
+                                      <img
+                                        src={provider.icon}
+                                        alt=""
+                                        className="h-4 w-4 shrink-0 rounded object-contain"
+                                      />
+                                    ) : (
+                                      <Sparkles aria-hidden="true" className="h-4 w-4 shrink-0 text-muted-foreground" />
+                                    )}
                                     <span className="text-xs font-medium text-foreground">
-                                      {agent.label}
+                                      {provider.label}
                                     </span>
                                     <span className="text-[11px] text-muted-foreground">
                                       •
@@ -409,7 +403,7 @@ export function TokenUsagePanel({ selectedWorkspace }: TokenUsagePanelProps): Re
                                   <TokenCount count={m.totalTokens} />
                                 </td>
                                 <td className="px-4 py-2.5 text-right font-semibold text-emerald-400">
-                                  {formatCurrency(modelCost)}
+                                  {formatCurrency(m.cost)}
                                 </td>
                               </tr>
                             )
