@@ -4253,6 +4253,8 @@ version = "1.0.4"
 dependencies = [
  "axum",
  "chrono",
+ "objc2",
+ "objc2-foundation",
  "portable-pty",
  "reqwest",
  "rmcp",

@@ -16,6 +16,7 @@ import { useTerminalTextStore } from '@/store/terminal-text-store'
 import { useStatuslineStore } from '@/store/statusline-store'
 import { listAvailableShells, type AvailableShell } from '@/tauri/shell'
 import { Button } from '@/components/ui/button'
+import { InputCompatibilitySetting } from '@/components/Settings/InputCompatibilitySetting'
 import { cn } from '@/lib/utils'
 
 /** The "Terminal" settings category — pick the shell new panes spawn with. */
@@ -64,6 +65,8 @@ export function TerminalPanel(): ReactElement {
       </section>
 
       <TextSettings />
+
+      <InputCompatibilitySetting />
 
       {staleId && (
         <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">

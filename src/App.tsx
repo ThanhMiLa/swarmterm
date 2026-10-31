@@ -66,6 +66,7 @@ import { startAgentStateMirror } from '@/lib/agent-state-mirror'
 import { startGitRefreshWatch } from '@/lib/git-refresh'
 import { reportAgentState, onAgentHook, onAgentContext } from '@/tauri/agent-state'
 import { playChime } from '@/lib/notification-sound'
+import { getInputCompatibility } from '@/tauri/input-compatibility'
 import { sendSystemNotification } from '@/tauri/notification'
 import { useTerminalSearchStore } from '@/store/terminal-search-store'
 import { useWarRoomStore } from '@/store/war-room-store'
@@ -251,7 +252,18 @@ export default function App(): ReactElement {
   const welcomeClosable = !noWorkspaces
 
   useEffect(() => {
-    void showWindow()
+    // Await the native startup preference before exposing any editable fields.
+    // The backend serializes this read with its saved compatibility apply.
+    void (async () => {
+      if (isMac) {
+        try {
+          await getInputCompatibility()
+        } catch (error) {
+          console.error('[startup] input compatibility unavailable', error)
+        }
+      }
+      await showWindow()
+    })()
     useRecentsStore.getState().hydrate()
     void useAgentAvailabilityStore.getState().refresh()
     void useShellAvailabilityStore.getState().refresh()

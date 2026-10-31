@@ -2,6 +2,7 @@ mod agents;
 mod analytics;
 mod commands;
 mod git;
+mod input_compatibility;
 mod json_style;
 mod links;
 mod mcp;
@@ -41,6 +42,7 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_notification::init())
         .setup(|app| {
+            input_compatibility::setup(app.handle());
             // The configured 1280×820 overflows small displays (on a MacBook
             // the Dock covers the bottom edge), so clamp the window to the
             // monitor's work area and center it. The window is created with
@@ -103,6 +105,8 @@ pub fn run() {
             }
         })
         .invoke_handler(tauri::generate_handler![
+            input_compatibility::get_input_compatibility,
+            input_compatibility::set_input_compatibility,
             commands::create_terminal,
             commands::write_terminal,
             commands::resize_terminal,
