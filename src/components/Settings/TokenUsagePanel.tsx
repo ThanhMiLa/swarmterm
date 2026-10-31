@@ -17,6 +17,7 @@ import {
   formatCurrency,
 } from '@/lib/token-pricing'
 import {
+  sortDailyUsageByTokens,
   summarizeDailyModelUsage,
   summarizeProjectProviderUsage,
   type ModelProviderId,
@@ -109,6 +110,10 @@ export function TokenUsagePanel({ selectedWorkspace }: TokenUsagePanelProps): Re
 
   const providerRows = useMemo(() => {
     return currentProject ? summarizeProjectProviderUsage(currentProject) : []
+  }, [currentProject])
+
+  const dailyRows = useMemo(() => {
+    return currentProject ? sortDailyUsageByTokens(currentProject.dailyStats) : []
   }, [currentProject])
 
   const displayName = selectedWorkspace?.name || currentProject?.projectName || 'Project'
@@ -301,7 +306,7 @@ export function TokenUsagePanel({ selectedWorkspace }: TokenUsagePanelProps): Re
             </div>
 
             <div className="space-y-4">
-              {currentProject.dailyStats.map((day) => {
+              {dailyRows.map((day) => {
                 const dayCost = calculateDailyCost(day)
                 return (
                   <div
@@ -309,7 +314,7 @@ export function TokenUsagePanel({ selectedWorkspace }: TokenUsagePanelProps): Re
                     className="rounded-xl border border-border bg-card/60 overflow-hidden"
                   >
                     {/* Day header banner */}
-                    <div className="flex items-center justify-between border-b border-border/80 bg-accent/30 px-4 py-2.5">
+                    <div className="border-b border-border/80 bg-accent/30 px-4 py-2.5">
                       <div className="flex items-center gap-2.5">
                         <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
                         <span className="font-mono text-xs font-semibold text-foreground">
@@ -318,22 +323,6 @@ export function TokenUsagePanel({ selectedWorkspace }: TokenUsagePanelProps): Re
                         <span className="rounded bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">
                           {day.promptCount} {day.promptCount === 1 ? 'prompt' : 'prompts'}
                         </span>
-                      </div>
-
-                      <div className="flex items-center gap-3 text-xs">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-muted-foreground">Day Total:</span>
-                          <span className="font-mono font-semibold text-orange-400">
-                            <TokenCount count={day.totalTokens} />
-                          </span>
-                        </div>
-                        <span className="text-muted-foreground/40">•</span>
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-muted-foreground">Cost:</span>
-                          <span className="font-mono font-semibold text-emerald-400">
-                            {formatCurrency(dayCost)}
-                          </span>
-                        </div>
                       </div>
                     </div>
 
@@ -426,10 +415,10 @@ export function TokenUsagePanel({ selectedWorkspace }: TokenUsagePanelProps): Re
                             <td className="px-3 py-2 text-right">
                               <TokenCount count={day.cacheTokens} />
                             </td>
-                            <td className="px-3 py-2 text-right text-primary">
+                            <td className="px-3 py-2 text-right text-orange-400">
                               <TokenCount count={day.totalTokens} />
                             </td>
-                            <td className="px-4 py-2 text-right text-emerald-400">
+                            <td className="px-4 py-2 text-right text-red-400">
                               {formatCurrency(dayCost)}
                             </td>
                           </tr>

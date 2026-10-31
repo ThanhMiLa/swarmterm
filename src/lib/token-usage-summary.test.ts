@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { DailyUsageStats, ModelUsageStats, ProjectTokenStats } from '@/tauri/token-usage'
 import { calculateDailyCost, calculateProjectCost } from './token-pricing'
-import { getModelProvider, summarizeDailyModelUsage, summarizeProjectProviderUsage } from './token-usage-summary'
+import { getModelProvider, sortDailyUsageByTokens, summarizeDailyModelUsage, summarizeProjectProviderUsage } from './token-usage-summary'
 
 function model(agentId: string, name: string): ModelUsageStats {
   return {
@@ -41,6 +41,31 @@ function project(dailyStats: DailyUsageStats[]): ProjectTokenStats {
 }
 
 describe('model provider usage', () => {
+  it('ranks provider and model rows by tokens even when the cheaper model has more usage', () => {
+    const stats = day('2026-10-31', [
+      model('codex', 'gpt-6-astra'),
+      model('opencode', 'deepseek-v4.1-flash'),
+      model('opencode', 'deepseek-v4.1-flash'),
+    ])
+    const providers = summarizeProjectProviderUsage(project([stats]))
+    expect(providers.map((row) => row.providerId)).toEqual(['deepseek', 'codex'])
+    expect(providers[0].cost).toBeLessThan(providers[1].cost)
+    expect(summarizeDailyModelUsage(stats).map((row) => row.providerId)).toEqual(['deepseek', 'codex'])
+  })
+
+  it('ranks days by token subtotal with newer dates breaking ties without mutating history', () => {
+    const days = [
+      day('2026-10-31', [model('codex', 'gpt-6-astra')]),
+      day('2026-10-29', [model('opencode', 'deepseek-v4.1-flash'), model('codex', 'gpt-6.1-sol')]),
+      day('2026-10-30', [model('codex', 'gpt-6.1-sol')]),
+    ]
+    expect(sortDailyUsageByTokens(days).map((row) => row.date)).toEqual([
+      '2026-10-29', '2026-10-31', '2026-10-30',
+    ])
+    expect(days.map((row) => row.date)).toEqual(['2026-10-31', '2026-10-29', '2026-10-30'])
+    expect(sortDailyUsageByTokens([])).toEqual([])
+  })
+
   it.each([
     ['gpt-6.1-sol (high)', 'codex'],
     ['openai/gpt-6.1-terra', 'codex'],
